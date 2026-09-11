@@ -49,18 +49,13 @@ def get_yield_curve_json(
 
         highlights = {}
         if not df.empty:
-            if "tea" in df.columns:
-                df_v = df[df["tea"].notna() & (df["tea"] > 0)]
+            tir_col = "tea" if "tea" in df.columns else ("tir" if "tir" in df.columns else ("tir_real" if "tir_real" in df.columns else None))
+            if tir_col:
+                df_v = df[df[tir_col].notna() & (df[tir_col] > 0)]
                 if not df_v.empty:
-                    idx = df_v["tea"].idxmax()
+                    idx = df_v[tir_col].idxmax()
                     r = df.loc[idx]
-                    highlights["best_tir"] = {"ticker": str(r["ticker"]), "val": f"{float(r['tea']):.1f}%"}
-            elif "tir_real" in df.columns:
-                df_v = df[df["tir_real"].notna() & (df["tir_real"] > 0)]
-                if not df_v.empty:
-                    idx = df_v["tir_real"].idxmax()
-                    r = df.loc[idx]
-                    highlights["best_tir"] = {"ticker": str(r["ticker"]), "val": f"{float(r['tir_real']):.1f}%"}
+                    highlights["best_tir"] = {"ticker": str(r["ticker"]), "val": f"{float(r[tir_col]):.1f}%"}
 
             if "paridad" in df.columns:
                 df_p = df[df["paridad"].notna() & (df["paridad"] > 0)]
@@ -74,7 +69,9 @@ def get_yield_curve_json(
                 if not df_m.empty:
                     idx = df_m["monto"].idxmax()
                     r = df.loc[idx]
-                    highlights["most_liquid"] = {"ticker": str(r["ticker"]), "val": f"A$ {float(r['monto'])/1_000_000:.1f}M"}
+                    moneda = str(r.get("moneda", "")).upper()
+                    cur_sym = "U$" if (cat_clean not in ["lecap", "lecaps"] and (moneda == "USD" or cat_clean in ["hard_dollar", "soberanos", "soberano", "bopreal"])) else "A$"
+                    highlights["most_liquid"] = {"ticker": str(r["ticker"]), "val": f"{cur_sym} {float(r['monto'])/1_000_000:.1f}M"}
 
         df_clean = df.copy()
         df_clean = df_clean.replace({np.nan: None})
@@ -87,19 +84,25 @@ def get_yield_curve_json(
             df_sorted = df.sort_values(by="md").dropna(subset=["md"])
             for _, row in df_sorted.iterrows():
                 y_val = row.get(y_col)
-                if y_val is not None and not np.isnan(y_val):
+                if pd.notna(y_val):
                     md_val = float(row["md"])
+                    pos = row.get("posicion_curva")
+                    pos_str = str(pos) if pd.notna(pos) else "neutral"
+                    precio_val = row.get("precio")
+                    paridad_val = row.get("paridad")
+                    spread_val = row.get("spread_curva_bps")
+                    teorica_val = row.get("teorica")
+
                     scatter_points.append({
                         "ticker": str(row.get("ticker", "")),
                         "md": round(md_val, 2),
                         "yield_val": round(float(y_val), 2),
-                        "posicion_curva": str(row.get("posicion_curva", "arriba")),
-                        "precio": float(row["precio"]) if row.get("precio") is not None and not np.isnan(row["precio"]) else None,
-                        "paridad": float(row["paridad"]) if row.get("paridad") is not None and not np.isnan(row["paridad"]) else None,
-                        "spread_curva_bps": int(row["spread_curva_bps"]) if row.get("spread_curva_bps") is not None and not np.isnan(row["spread_curva_bps"]) else None
+                        "posicion_curva": pos_str,
+                        "precio": float(precio_val) if pd.notna(precio_val) else None,
+                        "paridad": float(paridad_val) if pd.notna(paridad_val) else None,
+                        "spread_curva_bps": int(spread_val) if pd.notna(spread_val) else None
                     })
-                    teorica_val = row.get("teorica")
-                    if teorica_val is not None and not np.isnan(teorica_val):
+                    if pd.notna(teorica_val):
                         curve_line.append([round(md_val, 2), round(float(teorica_val), 2)])
 
         return JSONResponse({

@@ -122,9 +122,11 @@ export const FixedIncomeView: React.FC = () => {
       const q = searchFilter.toLowerCase().trim();
       if (!q) return true;
       return (
-        row.ticker.toLowerCase().includes(q) || 
+        (row.ticker && row.ticker.toLowerCase().includes(q)) || 
         (row.tipo && row.tipo.toLowerCase().includes(q)) ||
-        (row.ley && row.ley.toLowerCase().includes(q))
+        (row.ley && row.ley.toLowerCase().includes(q)) ||
+        (row.nombre && row.nombre.toLowerCase().includes(q)) ||
+        (row.descripcion && row.descripcion.toLowerCase().includes(q))
       );
     });
   }, [data, searchFilter]);
@@ -143,7 +145,7 @@ export const FixedIncomeView: React.FC = () => {
       itemStyle: {
         color: pt.posicion_curva === 'arriba' 
           ? '#49d090' 
-          : '#ff453a'
+          : (pt.posicion_curva === 'abajo' ? '#ff453a' : '#38bdf8')
       },
       raw: pt
     }));
@@ -156,8 +158,19 @@ export const FixedIncomeView: React.FC = () => {
         borderColor: 'rgba(255, 255, 255, 0.15)',
         textStyle: { color: '#ffffff', fontSize: 11 },
         formatter: (params: any) => {
-          const pt = params.data.raw;
-          if (!pt) return '';
+          const pt = params.data?.raw;
+          if (!pt) {
+            if (Array.isArray(params.data) && params.data.length >= 2) {
+              return `
+                <div style="padding: 2px 4px;">
+                  <div style="font-weight: 800; font-size: 12px; margin-bottom: 4px; color: #38bdf8;">Curva Benchmark</div>
+                  <div>Modified Duration: <strong>${params.data[0]} años</strong></div>
+                  <div>Tasa Teórica: <strong>${params.data[1]}%</strong></div>
+                </div>
+              `;
+            }
+            return '';
+          }
           const priceLabel = isLecap 
             ? `A$ ${pt.precio ? Number(pt.precio).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}` 
             : `U$ ${pt.precio ? Number(pt.precio).toFixed(2) : '—'}`;
@@ -176,6 +189,7 @@ export const FixedIncomeView: React.FC = () => {
       grid: { left: 50, right: 30, top: 30, bottom: 35 },
       xAxis: {
         type: 'value',
+        scale: true,
         name: 'Modified Duration (Años)',
         nameLocation: 'middle',
         nameGap: 24,
@@ -186,6 +200,7 @@ export const FixedIncomeView: React.FC = () => {
       },
       yAxis: {
         type: 'value',
+        scale: true,
         name: yAxisLabel,
         nameTextStyle: { color: '#a1a1aa', fontSize: 10 },
         axisLabel: { color: '#a1a1aa', formatter: '{value}%', fontSize: 10 },
@@ -457,7 +472,7 @@ export const FixedIncomeView: React.FC = () => {
                 : 'text-zinc-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            🪙 LECAPs & BONCAPs
+            LECAPs & BONCAPs
           </button>
           <button
             onClick={() => setCategory('soberanos')}
@@ -467,7 +482,7 @@ export const FixedIncomeView: React.FC = () => {
                 : 'text-zinc-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            💵 Soberanos USD
+            Soberanos USD
           </button>
           <button
             onClick={() => setCategory('bopreal')}
@@ -477,7 +492,7 @@ export const FixedIncomeView: React.FC = () => {
                 : 'text-zinc-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            🏛️ BOPREAL
+            BOPREAL
           </button>
         </div>
       </div>
@@ -632,11 +647,25 @@ export const FixedIncomeView: React.FC = () => {
                   <thead className="bg-white/[0.03] border-b border-white/10">
                     {table.getHeaderGroups().map(headerGroup => (
                       <tr key={headerGroup.id}>
-                        {headerGroup.headers.map(header => (
-                          <th key={header.id} className="px-3 py-2 font-bold uppercase tracking-wider text-zinc-400 text-[11px]">
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                          </th>
-                        ))}
+                        {headerGroup.headers.map(header => {
+                          const canSort = header.column.getCanSort();
+                          const isSorted = header.column.getIsSorted();
+                          return (
+                            <th 
+                              key={header.id} 
+                              onClick={header.column.getToggleSortingHandler()}
+                              className={`px-2.5 py-2 font-bold uppercase tracking-wider text-[11px] select-none ${
+                                canSort ? 'cursor-pointer hover:text-white transition-colors' : ''
+                              } ${isSorted ? 'text-blue-400' : 'text-zinc-400'}`}
+                            >
+                              <div className="flex items-center gap-1">
+                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                {isSorted === 'asc' && <span className="text-[10px]">▲</span>}
+                                {isSorted === 'desc' && <span className="text-[10px]">▼</span>}
+                              </div>
+                            </th>
+                          );
+                        })}
                       </tr>
                     ))}
                   </thead>

@@ -60,7 +60,7 @@ def calculate_irr_and_duration(price: float, cash_flows: list[tuple[float, float
     def npv(r: float) -> float:
         return sum(cf / ((1.0 + r) ** t) for t, cf in cash_flows) - price
 
-    low, high = -0.3, 2.0
+    low, high = -0.3, 5.0
     f_low = npv(low)
     f_high = npv(high)
     if f_low * f_high > 0:
@@ -229,7 +229,7 @@ def fetch_yield_curve(category: str = "hard_dollar") -> pd.DataFrame | None:
                     logger.warning(f"BYMA panel lookup: {e}")
 
             # 3. Calcular TIR y Duration financiera exacta para bonos con cotización
-            hoy = datetime.now()
+            hoy = datetime.now().date()
             for m_tick in missing:
                 if m_tick in prices_found:
                     mirror_source = mirrors.get(m_tick)
@@ -247,7 +247,7 @@ def fetch_yield_curve(category: str = "hard_dollar") -> pd.DataFrame | None:
                             cash = item.get("cashFlow")
                             if f_pago and cash:
                                 try:
-                                    dt_pago = datetime.strptime(f_pago[:10], "%Y-%m-%d")
+                                    dt_pago = datetime.strptime(f_pago[:10], "%Y-%m-%d").date()
                                     t_years = (dt_pago - hoy).days / 365.0
                                     if t_years > 0:
                                         cfs_for_irr.append((t_years, float(cash)))
@@ -274,6 +274,24 @@ def fetch_yield_curve(category: str = "hard_dollar") -> pd.DataFrame | None:
                         "paridad": paridad_calc,
                     })
 
+    # Asegurar que todos los títulos conocidos de la categoría estén presentes en la tabla
+    existing_tickers = {r["ticker"] for r in rows}
+    for k_tick, k_desc in known.items():
+        if k_tick not in existing_tickers:
+            t_ley = classify_bond_law(k_tick)
+            rows.append({
+                "ticker": k_tick,
+                "descripcion": k_desc,
+                "tipo": t_ley,
+                "ley": t_ley,
+                "precio": None,
+                "tir": None,
+                "md": None,
+                "moneda": "USD",
+                "cupones": 0,
+                "paridad": None,
+            })
+
     df = pd.DataFrame(rows)
     if df.empty:
         return None
@@ -295,7 +313,7 @@ def fetch_yield_curve(category: str = "hard_dollar") -> pd.DataFrame | None:
     df_clean = df.dropna(subset=["tir", "md"])
     if df_clean.empty:
         return df
-    return fit_yield_curve(df_clean, x_col="md", y_col="tir")
+    return fit_yield_curve(df, x_col="md", y_col="tir")
 
 def fetch_bond_snapshot() -> pd.DataFrame | None:
     try:
@@ -346,15 +364,34 @@ def fetch_bond_technical(ticker: str) -> dict[str, Any] | None:
         "montoResidual": d.get("montoResidual"),
     }
 
-def calc_spread(df: pd.DataFrame, benchmark: str = "AL30") -> pd.DataFrame:
+def calc_spread(df: pd.DataFrame, benchmark: str | float = "AL30") -> pd.DataFrame:
+    """
+    Calcula el spread de rendimiento respecto a un benchmark (ticker o tasa objetivo numérica %).
+    Soporta DataFrames tanto con columna 'tea' (LECAPs/BONCAPs) como 'tir' (Soberanos).
+    """
     if df is None or df.empty:
         return df
-    bench_tir = df.loc[df["ticker"] == benchmark, "tir"]
-    if bench_tir.empty:
+
+    tir_col = "tea" if "tea" in df.columns else ("tir" if "tir" in df.columns else None)
+    if not tir_col:
         df["spread"] = None
+        return df
+
+    bv = None
+    if isinstance(benchmark, (int, float)):
+        bv = float(benchmark)
+    elif isinstance(benchmark, str):
+        try:
+            bv = float(benchmark.strip())
+        except ValueError:
+            bench_match = df.loc[df["ticker"].astype(str).str.upper() == benchmark.strip().upper(), tir_col]
+            if not bench_match.empty and pd.notna(bench_match.iloc[0]):
+                bv = float(bench_match.iloc[0])
+
+    if bv is not None:
+        df["spread"] = df[tir_col].apply(lambda x: round(float(x) - bv, 2) if pd.notna(x) else None)
     else:
-        bv = bench_tir.iloc[0]
-        df["spread"] = df["tir"].apply(lambda x: round(x - bv, 2) if pd.notna(x) else None)
+        df["spread"] = None
     return df
 
 import numpy as np

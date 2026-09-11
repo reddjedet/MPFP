@@ -40,6 +40,7 @@ import os
 from pathlib import Path
 from collections import OrderedDict
 import threading
+import pandas as pd
 
 DISK_CACHE_FILE = Path(__file__).resolve().parent.parent / "data" / ".cache_market.json"
 
@@ -65,6 +66,7 @@ def smart_cache(category: str = "realtime", maxsize: int = 256):
     """
     Decorador de caché inteligente en memoria con persistencia en disco y TTL dinámico.
     Permite arranques instantáneos (sub-segundo) reutilizando las últimas cotizaciones conocidas.
+    Soporta DataFrames y estructuras JSON nativas.
     """
     def decorator(func):
         cache = OrderedDict()
@@ -74,7 +76,13 @@ def smart_cache(category: str = "realtime", maxsize: int = 256):
         initial_disk = _load_disk_cache().get(func.__name__, {})
         for k, item in initial_disk.items():
             if isinstance(item, list) and len(item) == 2:
-                cache[k] = (item[0], item[1])
+                raw_val, timestamp = item[0], item[1]
+                if isinstance(raw_val, dict) and raw_val.get("__df__") and "data" in raw_val:
+                    try:
+                        raw_val = pd.DataFrame(**raw_val["data"])
+                    except Exception:
+                        continue
+                cache[k] = (raw_val, timestamp)
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -103,7 +111,8 @@ def smart_cache(category: str = "realtime", maxsize: int = 256):
                     try:
                         all_disk = _load_disk_cache()
                         func_cache = all_disk.get(func.__name__, {})
-                        func_cache[key] = [val, time.time()]
+                        save_val = {"__df__": True, "data": val.to_dict(orient="split")} if isinstance(val, pd.DataFrame) else val
+                        func_cache[key] = [save_val, time.time()]
                         all_disk[func.__name__] = func_cache
                         _save_disk_cache(all_disk)
                     except Exception:

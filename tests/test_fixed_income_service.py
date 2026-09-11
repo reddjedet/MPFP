@@ -151,6 +151,63 @@ class TestFixedIncomeService(unittest.TestCase):
         self.assertGreater(md, 1.5)
         self.assertLess(md, 3.5)
 
+    def test_calc_spread_numeric_and_lecap(self):
+        """Verifica que calc_spread soporte tanto benchmarks numéricos como DataFrames con columna 'tea'."""
+        df_lecap = pd.DataFrame([
+            {"ticker": "S30S6", "tea": 38.5},
+            {"ticker": "S15D6", "tea": 36.0},
+        ])
+        # Test con float numérico
+        res_num = calc_spread(df_lecap, 35.0)
+        self.assertEqual(res_num.loc[res_num["ticker"] == "S30S6", "spread"].iloc[0], 3.5)
+        self.assertEqual(res_num.loc[res_num["ticker"] == "S15D6", "spread"].iloc[0], 1.0)
+
+        # Test con ticker de LECAP
+        res_tk = calc_spread(df_lecap, "S15D6")
+        self.assertEqual(res_tk.loc[res_tk["ticker"] == "S30S6", "spread"].iloc[0], 2.5)
+        self.assertEqual(res_tk.loc[res_tk["ticker"] == "S15D6", "spread"].iloc[0], 0.0)
+
+    @patch("routers.renta_fija.fetch_yield_curve")
+    def test_endpoint_hard_dollar_highlights_best_tir_and_currency(self, mock_curve):
+        """Verifica que highlights.best_tir se calcule para bonos con columna 'tir' y que most_liquid use U$."""
+        mock_df = pd.DataFrame([
+            {"ticker": "AL30", "nombre": "Bono USD 2030", "tir": 16.8, "md": 2.1, "ley": "Ley Local", "tipo": "Ley Local", "precio": 65.0, "monto": 2500000.0, "moneda": "USD", "paridad": 75.0, "posicion_curva": "arriba", "spread_curva_bps": 50, "teorica": 16.3},
+            {"ticker": "GD30", "nombre": "Bono USD 2030 NY", "tir": 15.2, "md": 2.2, "ley": "Ley NY", "tipo": "Ley NY", "precio": 67.0, "monto": 5000000.0, "moneda": "USD", "paridad": 77.0, "posicion_curva": "abajo", "spread_curva_bps": -30, "teorica": 15.5},
+        ])
+        mock_curve.return_value = mock_df
+        resp = self.client.get("/api/renta_fija/curve_json?category=soberanos&ley=Ambas")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("highlights", data)
+        hl = data["highlights"]
+        self.assertIn("best_tir", hl)
+        self.assertEqual(hl["best_tir"]["ticker"], "AL30")
+        self.assertEqual(hl["best_tir"]["val"], "16.8%")
+        self.assertIn("most_liquid", hl)
+        self.assertEqual(hl["most_liquid"]["ticker"], "GD30")
+        self.assertTrue(hl["most_liquid"]["val"].startswith("U$"))
+
+    def test_smart_cache_dataframe_support(self):
+        """Verifica que smart_cache maneje correctamente DataFrames sin fallos de serialización JSON."""
+        from services.cache_service import smart_cache
+
+        call_count = 0
+        @smart_cache("static", maxsize=10)
+        def dummy_df_fetcher(name: str):
+            nonlocal call_count
+            call_count += 1
+            return pd.DataFrame([{"symbol": name, "val": 100.0}])
+
+        df1 = dummy_df_fetcher("test_sym")
+        self.assertIsInstance(df1, pd.DataFrame)
+        self.assertEqual(df1.iloc[0]["symbol"], "test_sym")
+        self.assertEqual(call_count, 1)
+
+        # Segunda llamada debe servirse del caché
+        df2 = dummy_df_fetcher("test_sym")
+        self.assertEqual(call_count, 1)
+        self.assertEqual(df2.iloc[0]["val"], 100.0)
+
 if __name__ == "__main__":
     unittest.main()
 
