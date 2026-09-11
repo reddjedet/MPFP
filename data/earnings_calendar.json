@@ -1,0 +1,366 @@
+{
+  "DE": {
+    "company": "Deere & Company",
+    "fiscal_close": "31 Octubre",
+    "report_months_text": "Feb / May / Ago / Dic (10-K)",
+    "report_months": [
+      2,
+      5,
+      8,
+      12
+    ],
+    "typical_window": "Mediados de Agosto",
+    "confirmed_date": "2026-08-20"
+  },
+  "NVDA": {
+    "company": "NVIDIA",
+    "fiscal_close": "31 Enero",
+    "report_months_text": "May / Ago / Nov / Feb (10-K)",
+    "report_months": [
+      5,
+      8,
+      11,
+      2
+    ],
+    "typical_window": "Finales de Agosto",
+    "confirmed_date": "2026-08-26"
+  },
+  "AMAT": {
+    "company": "Applied Materials",
+    "fiscal_close": "31 Octubre",
+    "report_months_text": "Feb / May / Ago / Nov (10-K)",
+    "report_months": [
+      2,
+      5,
+      8,
+      11
+    ],
+    "typical_window": "Mediados de Agosto",
+    "confirmed_date": "2026-11-12"
+  },
+  "HD": {
+    "company": "Home Depot",
+    "fiscal_close": "31 Enero",
+    "report_months_text": "May / Ago / Nov / Feb (10-K)",
+    "report_months": [
+      5,
+      8,
+      11,
+      2
+    ],
+    "typical_window": "Mediados de Agosto",
+    "confirmed_date": "2026-08-18"
+  },
+  "COST": {
+    "company": "Costco Wholesale",
+    "fiscal_close": "31 Agosto",
+    "report_months_text": "Dic / Mar / May / Sep-Oct (10-K)",
+    "report_months": [
+      12,
+      3,
+      5,
+      9,
+      10
+    ],
+    "typical_window": "Finales de Septiembre",
+    "confirmed_date": "2026-09-24"
+  },
+  "V": {
+    "company": "Visa Inc.",
+    "fiscal_close": "30 Septiembre",
+    "report_months_text": "Ene / Abr / Jul / Oct (10-K)",
+    "report_months": [
+      1,
+      4,
+      7,
+      10
+    ],
+    "typical_window": "Finales de Octubre",
+    "confirmed_date": "2026-10-27"
+  },
+  "MSFT": {
+    "company": "Microsoft",
+    "fiscal_close": "30 Junio",
+    "report_months_text": "Oct / Ene / Abr / Jul (10-K)",
+    "report_months": [
+      10,
+      1,
+      4,
+      7
+    ],
+    "typical_window": "Finales de Octubre",
+    "confirmed_date": "2026-10-28"
+  },
+  "PG": {
+    "company": "Procter & Gamble",
+    "fiscal_close": "30 Junio",
+    "report_months_text": "Oct / Ene / Abr / Jul (10-K)",
+    "report_months": [
+      10,
+      1,
+      4,
+      7
+    ],
+    "typical_window": "Mediados de Octubre",
+    "confirmed_date": "2026-08-28"
+  },
+  "GOOGL": {
+    "company": "Alphabet",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Jul / Oct / Ene-Feb (10-K)",
+    "report_months": [
+      4,
+      7,
+      10,
+      1,
+      2
+    ],
+    "typical_window": "Finales de Octubre",
+    "confirmed_date": "2026-10-21"
+  },
+  "META": {
+    "company": "Meta Platforms",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Jul / Oct / Ene-Feb (10-K)",
+    "report_months": [
+      4,
+      7,
+      10,
+      1,
+      2
+    ],
+    "typical_window": "Finales de Octubre",
+    "confirmed_date": "2026-10-28"
+  },
+  "AMZN": {
+    "company": "Amazon",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Jul / Oct-Nov / Ene-Feb (10-K)",
+    "report_months": [
+      4,
+      7,
+      10,
+      11,
+      1,
+      2
+    ],
+    "typical_window": "Finales de Octubre / Nov",
+    "confirmed_date": "2026-10-29"
+  },
+  "MELI": {
+    "company": "MercadoLibre",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "May / Ago / Nov / Feb-Mar (10-K)",
+    "report_months": [
+      5,
+      8,
+      11,
+      2,
+      3
+    ],
+    "typical_window": "Principios de Noviembre",
+    "confirmed_date": "2026-11-04"
+  },
+  "TSM": {
+    "company": "Taiwan Semi",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Jul / Oct / Ene (10-K)",
+    "report_months": [
+      4,
+      7,
+      10,
+      1
+    ],
+    "typical_window": "Mediados de Octubre",
+    "confirmed_date": "2026-10-19"
+  },
+  "MA": {
+    "company": "Mastercard",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Jul / Oct / Ene-Feb (10-K)",
+    "report_months": [
+      4,
+      7,
+      10,
+      1,
+      2
+    ],
+    "typical_window": "Finales de Octubre",
+    "confirmed_date": "2026-10-29"
+  },
+  "CAT": {
+    "company": "Caterpillar",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Jul / Oct / Ene-Feb (10-K)",
+    "report_months": [
+      4,
+      7,
+      10,
+      1,
+      2
+    ],
+    "typical_window": "Finales de Octubre",
+    "confirmed_date": "2026-11-03"
+  },
+  "GE": {
+    "company": "GE Aerospace",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Jul / Oct / Ene (10-K)",
+    "report_months": [
+      4,
+      7,
+      10,
+      1
+    ],
+    "typical_window": "Finales de Octubre",
+    "confirmed_date": "2026-10-26"
+  },
+  "RTX": {
+    "company": "RTX Corp.",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Jul / Oct / Ene (10-K)",
+    "report_months": [
+      4,
+      7,
+      10,
+      1
+    ],
+    "typical_window": "Finales de Octubre",
+    "confirmed_date": "2026-10-22"
+  },
+  "PEP": {
+    "company": "PepsiCo",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Jul / Oct / Feb (10-K)",
+    "report_months": [
+      4,
+      7,
+      10,
+      2
+    ],
+    "typical_window": "Principios de Octubre",
+    "confirmed_date": "2026-10-08"
+  },
+  "PM": {
+    "company": "Philip Morris",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Jul / Oct / Feb (10-K)",
+    "report_months": [
+      4,
+      7,
+      10,
+      2
+    ],
+    "typical_window": "Mediados de Octubre",
+    "confirmed_date": "2026-10-21"
+  },
+  "MRK": {
+    "company": "Merck & Co.",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Jul / Oct / Ene-Feb (10-K)",
+    "report_months": [
+      4,
+      7,
+      10,
+      1,
+      2
+    ],
+    "typical_window": "Finales de Octubre",
+    "confirmed_date": "2026-11-03"
+  },
+  "LLY": {
+    "company": "Eli Lilly",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Ago / Oct-Nov / Feb (10-K)",
+    "report_months": [
+      4,
+      8,
+      10,
+      11,
+      2
+    ],
+    "typical_window": "Finales de Octubre",
+    "confirmed_date": "2026-11-04"
+  },
+  "BRK.B": {
+    "company": "Berkshire Hathaway",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "May / Ago / Nov / Feb-Mar (10-K)",
+    "report_months": [
+      5,
+      8,
+      11,
+      2,
+      3
+    ],
+    "typical_window": "Principios de Noviembre",
+    "confirmed_date": "2026-11-09"
+  },
+  "JPM": {
+    "company": "JPMorgan Chase",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Jul / Oct / Ene (10-K)",
+    "report_months": [
+      4,
+      7,
+      10,
+      1
+    ],
+    "typical_window": "Mediados de Octubre",
+    "confirmed_date": "2026-10-14"
+  },
+  "NU": {
+    "company": "Nu Holdings",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "May / Ago / Nov / Feb-Mar (10-K)",
+    "report_months": [
+      5,
+      8,
+      11,
+      2,
+      3
+    ],
+    "typical_window": "Mediados de Noviembre",
+    "confirmed_date": "2026-11-12"
+  },
+  "PAM": {
+    "company": "Pampa Energía",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "May / Ago / Nov / Mar (10-K)",
+    "report_months": [
+      5,
+      8,
+      11,
+      3
+    ],
+    "typical_window": "Principios de Noviembre",
+    "confirmed_date": "2026-11-03"
+  },
+  "VST": {
+    "company": "Vistra Corp.",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "May / Ago / Nov / Feb-Mar (10-K)",
+    "report_months": [
+      5,
+      8,
+      11,
+      2,
+      3
+    ],
+    "typical_window": "Principios de Noviembre",
+    "confirmed_date": "2026-11-06"
+  },
+  "VIST": {
+    "company": "Vista Energy",
+    "fiscal_close": "31 Diciembre",
+    "report_months_text": "Abr / Jul / Oct / Feb (10-K)",
+    "report_months": [
+      4,
+      7,
+      10,
+      2
+    ],
+    "typical_window": "Finales de Octubre",
+    "confirmed_date": "2026-10-26"
+  }
+}

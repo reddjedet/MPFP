@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+:root {
+  --bg-app: #0f1015;
+  --bg-sidebar: rgba(24, 25, 32, 0.85);
+  --bg-glass: rgba(24, 25, 32, 0.7);
+  --bg-input: rgba(0, 0, 0, 0.4);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --text-main: #ffffff;
+  --text-muted: #9ea3b0;
+  --card-hover: rgba(255, 255, 255, 0.03);
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.glass-panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Form inputs and select dropdowns (Dark Institutional) */
+input, select {
+  color: #ffffff;
+}
+
+select option {
+  background-color: #181920;
+  color: #ffffff;
+}
+
+input::placeholder {
+  color: #52525b;
+}
+
+/* Institutional Dark Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+  background-clip: padding-box;
+}
+
+/* Dark Text Selection */
+::selection {
+  background-color: rgba(59, 130, 246, 0.45);
+  color: #ffffff;
+}
+
+/* Soft, Accessible Focus Rings */
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Dark Adaptive Links */
+a {
+  color: #60a5fa;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: #93c5fd;
+}
+
+/* Horizontal Rules / Dividers */
+hr {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+

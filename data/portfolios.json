@@ -1,0 +1,152 @@
+{
+  "bmb": {
+    "mode": "weights",
+    "asset_allocation": {
+      "equity_weight": 45.63,
+      "fixed_income_weight": 54.37
+    },
+    "assets": {
+      "CAT": 13.93,
+      "MRK": 15.7,
+      "GOOGL": 29.48,
+      "MA": 11.52,
+      "PM": 8.93,
+      "AMAT": 4.25,
+      "VIST": 16.19
+    },
+    "fixed_income_assets": {
+      "S30S6": {
+        "target_weight_portfolio": 54.37,
+        "target_weight_rf": 100.0
+      }
+    },
+    "anchor": "PM",
+    "qty": 1
+  },
+  "bdi_muy_agresiva": {
+    "mode": "weights",
+    "assets": {
+      "MSFT": 14.9,
+      "MU": 9.6,
+      "IBIT": 9.4,
+      "NVDA": 8.4,
+      "META": 7.8,
+      "SMH": 7.4,
+      "ANET": 7.3,
+      "TSLA": 6.7,
+      "CRWV": 6.6,
+      "NBIS": 6.5,
+      "CEG": 6.5,
+      "SNDK": 5.1,
+      "RGTI": 3.5
+    },
+    "anchor": "MU",
+    "qty": 1
+  },
+  "bdi_agresiva": {
+    "mode": "weights",
+    "assets": {
+      "SMH": 14.8,
+      "MSFT": 13.0,
+      "NU": 13.0,
+      "IVW": 9.3,
+      "AMZN": 8.8,
+      "TSM": 7.8,
+      "PLTR": 7.6,
+      "META": 7.1,
+      "GOOGL": 6.2,
+      "MELI": 5.5,
+      "ILF": 4.5,
+      "IBIT": 2.3
+    },
+    "anchor": "PLTR",
+    "qty": 1
+  },
+  "bdi_moderada": {
+    "mode": "weights",
+    "assets": {
+      "SPY": 14.1,
+      "MSFT": 12.7,
+      "AMZN": 10.1,
+      "VEA": 9.7,
+      "V": 9.0,
+      "GOOGL": 8.3,
+      "RTX": 7.8,
+      "EWZ": 6.0,
+      "XLV": 5.1,
+      "JPM": 4.6,
+      "META": 4.4,
+      "EWJ": 4.2,
+      "FXI": 4.1
+    },
+    "anchor": "V",
+    "qty": 1
+  },
+  "min_drawdown_15": {
+    "mode": "weights",
+    "asset_allocation": {
+      "equity_weight": 69.53,
+      "fixed_income_weight": 30.47
+    },
+    "assets": {
+      "GOOGL": 5.0,
+      "NU": 5.0,
+      "V": 25.0,
+      "COST": 15.5,
+      "DE": 5.0,
+      "LLY": 25.0,
+      "VIST": 9.5,
+      "URA": 5.0,
+      "NEM": 5.0
+    },
+    "fixed_income_assets": {
+      "S30S6": {
+        "target_weight_portfolio": 24.78,
+        "target_weight_rf": 81.33
+      },
+      "T31Y7": {
+        "target_weight_portfolio": 5.69,
+        "target_weight_rf": 18.67
+      }
+    },
+    "anchor": "URA",
+    "qty": 1
+  },
+  "bdi_momentum": {
+    "mode": "weights",
+    "assets": {
+      "GOOGL": 15.4,
+      "NVDA": 10.6,
+      "META": 8.0,
+      "NBIS": 7.4,
+      "AMZN": 7.3,
+      "VST": 6.4,
+      "ASML": 5.9,
+      "GLW": 5.6,
+      "XLU": 4.9,
+      "VIST": 4.3,
+      "MU": 4.2,
+      "NU": 4.2
+    },
+    "anchor": "MU",
+    "qty": 1
+  },
+  "cartera_del_fin_del_mundo": {
+    "mode": "weights",
+    "assets": {
+      "CEG": 8.0,
+      "CCJ": 8.0,
+      "NEE": 5.0,
+      "VIST": 4.0,
+      "TSM": 9.0,
+      "ASML": 8.0,
+      "FCX": 8.0,
+      "UNP": 10.0,
+      "CAT": 10.0,
+      "MSFT": 8.0,
+      "GOOGL": 8.0,
+      "JPM": 7.0,
+      "COST": 7.0
+    }
+  }
+}

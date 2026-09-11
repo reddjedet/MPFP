@@ -1,0 +1,602 @@
+{
+  "sectors": [
+    {
+      "id": "tech",
+      "name": "Tecnología & Cloud",
+      "tickers": ["GOOGL", "MSFT", "META", "AMZN", "MELI"]
+    },
+    {
+      "id": "semis",
+      "name": "Semiconductores",
+      "tickers": ["NVDA", "TSM", "AMAT"]
+    },
+    {
+      "id": "payments_retail",
+      "name": "Pagos & Retail",
+      "tickers": ["V", "MA", "HD", "COST"]
+    },
+    {
+      "id": "industrials",
+      "name": "Industria & Defensa",
+      "tickers": ["DE", "CAT", "GE", "RTX"]
+    },
+    {
+      "id": "staples_health",
+      "name": "Consumo & Farma",
+      "tickers": ["PEP", "PG", "PM", "MRK", "LLY"]
+    },
+    {
+      "id": "financials",
+      "name": "Financieras & Holding",
+      "tickers": ["BRK.B", "JPM", "NU"]
+    },
+    {
+      "id": "energy",
+      "name": "Energía & Petróleo",
+      "tickers": ["PAM", "VST", "VIST"]
+    },
+    {
+      "id": "discarded",
+      "name": "🚫 Trampas de Valor (Descarte)",
+      "tickers": ["MSTR", "TSLA", "MU", "NEM", "PLTR"]
+    }
+  ],
+  "profiles": {
+    "GOOGL": {
+      "name": "Alphabet Inc. (Google)",
+      "sector_id": "tech",
+      "model_type": "standard_fcf",
+      "business_summary": "Monopolio indiscutido de búsqueda web, YouTube y Google Cloud con foso en IA.",
+      "base_fcf_multiple": 22.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Auditar que el gasto en IA (Growth CapEx) genere retornos y que mantenga su sólida posición de Net Cash.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 178.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "(Operating Cash Flow - Maint. CapEx - SBC) / Acciones.", "default": 8.10, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "NOPAT / Invested Capital (Óptimo >= 15-20%).", "default": 28.5, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital o tasa de descuento (8-10%).", "default": 9.2, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Negativo = Net Cash (Caja Neta). Máximo tolerado: 1.5x.", "default": -0.8, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Negativo = Recompra neta (Green). Positivo = Dilución (Red).", "default": -2.8, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "Stock-Based Compensation / Flujo Operativo (< 10% Green).", "default": 8.5, "step": 0.1}
+      ]
+    },
+    "MSFT": {
+      "name": "Microsoft Corp.",
+      "sector_id": "tech",
+      "model_type": "standard_fcf",
+      "business_summary": "Calificación crediticia AAA, suite Office 365 dominante y crecimiento de Azure Cloud.",
+      "base_fcf_multiple": 25.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Verificar retención B2B (> 95%) y aceleración de ingresos por herramientas Copilot e infraestructura Cloud.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 425.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "(Operating Cash Flow - Maint. CapEx - SBC) / Acciones.", "default": 13.50, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "NOPAT / Invested Capital (Óptimo >= 15-20%).", "default": 31.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital o tasa de descuento (8-10%).", "default": 8.8, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Negativo = Net Cash (Caja Neta). Máximo tolerado: 1.5x.", "default": 0.2, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Negativo = Recompra neta (Green). Positivo = Dilución (Red).", "default": -0.8, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "Stock-Based Compensation / Flujo Operativo (< 10% Green).", "default": 9.2, "step": 0.1}
+      ]
+    },
+    "META": {
+      "name": "Meta Platforms",
+      "sector_id": "tech",
+      "model_type": "standard_fcf",
+      "business_summary": "Efectos de red insuperables con 3.200M+ de usuarios activos diarios en Instagram, WhatsApp y Facebook.",
+      "base_fcf_multiple": 20.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Auditar recompra neta agresiva de acciones (-3% anual) y contención de pérdidas en Reality Labs.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 510.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "(Operating Cash Flow - Maint. CapEx - SBC) / Acciones.", "default": 24.0, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "NOPAT / Invested Capital (Óptimo >= 15-20%).", "default": 29.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital o tasa de descuento.", "default": 9.5, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Negativo = Net Cash (Caja Neta).", "default": -0.5, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Negativo = Recompra neta (Green).", "default": -3.1, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "Stock-Based Compensation / Flujo Operativo.", "default": 9.0, "step": 0.1}
+      ]
+    },
+    "AMZN": {
+      "name": "Amazon.com Inc.",
+      "sector_id": "tech",
+      "model_type": "standard_fcf",
+      "business_summary": "Líder mundial en comercio electrónico, nube pública (AWS) y publicidad digital de alta rentabilidad.",
+      "base_fcf_multiple": 24.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Auditar la expansión sostenida del margen operativo consolidado (> 8-10%) y separar CapEx de mantenimiento vs expansión.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 182.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "(Operating Cash Flow - Maint. CapEx - SBC) / Acciones.", "default": 6.80, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "NOPAT / Invested Capital.", "default": 19.5, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital o tasa de descuento.", "default": 9.0, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Deuda total neta de caja sobre EBITDA.", "default": 0.6, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Crecimiento anual de acciones en circulación.", "default": 0.3, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "Stock-Based Compensation / Flujo Operativo.", "default": 14.0, "step": 0.1}
+      ]
+    },
+    "MELI": {
+      "name": "MercadoLibre Inc.",
+      "sector_id": "tech",
+      "model_type": "standard_fcf",
+      "business_summary": "Ecosistema líder de comercio electrónico y fintech (Mercado Pago) en América Latina (Brasil, México, Argentina).",
+      "base_fcf_multiple": 25.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Monitorear la tasa de morosidad crediticia en Mercado Pago (NPL 90+) y eficiencia logística de Mercado Envíos.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 1950.0, "step": 1.0},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "(Operating Cash Flow - Maint. CapEx - SBC) / Acciones.", "default": 75.0, "step": 0.5},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC sostenido (Óptimo >= 20%).", "default": 24.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "WACC ajustado por riesgo emergente (11-12%).", "default": 11.5, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Endeudamiento neto sobre EBITDA.", "default": 0.8, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Variación de acciones en circulación.", "default": 0.0, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC / Flujo Operativo.", "default": 7.5, "step": 0.1}
+      ]
+    },
+    "NVDA": {
+      "name": "NVIDIA Corporation",
+      "sector_id": "semis",
+      "model_type": "standard_fcf",
+      "business_summary": "Monopolio en aceleradores GPU para inteligencia artificial con foso inexpugnable en software CUDA.",
+      "base_fcf_multiple": 26.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Verificar margen bruto (> 70%) y posición de Net Cash; evitar compras en picos de euforia cíclica desmedida.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 128.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo de caja libre por acción.", "default": 4.50, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC extraordinario por pricing power de IA.", "default": 55.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital de la industria.", "default": 10.0, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Negativo = Net Cash (Caja Neta).", "default": -0.6, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Recompras netas de acciones.", "default": -1.2, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "Compensación en acciones.", "default": 8.0, "step": 0.1}
+      ]
+    },
+    "TSM": {
+      "name": "Taiwan Semiconductor (TSMC)",
+      "sector_id": "semis",
+      "model_type": "standard_fcf",
+      "business_summary": "Fundición pura de semiconductores avanzados con más del 90% de cuota global en nodos de 3nm y 2nm.",
+      "base_fcf_multiple": 19.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Exigir margen bruto > 52% y ROIC > 25%; aplicar descuento prudencial por riesgo geopolítico del Estrecho de Taiwán.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización del ADR en NYSE.", "default": 165.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo libre de caja normalizado.", "default": 8.20, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC sobre fundición de obleas avanzadas.", "default": 29.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital ponderado.", "default": 9.5, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Negativo = Net Cash (Caja Neta).", "default": -0.4, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Estabilidad accionaria.", "default": 0.0, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC sobre flujo operativo (muy bajo).", "default": 2.0, "step": 0.1}
+      ]
+    },
+    "AMAT": {
+      "name": "Applied Materials",
+      "sector_id": "semis",
+      "model_type": "standard_fcf",
+      "business_summary": "Proveedor indispensable de maquinaria atómica de deposición y grabado para la fabricación de chips.",
+      "base_fcf_multiple": 19.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Auditar crecimiento en servicios recurrentes de mantenimiento (Applied Global Services), posición de Net Cash y recompras.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 205.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo de caja libre por acción.", "default": 9.80, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC del negocio de equipamiento.", "default": 34.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital.", "default": 9.0, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Net Cash sostenido.", "default": -0.2, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Recompra agresiva de acciones.", "default": -2.4, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC controlado.", "default": 5.5, "step": 0.1}
+      ]
+    },
+    "V": {
+      "name": "Visa Inc.",
+      "sector_id": "payments_retail",
+      "model_type": "standard_fcf",
+      "business_summary": "Red de pagos global operando como peaje digital sin asumir riesgo crediticio.",
+      "base_fcf_multiple": 26.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Auditar margen operativo récord (> 65%), ROIC superior al 50% y protección natural contra inflación.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 275.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo de caja libre por acción.", "default": 10.50, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC extraordinario sin apalancamiento.", "default": 52.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital.", "default": 8.5, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Deuda muy baja respecto al flujo generado.", "default": 0.6, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Recompra neta constante.", "default": -2.0, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC disciplinado.", "default": 4.5, "step": 0.1}
+      ]
+    },
+    "MA": {
+      "name": "Mastercard Inc.",
+      "sector_id": "payments_retail",
+      "model_type": "standard_fcf",
+      "business_summary": "Duopolio global de pagos digitales con altos márgenes y fuerte volumen transaccional internacional.",
+      "base_fcf_multiple": 27.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Verificar margen operativo (> 55%), ROIC > 50% y ritmo constante de recompras accionarias.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 475.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo de caja libre por acción.", "default": 16.50, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC del peaje de pagos.", "default": 55.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital.", "default": 8.5, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Deuda neta sobre EBITDA.", "default": 0.8, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Recompras de acciones.", "default": -2.2, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC sobre flujo operativo.", "default": 4.0, "step": 0.1}
+      ]
+    },
+    "HD": {
+      "name": "The Home Depot",
+      "sector_id": "payments_retail",
+      "model_type": "standard_fcf",
+      "business_summary": "Líder en mejoras del hogar con fuerte enfoque en clientes contratistas profesionales (The Pro).",
+      "base_fcf_multiple": 20.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Auditar rotación de inventarios, ROIC > 35% y mantener deuda neta controlada (< 1.8x EBITDA).",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 365.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo de caja libre por acción.", "default": 16.20, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC comercial minorista líder.", "default": 38.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital.", "default": 8.2, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Deuda neta sobre EBITDA.", "default": 1.7, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Recompra de acciones.", "default": -1.5, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC sobre flujo operativo.", "default": 2.5, "step": 0.1}
+      ]
+    },
+    "COST": {
+      "name": "Costco Wholesale",
+      "sector_id": "payments_retail",
+      "model_type": "standard_fcf",
+      "business_summary": "Club de compras por membresía con renovación > 90% y venta de mercancía al costo.",
+      "base_fcf_multiple": 25.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Alerta: suele cotizar a múltiplos desorbitados (> 45x FCF). Exigir margen de seguridad estricto antes de comprar.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 860.0, "step": 1.0},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo de caja libre por acción.", "default": 19.50, "step": 0.1},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC basado en membresías.", "default": 22.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital.", "default": 7.8, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Posición de caja neta.", "default": -0.4, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Variación de acciones.", "default": -0.2, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC muy bajo.", "default": 5.0, "step": 0.1}
+      ]
+    },
+    "DE": {
+      "name": "Deere & Company",
+      "sector_id": "industrials",
+      "model_type": "industrial_dual_debt",
+      "business_summary": "Líder global en maquinaria agrícola y de construcción con agricultura de precisión por software.",
+      "base_fcf_multiple": 17.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Separar la deuda industrial limpia (< 1.0x EBITDA) de la deuda de financiación de clientes (John Deere Financial).",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 380.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 FCF de Ciclo Medio Normalizado (USD)", "help": "Flujo de caja libre promedio a lo largo del ciclo.", "default": 24.0, "step": 0.1},
+        {"key": "industrial_net_debt_ebitda", "label": "🛡️ Deuda Neta Industrial / EBITDA (x)", "help": "Deuda industrial excluyendo John Deere Financial (Óptimo < 1.0x).", "default": 0.9, "step": 0.1},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC del segmento de maquinaria.", "default": 22.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital industrial.", "default": 8.5, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Recompras agresivas históricas.", "default": -3.5, "step": 0.1}
+      ]
+    },
+    "CAT": {
+      "name": "Caterpillar Inc.",
+      "sector_id": "industrials",
+      "model_type": "industrial_dual_debt",
+      "business_summary": "Líder mundial en maquinaria pesada para construcción, minería y energía con extensa red de concesionarios.",
+      "base_fcf_multiple": 16.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Auditar deuda industrial neta (< 1.0x EBITDA) y valuar sobre flujos promedio de ciclo medio.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 345.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 FCF de Ciclo Medio Normalizado (USD)", "help": "Flujo de caja libre normalizado de ciclo.", "default": 21.0, "step": 0.1},
+        {"key": "industrial_net_debt_ebitda", "label": "🛡️ Deuda Neta Industrial / EBITDA (x)", "help": "Deuda industrial excluyendo Cat Financial (Óptimo < 1.0x).", "default": 0.8, "step": 0.1},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC sobre maquinaria y repuestos.", "default": 24.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital.", "default": 8.6, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Recompra neta de acciones.", "default": -2.8, "step": 0.1}
+      ]
+    },
+    "GE": {
+      "name": "GE Aerospace",
+      "sector_id": "industrials",
+      "model_type": "standard_fcf",
+      "business_summary": "Líder puro en motores de aviación comercial y contratos de mantenimiento aftermarket a 30-40 años.",
+      "base_fcf_multiple": 20.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Auditar desapalancamiento completado (Net Debt < 0.8x EBITDA) y margen operativo sostenido > 19%.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 175.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo libre de caja por acción.", "default": 6.20, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC del negocio aeroespacial puro.", "default": 26.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital.", "default": 8.5, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Deuda neta tras la escisión.", "default": 0.4, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Evolución de acciones.", "default": -1.0, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC sobre flujo operativo.", "default": 3.0, "step": 0.1}
+      ]
+    },
+    "RTX": {
+      "name": "RTX Corporation",
+      "sector_id": "industrials",
+      "model_type": "standard_fcf",
+      "business_summary": "Defensa militar (misiles Patriot, radares) y aviación comercial (Pratt & Whitney, Collins Aerospace).",
+      "base_fcf_multiple": 17.0,
+      "required_margin_of_safety": 0.30,
+      "guidance": "Yellow Flag: auditar costos y resolución del defecto de polvo metálico en motores GTF; verificar cartera de pedidos > 200B USD.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 115.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo libre normalizado.", "default": 5.80, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC afectado temporalmente por GTF.", "default": 14.5, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital.", "default": 8.0, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Deuda neta moderada.", "default": 2.2, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Recompra de acciones.", "default": -1.5, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC controlado.", "default": 3.5, "step": 0.1}
+      ]
+    },
+    "PEP": {
+      "name": "PepsiCo Inc.",
+      "sector_id": "staples_health",
+      "model_type": "standard_fcf",
+      "business_summary": "Rey del dividendo con posición dominante en snacks (Frito-Lay) y bebidas.",
+      "base_fcf_multiple": 19.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Auditar poder de fijación de precios frente a inflación de insumos y deuda neta < 2.2x EBITDA.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 172.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo de caja libre por acción.", "default": 7.40, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC de consumo masivo.", "default": 18.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital bajo por estabilidad.", "default": 7.5, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Deuda neta sobre EBITDA (< 2.2x).", "default": 2.1, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Evolución de acciones.", "default": -0.3, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC sobre flujo operativo.", "default": 2.8, "step": 0.1}
+      ]
+    },
+    "PG": {
+      "name": "Procter & Gamble",
+      "sector_id": "staples_health",
+      "model_type": "standard_fcf",
+      "business_summary": "Rey del dividendo de consumo masivo con marcas líderes como Gillette, Pampers, Ariel y Oral-B.",
+      "base_fcf_multiple": 19.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Verificar solidez de márgenes brutos y recompra neta consistente de acciones.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 168.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo de caja libre por acción.", "default": 6.90, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC de marcas defensivas.", "default": 21.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital.", "default": 7.2, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Deuda neta controlada.", "default": 1.4, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Recompra constante de acciones.", "default": -1.2, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC muy bajo.", "default": 2.0, "step": 0.1}
+      ]
+    },
+    "PM": {
+      "name": "Philip Morris International",
+      "sector_id": "staples_health",
+      "model_type": "standard_fcf",
+      "business_summary": "Líder en transición a nicotina sin humo con IQOS y bolsas ZYN en rápida expansión.",
+      "base_fcf_multiple": 17.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Yellow Flag: monitorear ritmo de desapalancamiento tras la compra de Swedish Match (deuda ~ 2.8x EBITDA) y ventas de productos sin humo > 38%.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 118.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo libre normalizado.", "default": 6.50, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC del negocio libre de humo.", "default": 35.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital.", "default": 8.0, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Deuda post-Swedish Match (vigilar < 2.8x).", "default": 2.6, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Estabilidad accionaria.", "default": 0.0, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC sobre flujo operativo.", "default": 1.5, "step": 0.1}
+      ]
+    },
+    "MRK": {
+      "name": "Merck & Co.",
+      "sector_id": "staples_health",
+      "model_type": "standard_fcf",
+      "business_summary": "Gigante biofarmacéutico líder en inmunoterapia oncológica con Keytruda.",
+      "base_fcf_multiple": 15.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Auditar diversificación y formulaciones subcutáneas para mitigar el vencimiento de patente de Keytruda en 2028 (Patent Cliff).",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 115.0, "step": 0.01},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo de caja libre por acción.", "default": 7.10, "step": 0.01},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC farmacéutico.", "default": 22.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital.", "default": 8.0, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Deuda neta controlada.", "default": 1.3, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Recompra neta de acciones.", "default": -0.5, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC sobre flujo operativo.", "default": 3.0, "step": 0.1}
+      ]
+    },
+    "LLY": {
+      "name": "Eli Lilly and Company",
+      "sector_id": "staples_health",
+      "model_type": "standard_fcf",
+      "business_summary": "Duopolio mundial en tratamientos para diabetes y pérdida de peso (GLP-1 Mounjaro/Zepbound).",
+      "base_fcf_multiple": 25.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Alerta de sobrevaluación: no comprar a múltiplos de euforia (> 45x FCF); esperar correcciones para ingresar con margen.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 920.0, "step": 1.0},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo libre normalizado.", "default": 15.0, "step": 0.1},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC sobre GLP-1.", "default": 28.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital.", "default": 8.5, "step": 0.1},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Neta / EBITDA (Net Debt / EBITDA)", "help": "Deuda neta sobre EBITDA.", "default": 1.8, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Estabilidad accionaria.", "default": 0.0, "step": 0.1},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "SBC sobre flujo operativo.", "default": 5.0, "step": 0.1}
+      ]
+    },
+    "BRK.B": {
+      "name": "Berkshire Hathaway",
+      "sector_id": "financials",
+      "model_type": "financial_holding",
+      "business_summary": "Conglomerado diversificado con $170B+ en Float asegurador a costo negativo, ferrocarriles BNSF, energía y $250B+ en Letras del Tesoro.",
+      "base_fcf_multiple": 17.0,
+      "required_margin_of_safety": 0.20,
+      "guidance": "Valuar mediante Beneficios Operativos Reales (Look-Through Operating Earnings) más el exceso de caja e inversiones líquidas por acción.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización por acción Clase B.", "default": 450.0, "step": 0.1},
+        {"key": "operating_earnings_per_share", "label": "🏛️ Beneficio Operativo Real / Acción (USD)", "help": "Look-Through Operating Earnings (excluyendo fluctuaciones bursátiles temporales).", "default": 21.50, "step": 0.1},
+        {"key": "excess_cash_per_share", "label": "💰 Exceso de Caja y Letras del Tesoro / Acción (USD)", "help": "Caja e inversiones líquidas por encima de las reservas operativas.", "default": 85.0, "step": 1.0},
+        {"key": "float_cost", "label": "🛡️ Costo del Float Asegurador (%)", "help": "Costo de mantener el dinero de primas aseguradoras (Green <= 0.0% / costo negativo).", "default": -0.5, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Recompra oportunista de acciones por Warren Buffett.", "default": -1.5, "step": 0.1}
+      ]
+    },
+    "JPM": {
+      "name": "JPMorgan Chase & Co.",
+      "sector_id": "financials",
+      "model_type": "banking",
+      "business_summary": "Banco global líder e institución 'fortress balance sheet' con liderazgo en banca de inversión y comercial.",
+      "base_fcf_multiple": 13.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Auditar ratio de capital CET1 (>= 14-15%), rentabilidad tangible RoTCE (>= 17-20%) y pérdidas netas por préstamos NCO (< 0.6%).",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 215.0, "step": 0.1},
+        {"key": "eps", "label": "📈 Beneficio Normalizado por Acción - EPS (USD)", "help": "Beneficio neto por acción de ciclo medio.", "default": 17.20, "step": 0.1},
+        {"key": "tbv_per_share", "label": "🏛️ Valor Contable Tangible por Acción - TBV (USD)", "help": "Tangible Book Value per Share.", "default": 98.0, "step": 0.5},
+        {"key": "rotce", "label": "🎯 Rentabilidad Tangible - RoTCE (%)", "help": "Return on Tangible Common Equity (Óptimo >= 17% - 20%).", "default": 19.5, "step": 0.1},
+        {"key": "cet1_ratio", "label": "🛡️ Ratio de Capital de Máxima Calidad - CET1 (%)", "help": "Common Equity Tier 1 (Óptimo >= 14.0% - 15.0%).", "default": 15.2, "step": 0.1},
+        {"key": "nco_ratio", "label": "⚠️ Tasa de Pérdidas Netas por Préstamos - NCO (%)", "help": "Net Charge-Offs (Riesgo crediticio: Green < 0.60%).", "default": 0.45, "step": 0.01},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Recompras netas de acciones.", "default": -1.2, "step": 0.1}
+      ]
+    },
+    "NU": {
+      "name": "Nu Holdings (Nubank)",
+      "sector_id": "financials",
+      "model_type": "banking",
+      "business_summary": "Plataforma bancaria digital líder en América Latina con ventaja estructural de costo por cliente.",
+      "base_fcf_multiple": 25.0,
+      "required_margin_of_safety": 0.25,
+      "guidance": "Verificar Cost to Serve < $1.00 USD/mes, expansión de ingresos promedio por cliente activo (ARPAC) y ROE > 25%.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil en NYSE.", "default": 14.50, "step": 0.01},
+        {"key": "eps", "label": "📈 Beneficio Proyectado por Acción - EPS (USD)", "help": "Beneficio neto proyectado por acción.", "default": 0.70, "step": 0.01},
+        {"key": "tbv_per_share", "label": "🏛️ Valor Contable Tangible por Acción - TBV (USD)", "help": "Tangible Book Value per Share.", "default": 1.65, "step": 0.01},
+        {"key": "rotce", "label": "🎯 Rentabilidad sobre Patrimonio - ROE (%)", "help": "Return on Equity (Óptimo >= 25.0%).", "default": 28.0, "step": 0.1},
+        {"key": "cet1_ratio", "label": "🛡️ Ratio de Capital de Solvencia (%)", "help": "Ratio de adecuación de capital de Basilea (> 16%).", "default": 17.5, "step": 0.1},
+        {"key": "nco_ratio", "label": "⚠️ Costo de Servicio / Cliente (USD/mes)", "help": "Cost to Serve mensual por cliente activo (Green < $1.00 USD).", "default": 0.90, "step": 0.01},
+        {"key": "shares_cagr", "label": "📉 Dilución / Recompras (Shares CAGR %)", "help": "Control de dilución.", "default": 0.5, "step": 0.1}
+      ]
+    },
+    "PAM": {
+      "name": "Pampa Energía S.A.",
+      "sector_id": "energy",
+      "model_type": "energy_upstream",
+      "business_summary": "Líder integrado en generación eléctrica, transporte de gas (TGS) y producción no convencional en Vaca Muerta.",
+      "base_fcf_multiple": 7.5,
+      "required_margin_of_safety": 0.35,
+      "guidance": "Auditar deuda neta en dólares (< 1.5x EBITDA), ingresos dolarizados (> 80%) y aplicar descuento por riesgo soberano argentino.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Cotización ADR (USD)", "help": "Precio de cotización del ADR en NYSE.", "default": 52.0, "step": 0.1},
+        {"key": "fcf_per_share", "label": "📈 Flujo Libre de Caja por ADR (USD)", "help": "Normalized FCF por ADR.", "default": 9.50, "step": 0.1},
+        {"key": "net_debt_ebitda_usd", "label": "🛡️ Deuda Neta en Dólares / EBITDA (x)", "help": "Deuda neta denominada en USD sobre EBITDA (Óptimo < 1.5x).", "default": 1.1, "step": 0.1},
+        {"key": "dollarized_revenue_pct", "label": "💵 Ingresos Dolarizados o Atados a USD (%)", "help": "Porcentaje de ventas en dólares o contratos PPA / exportaciones (Green > 80%).", "default": 85.0, "step": 1.0},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC sobre activos energéticos.", "default": 17.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital con Riesgo País (WACC %)", "help": "Tasa de descuento ajustada por riesgo soberano (13-14%).", "default": 13.5, "step": 0.1}
+      ]
+    },
+    "VST": {
+      "name": "Vistra Corp.",
+      "sector_id": "energy",
+      "model_type": "energy_upstream",
+      "business_summary": "Productor independiente de energía nuclear y gas natural beneficiado por la demanda de centros de datos de IA.",
+      "base_fcf_multiple": 14.0,
+      "required_margin_of_safety": 0.30,
+      "guidance": "Yellow Flag: nivel de endeudamiento elevado (~3.0x-3.4x EBITDA). Red Flag inmediata si supera 3.5x EBITDA.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 85.0, "step": 0.1},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo de caja libre por acción.", "default": 6.80, "step": 0.1},
+        {"key": "net_debt_ebitda_usd", "label": "🛡️ Deuda Neta / EBITDA (x)", "help": "Nivel de apalancamiento (Yellow: 2.8x - 3.4x; Red Flag si > 3.5x).", "default": 3.1, "step": 0.1},
+        {"key": "dollarized_revenue_pct", "label": "⚡ Contratos PPA a Precio Fijo con Tech (%)", "help": "Porcentaje de generación contratada a largo plazo con centros de datos.", "default": 75.0, "step": 1.0},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC de generación eléctrica.", "default": 16.5, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo Medio de Capital (WACC %)", "help": "Costo de capital.", "default": 9.0, "step": 0.1}
+      ]
+    },
+    "VIST": {
+      "name": "Vista Energy S.A.B.",
+      "sector_id": "energy",
+      "model_type": "energy_upstream",
+      "business_summary": "Operador puro de petróleo no convencional (Shale Oil) de bajo costo en Vaca Muerta liderado por Miguel Galuccio.",
+      "base_fcf_multiple": 6.5,
+      "required_margin_of_safety": 0.35,
+      "guidance": "Auditar Lifting Cost ultra-bajo (< $5.00/boe), Breakeven < $40 Brent, deuda mínima (< 0.8x EBITDA) y exportaciones en USD.",
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Cotización ADR (USD)", "help": "Precio de cotización del ADR en NYSE.", "default": 48.0, "step": 0.1},
+        {"key": "fcf_per_share", "label": "📈 Flujo Libre de Caja por ADR (USD)", "help": "FCF por ADR proyectado tras CapEx de desarrollo.", "default": 8.50, "step": 0.1},
+        {"key": "lifting_cost", "label": "🛢️ Costo de Extracción - Lifting Cost ($/boe)", "help": "Costo operativo de extraer un barril equivalente (Green < $5.00/boe).", "default": 4.60, "step": 0.1},
+        {"key": "breakeven_price", "label": "⚓ Punto de Equilibrio - Breakeven ($/bbl Brent)", "help": "Precio del crudo Brent necesario para no perder dinero (Green < $40/bbl).", "default": 35.0, "step": 0.5},
+        {"key": "net_debt_ebitda_usd", "label": "🛡️ Deuda Neta en Dólares / EBITDA (x)", "help": "Endeudamiento neto (Green < 0.8x EBITDA).", "default": 0.6, "step": 0.1},
+        {"key": "dollarized_revenue_pct", "label": "💵 Exportaciones Directas en USD (%)", "help": "Ventas cobradas en dólares en el mercado internacional (Green > 60%).", "default": 65.0, "step": 1.0}
+      ]
+    },
+    "MSTR": {
+      "name": "MicroStrategy Inc.",
+      "sector_id": "discarded",
+      "model_type": "discarded",
+      "business_summary": "Vehículo de apalancamiento en Bitcoin mediante emisión continua de deuda convertible y acciones.",
+      "discard_reason": "RED FLAG por Dilución Especulativa. Emite acciones masivamente para comprar Bitcoin; carece de flujo de caja libre operativo fundamental.",
+      "base_fcf_multiple": 0.0,
+      "required_margin_of_safety": 0.50,
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 140.0, "step": 1.0},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Operativo (USD)", "help": "FCF operativo real del negocio de software.", "default": -5.0, "step": 0.1},
+        {"key": "shares_cagr", "label": "📉 Dilución Anual de Acciones (Shares CAGR %)", "help": "Emisión masiva recurrente (Red Flag > 10%).", "default": 18.0, "step": 0.5},
+        {"key": "net_debt_ebitda", "label": "🛡️ Deuda Total / EBITDA Operativo (x)", "help": "Apalancamiento excesivo con deuda convertible.", "default": 8.5, "step": 0.5},
+        {"key": "sbc_ocf", "label": "👥 Compensación en Acciones (SBC %)", "help": "Porcentaje de dilución.", "default": 45.0, "step": 1.0}
+      ]
+    },
+    "TSLA": {
+      "name": "Tesla Inc.",
+      "sector_id": "discarded",
+      "model_type": "discarded",
+      "business_summary": "Fabricante de vehículos eléctricos sujeto a intensa guerra de precios e intensivo en capital.",
+      "discard_reason": "RED FLAG por Pérdida de Pricing Power. Márgenes brutos automotrices colapsando (< 18%) ante feroz competencia china y alta quema de CapEx.",
+      "base_fcf_multiple": 0.0,
+      "required_margin_of_safety": 0.40,
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 210.0, "step": 1.0},
+        {"key": "fcf_per_share", "label": "📈 Flujo Libre de Caja por Acción (USD)", "help": "Dinero libre tras mantenimiento y CapEx.", "default": 1.20, "step": 0.1},
+        {"key": "automotive_gross_margin", "label": "📉 Margen Bruto Automotriz (%)", "help": "Colapso del margen bruto por guerra de precios (Red Flag < 18%).", "default": 14.6, "step": 0.1},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC erosionado por competencia.", "default": 9.5, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo de Capital (WACC %)", "help": "Costo de capital.", "default": 10.5, "step": 0.1}
+      ]
+    },
+    "MU": {
+      "name": "Micron Technology",
+      "sector_id": "discarded",
+      "model_type": "discarded",
+      "business_summary": "Productor de chips de memoria DRAM/NAND altamente comoditizados y volátiles.",
+      "discard_reason": "RED FLAG por Commodity Cíclico. Nulo poder de fijación de precios, CapEx voraz y pérdidas severas en valles de ciclo.",
+      "base_fcf_multiple": 0.0,
+      "required_margin_of_safety": 0.40,
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 105.0, "step": 1.0},
+        {"key": "fcf_per_share", "label": "📈 Flujo de Caja Libre Normalizado (USD)", "help": "FCF negativo o nulo en valles de ciclo.", "default": -2.0, "step": 0.1},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Promedio (ROIC %)", "help": "ROIC promedio de ciclo muy bajo (Red Flag < 10%).", "default": 4.0, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo de Capital (WACC %)", "help": "Costo de capital de la industria de chips.", "default": 10.0, "step": 0.1}
+      ]
+    },
+    "NEM": {
+      "name": "Newmont Corporation",
+      "sector_id": "discarded",
+      "model_type": "discarded",
+      "business_summary": "Minera de oro a cielo abierto sujeta a costos crecientes y leyes minerales decrecientes.",
+      "discard_reason": "RED FLAG por Tomadora de Precios. No controla el precio de venta y sus reservas se agotan, devorando capital en exploración y reposición.",
+      "base_fcf_multiple": 0.0,
+      "required_margin_of_safety": 0.40,
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 42.0, "step": 0.5},
+        {"key": "fcf_per_share", "label": "📈 Flujo Libre de Caja por Acción (USD)", "help": "Flujo de caja libre tras sostener minas.", "default": 1.10, "step": 0.1},
+        {"key": "roic", "label": "🎯 Retorno sobre Capital Invertido (ROIC %)", "help": "ROIC promedio minero (Red Flag < 8%).", "default": 5.5, "step": 0.1},
+        {"key": "wacc", "label": "⚖️ Costo de Capital (WACC %)", "help": "Costo de capital.", "default": 8.5, "step": 0.1}
+      ]
+    },
+    "PLTR": {
+      "name": "Palantir Technologies",
+      "sector_id": "discarded",
+      "model_type": "discarded",
+      "business_summary": "Software de análisis de datos para defensa y empresas con alta dilución por compensación a directivos.",
+      "discard_reason": "RED FLAG por Dilución en Sueldos (SBC). Historial de transferir valor a directivos en acciones y cotización a múltiplos de burbuja (> 60x FCF) sin margen de seguridad.",
+      "base_fcf_multiple": 0.0,
+      "required_margin_of_safety": 0.40,
+      "fields": [
+        {"key": "price", "label": "💵 Precio de Mercado Actual (USD)", "help": "Cotización bursátil actual.", "default": 31.0, "step": 0.1},
+        {"key": "fcf_per_share", "label": "📈 Dinero Libre / Acción Normalizado (USD)", "help": "Flujo libre real tras restar sueldos en acciones.", "default": 0.35, "step": 0.01},
+        {"key": "sbc_ocf", "label": "👥 Sueldos en Acciones (SBC / OCF %)", "help": "Porcentaje del flujo operativo consumido en SBC (Red Flag > 20%).", "default": 28.0, "step": 0.5},
+        {"key": "shares_cagr", "label": "📉 Dilución Anual de Acciones (Shares CAGR %)", "help": "Aumento anual de acciones para compensar directivos.", "default": 4.5, "step": 0.1}
+      ]
+    }
+  }
+}

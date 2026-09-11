@@ -1,0 +1,17 @@
+{
+  "token-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "view_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c 'import os, sys; p = \"scripts/guard_large_files.py\" if os.path.exists(\"scripts/guard_large_files.py\") else \".agents/scripts/guard_large_files.py\"; os.execv(sys.executable, [sys.executable, p])'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

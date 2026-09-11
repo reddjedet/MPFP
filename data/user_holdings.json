@@ -1,0 +1,97 @@
+{
+  "bmb": {
+    "holdings": {
+      "AMAT": {
+        "nominals": 5,
+        "ppc": 95000.0
+      },
+      "GOOGL": {
+        "nominals": 10,
+        "ppc": 7500.0
+      },
+      "PM": {
+        "nominals": 5,
+        "ppc": 14500.0
+      }
+    },
+    "fixed_income_holdings": {
+      "S30S6": {
+        "nominals": 1000,
+        "ppc": 110.0
+      }
+    },
+    "cash_ars": 10000.0
+  },
+  "min_drawdown_15": {
+    "holdings": {
+      "COST": {
+        "nominals": 5,
+        "ppc": 30000.0
+      },
+      "DE": {
+        "nominals": 5,
+        "ppc": 16000.0
+      },
+      "LLY": {
+        "nominals": 5,
+        "ppc": 22000.0
+      },
+      "NEM": {
+        "nominals": 5,
+        "ppc": 39000.0
+      },
+      "NU": {
+        "nominals": 10,
+        "ppc": 12000.0
+      },
+      "URA": {
+        "nominals": 10,
+        "ppc": 14000.0
+      },
+      "V": {
+        "nominals": 10,
+        "ppc": 33000.0
+      },
+      "VIST": {
+        "nominals": 5,
+        "ppc": 40000.0
+      }
+    },
+    "fixed_income_holdings": {
+      "S30S6": {
+        "nominals": 1000,
+        "ppc": 1.1
+      },
+      "T31Y7": {
+        "nominals": 1000,
+        "ppc": 1.15
+      }
+    },
+    "cash_ars": 10000.0
+  },
+  "bdi_muy_agresiva": {
+    "holdings": {},
+    "fixed_income_holdings": {},
+    "cash_ars": 0.0
+  },
+  "bdi_agresiva": {
+    "holdings": {},
+    "fixed_income_holdings": {},
+    "cash_ars": 0.0
+  },
+  "bdi_moderada": {
+    "holdings": {},
+    "fixed_income_holdings": {},
+    "cash_ars": 0.0
+  },
+  "bdi_momentum": {
+    "holdings": {},
+    "fixed_income_holdings": {},
+    "cash_ars": 0.0
+  },
+  "cartera_del_fin_del_mundo": {
+    "holdings": {},
+    "fixed_income_holdings": {},
+    "cash_ars": 0.0
+  }
+}

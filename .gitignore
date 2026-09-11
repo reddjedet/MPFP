@@ -1,0 +1,120 @@
+# ==============================================================================
+# GITIGNORE - Máquina de Planes, Finanzas y Portfolios (MPFP)
+# FastAPI + React 19 + TypeScript + Vite + Tailwind CSS + ECharts
+# ==============================================================================
+
+# --- Python & FastAPI Backend ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Entornos Virtuales Python ---
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Frontend (Node / Vite / React / TypeScript) ---
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+frontend/.eslintcache
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Pruebas, Cobertura y Diagnóstico ---
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+coverage/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+test_output.txt
+
+# --- Logs, PIDs y Procesos de Ejecución ---
+*.log
+*.pid
+app.log
+app.pid
+frontend.log
+frontend.pid
+
+# --- Archivos Temporales y Persistencia Atómica ---
+*.tmp
+.tmp_*
+data/*.tmp
+data/.tmp_*
+
+# --- Variables de Entorno y Secretos ---
+.env
+.env.*
+!.env.example
+*.secrets
+*.pem
+*.key
+*.token
+*.credentials
+
+# --- IDEs, Editores y Entorno de Desarrollo ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+.antigravity/
+
+# --- Sistema Operativo & Gestores de Archivos ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.directory
+
+# --- Antigravity & Agent Scratch/Logs ---
+.agents/skills/**/__pycache__/
+.agents/scripts/**/__pycache__/
+.opencode/open_env.json
+scratch/
+
+# Caché persistente de mercado
+data/.cache_market.json
+data/.cache_market.tmp
+
+

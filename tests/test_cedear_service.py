@@ -1,0 +1,57 @@
+import unittest
+import pandas as pd
+from services.cedear_service import calculate_rsi, CEDEAR_RATIOS
+
+class TestCedearService(unittest.TestCase):
+    
+    def test_calculate_rsi_wilder_math(self):
+        # Escenario controlado: 14 días de subida constante de 1 unidad
+        # Ganancia promedio = 1.0, Pérdida promedio = 0.0 -> RSI = 100
+        prices_up = pd.Series([100.0 + i for i in range(20)])
+        rsi_up = calculate_rsi(prices_up, period=14)
+        self.assertEqual(rsi_up.iloc[-1], 100.0)
+
+        # Escenario controlado: 14 días de bajada constante de 1 unidad
+        # Ganancia promedio = 0.0, Pérdida promedio = 1.0 -> RSI = 0
+        prices_down = pd.Series([100.0 - i for i in range(20)])
+        rsi_down = calculate_rsi(prices_down, period=14)
+        self.assertEqual(rsi_down.iloc[-1], 0.0)
+
+    def test_calculate_rsi_flat_price(self):
+        # Escenario de precio congelado/plano
+        # Ganancia = 0, Pérdida = 0 -> RSI = 50.0 por convención de estabilidad
+        prices_flat = pd.Series([100.0 for _ in range(20)])
+        rsi_flat = calculate_rsi(prices_flat, period=14)
+        self.assertEqual(rsi_flat.iloc[-1], 50.0)
+
+    def test_cedear_ratios_exist(self):
+        self.assertIn("AAPL", CEDEAR_RATIOS)
+        self.assertIn("GOOGL", CEDEAR_RATIOS)
+        self.assertIn("MSFT", CEDEAR_RATIOS)
+        self.assertIn("NU", CEDEAR_RATIOS)
+        self.assertIn("CEG", CEDEAR_RATIOS)
+        self.assertGreater(CEDEAR_RATIOS["AAPL"], 0)
+
+    def test_get_all_portfolio_tickers(self):
+        from services.portfolio_service import get_all_portfolio_tickers
+        tickers = get_all_portfolio_tickers()
+        self.assertIsInstance(tickers, list)
+        self.assertIn("COST", tickers)
+        self.assertIn("LLY", tickers)
+        self.assertIn("GOOGL", tickers)
+
+    def test_get_cedear_tickers_endpoint(self):
+        from fastapi.testclient import TestClient
+        from main import app
+        client = TestClient(app)
+        res = client.get("/api/cedears/tickers")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("tickers", data)
+        self.assertIsInstance(data["tickers"], list)
+        self.assertIn("AAPL", data["tickers"])
+        self.assertIn("MELI", data["tickers"])
+        self.assertIn("NVDA", data["tickers"])
+
+if __name__ == "__main__":
+    unittest.main()
