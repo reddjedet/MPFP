@@ -38,7 +38,9 @@ CRITICAL_IGNORES = [
     "frontend/dist/",
     "app.log",
     "app.pid",
-    "data/.cache_market.json"
+    "data/.cache_market.json",
+    "data/user_holdings.json",
+    "data/ppc_values.json"
 ]
 
 def is_git_repo() -> bool:

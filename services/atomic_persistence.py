@@ -35,6 +35,15 @@ class AtomicJsonDatabase:
     def _ensure_init(self) -> None:
         self.file_path.parent.mkdir(parents=True, exist_ok=True)
         if not self.file_path.exists():
+            example_file = self.file_path.with_name(f"{self.file_path.name}.example")
+            if example_file.exists():
+                try:
+                    with open(example_file, "r", encoding="utf-8") as f_ex:
+                        ex_data = json.load(f_ex)
+                    self.save(ex_data)
+                    return
+                except Exception:
+                    pass
             self.save(self.default_data)
 
     def load(self) -> Dict[str, Any]:

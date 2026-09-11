@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 from services.portfolio_service import (
     calculate_portfolio, 
     calculate_portfolio_data, 
@@ -90,7 +91,13 @@ class TestPortfolioCalculations(unittest.TestCase):
         res = calculate_portfolio(weights, self.mock_data, "AAPL", 10)
         self.assertIsNone(res)
 
-    def test_get_portfolio_fixed_income_summary_bmb(self):
+    @patch("services.rotation_service.load_user_holdings")
+    def test_get_portfolio_fixed_income_summary_bmb(self, mock_holdings):
+        mock_holdings.return_value = {
+            "fixed_income_holdings": {
+                "S30S6": {"nominals": 1000, "ppc": 110.0}
+            }
+        }
         res = get_portfolio_fixed_income_summary("bmb")
         self.assertTrue(res["has_fixed_income"])
         self.assertIsNotNone(res["asset_allocation"])
@@ -105,7 +112,14 @@ class TestPortfolioCalculations(unittest.TestCase):
         self.assertEqual(res["nearest_maturity_ticker"], "S30S6")
         self.assertTrue(res["has_imminent_maturity"])
 
-    def test_get_portfolio_fixed_income_summary_min_drawdown_15(self):
+    @patch("services.rotation_service.load_user_holdings")
+    def test_get_portfolio_fixed_income_summary_min_drawdown_15(self, mock_holdings):
+        mock_holdings.return_value = {
+            "fixed_income_holdings": {
+                "S30S6": {"nominals": 1000, "ppc": 1.10},
+                "T31Y7": {"nominals": 1000, "ppc": 1.15}
+            }
+        }
         res = get_portfolio_fixed_income_summary("min_drawdown_15")
         self.assertTrue(res["has_fixed_income"])
         self.assertEqual(res["asset_allocation"]["fixed_income_weight"], 30.47)

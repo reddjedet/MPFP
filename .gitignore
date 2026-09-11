@@ -117,4 +117,8 @@ scratch/
 data/.cache_market.json
 data/.cache_market.tmp
 
+# --- Datos Privados del Usuario (Local Only) ---
+data/user_holdings.json
+data/ppc_values.json
+
 
