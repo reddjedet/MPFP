@@ -33,9 +33,9 @@ PATH_PATTERNS = [
 # Exclusiones críticas que deben estar protegidas por .gitignore
 CRITICAL_IGNORES = [
     ".env",
-    "venv",
-    "frontend/node_modules",
-    "frontend/dist",
+    "venv/",
+    "frontend/node_modules/",
+    "frontend/dist/",
     "app.log",
     "app.pid",
     "data/.cache_market.json"
@@ -87,7 +87,8 @@ def main():
         gitignore_content = gitignore_path.read_text(encoding="utf-8")
         for item in CRITICAL_IGNORES:
             if is_git_repo():
-                res = run_git(["check-ignore", item])
+                # Probar con y sin slash final para máxima compatibilidad con o sin directorio existente
+                res = run_git(["check-ignore", item]) or (run_git(["check-ignore", item.rstrip("/") + "/"]) if not item.endswith("/") else "")
                 if res:
                     print(f"  ✓ Ignorado correctamente (vía git): {item}")
                 else:
