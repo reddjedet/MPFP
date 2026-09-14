@@ -1,3 +1,4 @@
+import { EtfSectorThermometer } from "./EtfSectorThermometer";
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   createColumnHelper, 
@@ -54,7 +55,14 @@ interface CedearQuote {
     color?: string;
     tooltip?: string;
   } | null;
+  is_etf?: boolean;
 }
+
+const KNOWN_ETFS = new Set([
+  'SPY', 'QQQ', 'DIA', 'IWM', 'EEM', 'EWZ', 'ARKK', 'SMH', 'URA', 'GLD', 'SLV', 'USO', 'VEA',
+  'XLB', 'XLC', 'XLE', 'XLF', 'XLI', 'XLK', 'XLP', 'XLRE', 'XLU', 'XLV', 'XLY',
+  'FXI', 'ILF', 'IVW', 'EWJ', 'GDX', 'IBIT', 'ARGT'
+]);
 
 const DEFAULT_TICKERS = ["AAPL", "NVDA", "MSFT", "MELI", "LLY", "GOOGL", "AMZN", "SPY", "QQQ", "VIST", "MSTR", "JPM"];
 const SUGGESTED_TICKERS = ["AAPL", "NVDA", "MSFT", "MELI", "LLY", "GOOGL", "AMZN", "TSLA", "META", "SPY", "QQQ", "VIST", "MSTR", "JPM", "KO", "MCD", "BRKB", "AMD", "PLTR", "NU"];
@@ -277,7 +285,7 @@ export const CedearsView: React.FC = () => {
         return !!q.in_portfolio;
       }
       if (activeFilter === 'rsi_alerts') {
-        return q.alert || (q.rsi !== null && (q.rsi > 65 || q.rsi < 35));
+        return q.alert || (q.rsi !== null && (q.rsi >= 65 || q.rsi <= 35));
       }
       if (activeFilter === 'valuation_signals') {
         return !!q.gf_signal || !!q.pfcf_signal;
@@ -296,10 +304,19 @@ export const CedearsView: React.FC = () => {
       header: 'ACTIVO',
       cell: info => {
         const row = info.row.original;
+        const isEtf = row.is_etf || KNOWN_ETFS.has(info.getValue());
         return (
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-1.5">
               <span className="font-black text-slate-900 dark:text-white text-sm tracking-wide">{info.getValue()}</span>
+              {isEtf && (
+                <span 
+                  className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40"
+                  title="Fondo Indexado (Exchange Traded Fund)"
+                >
+                  ETF
+                </span>
+              )}
               {row.in_portfolio && (
                 <span 
                   className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/40"
@@ -358,8 +375,8 @@ export const CedearsView: React.FC = () => {
       cell: info => {
         const val = info.getValue();
         if (typeof val !== 'number') return <span className="text-slate-400 dark:text-zinc-600 font-mono text-xs">—</span>;
-        const isOverbought = val > 65;
-        const isOversold = val < 35;
+        const isOverbought = val >= 65;
+        const isOversold = val <= 35;
         const colorClass = isOverbought 
           ? 'text-rose-700 bg-rose-50 border-rose-200 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/30' 
           : (isOversold 
@@ -495,6 +512,9 @@ export const CedearsView: React.FC = () => {
         </div>
       </div>
 
+      {/* ETF Sector Thermometer */}
+      <EtfSectorThermometer />
+
       {/* Ticker Search & Quick Add Bar */}
       <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-5 rounded-2xl shadow-sm flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -627,7 +647,7 @@ export const CedearsView: React.FC = () => {
             onClick={() => setActiveFilter('rsi_alerts')}
             className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${activeFilter === 'rsi_alerts' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
           >
-            Alertas RSI ({quotes.filter(q => q.alert || (q.rsi !== null && (q.rsi > 65 || q.rsi < 35))).length})
+            Alertas RSI ({quotes.filter(q => q.alert || (q.rsi !== null && (q.rsi >= 65 || q.rsi <= 35))).length})
           </button>
           <button
             onClick={() => setActiveFilter('valuation_signals')}
@@ -668,8 +688,8 @@ export const CedearsView: React.FC = () => {
         /* GRID VIEW */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filteredQuotes.map(quote => {
-            const isOverbought = quote.rsi !== null && quote.rsi > 65;
-            const isOversold = quote.rsi !== null && quote.rsi < 35;
+            const isOverbought = quote.rsi !== null && quote.rsi >= 65;
+            const isOversold = quote.rsi !== null && quote.rsi <= 35;
             const rsiColor = isOverbought 
               ? 'text-rose-700 bg-rose-50 border-rose-200 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/30' 
               : (isOversold ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/30' : 'text-slate-600 bg-slate-100 border-slate-200 dark:text-zinc-300 dark:bg-white/5 dark:border-white/10');

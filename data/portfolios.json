@@ -148,5 +148,16 @@
       "JPM": 7.0,
       "COST": 7.0
     }
+  },
+  "lata_de_arvejas": {
+    "mode": "weights",
+    "assets": {
+      "XLV": 20.0,
+      "XLU": 20.0,
+      "BRKB": 15.0,
+      "GLD": 15.0,
+      "XLP": 15.0,
+      "MCD": 15.0
+    }
   }
 }

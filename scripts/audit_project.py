@@ -116,6 +116,17 @@ def check_database():
         else:
             print("  ⚠️ Archivo cedear_ratios.json no encontrado.")
 
+        # Verificar base de datos de Histórico de Índices & Ciclos Electorales
+        indices_path = ROOT_DIR / "data" / "historical_indices.json"
+        if indices_path.exists():
+            with open(indices_path, "r", encoding="utf-8") as f:
+                indices_data = json.load(f)
+            dates_cnt = len(indices_data.get("data_series", {}).get("dates", []))
+            mandates_cnt = sum(len(m) for m in indices_data.get("mandates", {}).values())
+            print(f"  ✅ Histórico de Índices & Ciclos: {dates_cnt} observaciones temporales y {mandates_cnt} mandatos parametrizados.")
+        else:
+            print("  ⚠️ Archivo historical_indices.json no encontrado.")
+
         return True
     except Exception as e:
         print(f"  ❌ Error al leer la base de datos: {e}")

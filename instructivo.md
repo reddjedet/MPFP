@@ -1,4 +1,4 @@
-# 📘 Instructivo & Mapa de Features — Máquina de Planes, Finanzas y Portfolios (MPFP)
+#  Instructivo & Mapa de Features — Máquina de Planes, Finanzas y Portfolios (MPFP)
 
 Este documento recopila la totalidad de las funcionalidades, modelos matemáticos cuantitativos, arquitectura de datos y estándares de seguridad de **Máquina de Planes, Finanzas y Portfolios (MPFP)** (FastAPI + React 19 + TypeScript + Vite + Tailwind CSS + Apache ECharts). Sirve como **documento base de auditoría** para evaluar la integridad del proyecto en el futuro.
 

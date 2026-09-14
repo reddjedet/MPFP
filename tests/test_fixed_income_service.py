@@ -187,7 +187,9 @@ class TestFixedIncomeService(unittest.TestCase):
         self.assertEqual(hl["most_liquid"]["ticker"], "GD30")
         self.assertTrue(hl["most_liquid"]["val"].startswith("U$"))
 
-    def test_smart_cache_dataframe_support(self):
+    @patch("services.cache_service._load_disk_cache", return_value={})
+    @patch("services.cache_service._save_disk_cache")
+    def test_smart_cache_dataframe_support(self, mock_save, mock_load):
         """Verifica que smart_cache maneje correctamente DataFrames sin fallos de serialización JSON."""
         from services.cache_service import smart_cache
 

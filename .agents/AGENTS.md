@@ -54,6 +54,7 @@ Este archivo define la estructura de agentes de IA, roles de subagentes especial
   8. Laboratorio Cuantitativo de Markowitz (`markowitz_service.py`): simulación Monte Carlo, optimización SLSQP (Máximo Sharpe y Mínima Varianza), frontera eficiente y coordenadas para renderizado en ECharts.
   9. Curvas de Renta Fija Soberana y Corporativa (`fixed_income_service.py`): cálculo cuantitativo exacto de TIR y Modified Duration por bisección numérica (40 iteraciones, precisión $10^{-5}$), erradicación de fórmulas lineales sintéticas, cruce spot BYMA/MAE y cálculo de TEM Mensual (%) para instrumentos en ARS.
   10. Tenencias Reales Multi-Cuenta y Rotación Cuantitativa (`rotation_service.py`): persistencia y análisis de brechas 100% aislado por broker/cartera (`bal`, `bmb`, `min_drawdown_15`, etc.) en `data/user_holdings.json`, garantizando rebalanceo y órdenes sin interferencias cruzadas entre cuentas.
+  11. Histórico de Índices & Ciclos Electorales (`market_indices_service.py`): series históricas multiactivo (S&P Merval en USD y ARS, ETF ARGT, EWZ Brasil, Bovespa BRL, S&P 500, Nasdaq, Dow Jones) con normalización Base 100, métricas financieras cuantitativas (CAGR, Max Drawdown, Volatilidad) y superposición interactiva de mandatos presidenciales e hitos electorales para Argentina, Brasil y Estados Unidos.
 
 ### 🎨 Subagente 3: Frontend React 19, UI/UX & ECharts Specialist
 - **Objetivo**: Proporcionar una interfaz estética moderna, fluida y reactiva en React 19 + Vite + TypeScript + ECharts, garantizando un diseño exclusivo en **Modo Oscuro (*Eigengrau*)**, legibilidad WCAG AA, cero scroll horizontal en $\ge 1366\text{px}$, tipado estricto y renderizado robusto.
@@ -76,11 +77,19 @@ Este archivo define la estructura de agentes de IA, roles de subagentes especial
   11. Arquitectura de navegación ergonómica inspirada en Antigravity IDE: pantalla de inicio `LauncherHub.tsx` con disposición triangular de acciones principales, botones rectos (`rounded-[3px]`), textos concisos, cero emojis en botones y cabecera contextual `WorkspaceHeader.tsx` con memoria de sesión (`localStorage`).
 
 ### 🧪 Subagente 4: QA & Test Automation Engineer
-- **Objetivo**: Mantener cobertura de tests automatizados, prevenir regresiones y garantizar el aislamiento no destructivo de datos.
+- **Objetivo**: Mantener cobertura de tests automatizados, prevenir regresiones, garantizar el aislamiento no destructivo de datos y liderar el ciclo de desarrollo guiado por pruebas (TDD).
 - **Herramientas & Responsabilidades**:
-  1. Suite de pruebas integral en `tests/` con **112 tests automatizados** y verificación obligatoria previa de compilación TypeScript (`cd frontend && npx tsc --noEmit && npm run build`).
-  2. Implementación estricta del patrón **Snapshot Isolation** (`setUpClass` / `tearDownClass` con `tempfile.TemporaryDirectory()`) en todas las bases de datos (`_db`, `_ppc_db`, etc.) para que ningún test altere ni borre valores reales del usuario en `data/*.json`.
-  3. Ejecución y mantenimiento del script de diagnóstico general `scripts/audit_project.py` (con cobertura de los 9 repositorios JSON multi-cuenta) y `./test.sh`.
+  1. **Protocolo TDD Obligatorio (Red-Green-Refactor)**:
+     - **Fase Roja (*Red*)**: Diseñar y codificar primero la prueba unitaria en `tests/test_*.py` que defina el contrato matemático o funcional esperado, verificando su fallo antes de implementar.
+     - **Fase Verde (*Green*)**: Implementar el código mínimo y necesario en `services/` o `routers/` para que la prueba pase a aprobado.
+     - **Fase Refactor / Blindaje**: Limpiar y optimizar la implementación asegurando 0 regresiones en la suite completa.
+  2. **Compatibilidad con Token Guard (Patrón Spotify)**:
+     - Los tests deben ser modulares, atómicos y acotados (< 150 líneas por archivo o bloque), evitando lecturas monolíticas y manteniendo el consumo de tokens bajo control estricto.
+  3. **Suite de Pruebas Integral**:
+     - Cobertura de **125 tests automatizados** y verificación previa obligatoria de tipado TypeScript (`cd frontend && npx tsc --noEmit && npm run build`).
+  4. **Snapshot Isolation Estricto**:
+     - Redirección con `tempfile.TemporaryDirectory()` en `setUpClass` / `tearDownClass` para que ningún test altere, corrompa ni cree archivos JSON residuales en `data/` o en disco.
+  5. Ejecución y mantenimiento del script de diagnóstico general `scripts/audit_project.py`, `scripts/audit_security_privacy.py` y el runner unificado `./test.sh`.
 
 ---
 

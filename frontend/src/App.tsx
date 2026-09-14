@@ -5,6 +5,7 @@ import { WorkspaceHeader } from './components/WorkspaceHeader';
 import { PortfolioView } from './components/PortfolioView';
 import { MarkowitzLab } from './components/MarkowitzLab';
 import { CedearsView } from './components/CedearsView';
+import { MarketIndicesView } from './components/MarketIndicesView';
 import { EarningsView } from './components/EarningsView';
 import { ValuationView } from './components/ValuationView';
 import { PerformanceView } from './components/PerformanceView';
@@ -170,6 +171,7 @@ function MainLayout() {
           {subTab === 'portfolios' && <PortfolioView />}
           {subTab === 'rotation' && <RotationView />}
           {subTab === 'cedears' && <CedearsView />}
+          {subTab === 'indices' && <MarketIndicesView />}
           {subTab === 'renta-fija' && <FixedIncomeView />}
           {subTab === 'earnings' && <EarningsView />}
           {subTab === 'markowitz' && <MarkowitzLab />}

@@ -113,7 +113,7 @@ def get_ticker_data(symbol: str) -> dict | None:
             "local": round(current_loc, 2),
             "rsi": round(current_rsi, 2),
             "ratio": CEDEAR_RATIOS.get(symbol.upper(), "N/A"),
-            "alert": current_rsi > 65.0 or current_rsi < 35.0
+            "alert": current_rsi >= 65.0 or current_rsi <= 35.0
         }
     except Exception as e:
         logger.warning(f"Error obteniendo CEDEAR: {e}")

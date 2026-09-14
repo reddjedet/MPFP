@@ -405,7 +405,6 @@ SECTOR_MAP: dict[str, dict[str, str]] = {
     "PHG": {"id": "health", "name": "Salud & Farma"},
     "TMO": {"id": "health", "name": "Salud & Farma"},
     "UNH": {"id": "health", "name": "Salud & Farma"},
-    "XLV": {"id": "health", "name": "Salud & Farma"},
 
     # Consumo Masivo (Staples)
     "ABEV": {"id": "staples", "name": "Consumo Masivo"},
@@ -546,7 +545,6 @@ SECTOR_MAP: dict[str, dict[str, str]] = {
     "VEDL": {"id": "energy", "name": "Energía & Utilities"},
     "VIST": {"id": "energy", "name": "Energía & Petróleo"},
     "VST": {"id": "energy", "name": "Energía & Utilities"},
-    "XLU": {"id": "energy", "name": "Energía & Utilities"},
     "XOM": {"id": "energy", "name": "Energía & Petróleo"},
     "YPF": {"id": "energy", "name": "Energía & Petróleo"},
     "YZCA": {"id": "energy", "name": "Energía & Utilities"},
@@ -573,29 +571,36 @@ SECTOR_MAP: dict[str, dict[str, str]] = {
     "VALE": {"id": "materials", "name": "Minería & Materiales"},
 
     # ETFs Indexados & Globales
-    "ARKK": {"id": "etfs", "name": "ETFs Indexados"},
-    "DIA": {"id": "etfs", "name": "ETFs Indexados"},
-    "EEM": {"id": "etfs", "name": "ETFs Indexados"},
-    "EWJ": {"id": "etfs", "name": "ETFs Indexados"},
-    "EWZ": {"id": "etfs", "name": "ETFs Indexados"},
-    "FXI": {"id": "etfs", "name": "ETFs Indexados"},
-    "GDX": {"id": "etfs", "name": "ETFs Indexados"},
-    "GLD": {"id": "etfs", "name": "ETFs Indexados"},
-    "ILF": {"id": "etfs", "name": "ETFs Indexados"},
-    "IVW": {"id": "etfs", "name": "ETFs Indexados"},
-    "IWM": {"id": "etfs", "name": "ETFs Indexados"},
-    "QQQ": {"id": "etfs", "name": "ETFs Indexados"},
-    "SLV": {"id": "etfs", "name": "ETFs Indexados"},
-    "SPY": {"id": "etfs", "name": "ETFs Indexados"},
-    "USO": {"id": "etfs", "name": "ETFs Indexados"},
-    "VEA": {"id": "etfs", "name": "ETFs Indexados"},
-    "XLB": {"id": "etfs", "name": "ETFs Indexados"},
-    "XLE": {"id": "etfs", "name": "ETFs Indexados"},
-    "XLF": {"id": "etfs", "name": "ETFs Indexados"},
-    "XLI": {"id": "etfs", "name": "ETFs Indexados"},
-    "XLK": {"id": "etfs", "name": "ETFs Indexados"},
-    "XLP": {"id": "etfs", "name": "ETFs Indexados"},
-    "XLRE": {"id": "etfs", "name": "ETFs Indexados"},
+    "ARGT": {"id": "etfs", "name": "ETFs Indexados (Argentina)", "subsector": "Latinoamérica", "is_etf": True},
+    "ARKK": {"id": "etfs", "name": "ETFs Indexados (Innovación ARK)", "subsector": "Tecnología Disruptiva", "is_etf": True},
+    "DIA": {"id": "etfs", "name": "ETFs Indexados (Dow Jones)", "subsector": "Blue Chips USA", "is_etf": True},
+    "EEM": {"id": "etfs", "name": "ETFs Indexados (Emergentes)", "subsector": "Mercados Emergentes", "is_etf": True},
+    "EWJ": {"id": "etfs", "name": "ETFs Indexados (Japón)", "subsector": "Asia Desarrollada", "is_etf": True},
+    "EWZ": {"id": "etfs", "name": "ETFs Indexados (Brasil)", "subsector": "Latinoamérica", "is_etf": True},
+    "FXI": {"id": "etfs", "name": "ETFs Indexados (China Large-Cap)", "subsector": "China", "is_etf": True},
+    "GDX": {"id": "etfs", "name": "ETFs Indexados (Minería de Oro)", "subsector": "Metales Preciosos", "is_etf": True},
+    "GLD": {"id": "etfs", "name": "ETFs Indexados (Oro Físico)", "subsector": "Metales Preciosos", "is_etf": True},
+    "ILF": {"id": "etfs", "name": "ETFs Indexados (Latinoamérica 40)", "subsector": "Latinoamérica", "is_etf": True},
+    "IVW": {"id": "etfs", "name": "ETFs Indexados (S&P 500 Growth)", "subsector": "Crecimiento USA", "is_etf": True},
+    "IWM": {"id": "etfs", "name": "ETFs Indexados (Russell 2000)", "subsector": "Small Caps USA", "is_etf": True},
+    "QQQ": {"id": "etfs", "name": "ETFs Indexados (Nasdaq 100)", "subsector": "Tecnología & Crecimiento", "is_etf": True},
+    "SLV": {"id": "etfs", "name": "ETFs Indexados (Plata)", "subsector": "Metales Preciosos", "is_etf": True},
+    "SMH": {"id": "etfs", "name": "ETFs Indexados (Semiconductores)", "subsector": "Semiconductores", "is_etf": True},
+    "SPY": {"id": "etfs", "name": "ETFs Indexados (S&P 500)", "subsector": "Mercado Amplio USA", "is_etf": True},
+    "URA": {"id": "etfs", "name": "ETFs Indexados (Uranio)", "subsector": "Energía Nuclear", "is_etf": True},
+    "USO": {"id": "etfs", "name": "ETFs Indexados (Petróleo WTI)", "subsector": "Commodities Energía", "is_etf": True},
+    "VEA": {"id": "etfs", "name": "ETFs Indexados (Mercados Desarrollados)", "subsector": "Global Ex-USA", "is_etf": True},
+    "XLB": {"id": "etfs", "name": "ETFs Indexados (Materiales)", "subsector": "Materiales", "is_etf": True},
+    "XLC": {"id": "etfs", "name": "ETFs Indexados (Comunicaciones)", "subsector": "Comunicaciones", "is_etf": True},
+    "XLE": {"id": "etfs", "name": "ETFs Indexados (Energía)", "subsector": "Energía & Petróleo", "is_etf": True},
+    "XLF": {"id": "etfs", "name": "ETFs Indexados (Finanzas)", "subsector": "Finanzas & Fintech", "is_etf": True},
+    "XLI": {"id": "etfs", "name": "ETFs Indexados (Industria)", "subsector": "Industria & Maquinaria", "is_etf": True},
+    "XLK": {"id": "etfs", "name": "ETFs Indexados (Tecnología)", "subsector": "Tecnología", "is_etf": True},
+    "XLP": {"id": "etfs", "name": "ETFs Indexados (Consumo Básico)", "subsector": "Consumo Masivo", "is_etf": True},
+    "XLRE": {"id": "etfs", "name": "ETFs Indexados (Real Estate)", "subsector": "Bienes Raíces", "is_etf": True},
+    "XLU": {"id": "etfs", "name": "ETFs Indexados (Utilities)", "subsector": "Energía & Utilities", "is_etf": True},
+    "XLV": {"id": "etfs", "name": "ETFs Indexados (Salud)", "subsector": "Salud & Farma", "is_etf": True},
+    "XLY": {"id": "etfs", "name": "ETFs Indexados (Consumo Discrecional)", "subsector": "Consumo Discrecional", "is_etf": True},
 
     # Criptoactivos
     "COIN": {"id": "crypto", "name": "Criptoactivos"},
@@ -606,11 +611,15 @@ SECTOR_MAP: dict[str, dict[str, str]] = {
 
 DEFAULT_SECTOR = {"id": "other", "name": "Otros Activos"}
 
-def get_ticker_sector(ticker: str) -> dict[str, str]:
+def get_ticker_sector(ticker: str) -> dict[str, Any]:
     if not ticker:
         return DEFAULT_SECTOR
     clean = ticker.strip().upper().replace(".", "-")
-    return SECTOR_MAP.get(clean, SECTOR_MAP.get(ticker.strip().upper(), DEFAULT_SECTOR))
+    sec = SECTOR_MAP.get(clean, SECTOR_MAP.get(ticker.strip().upper(), DEFAULT_SECTOR))
+    res = dict(sec)
+    if "is_etf" not in res:
+        res["is_etf"] = (res.get("id") == "etfs")
+    return res
 
 def calculate_sector_breakdown(result: list[dict]) -> list[dict]:
     """
@@ -636,6 +645,7 @@ def calculate_sector_breakdown(result: list[dict]) -> list[dict]:
         
         item["sector_id"] = sec_id
         item["sector_name"] = sec_name
+        item["is_etf"] = sec_info.get("is_etf", False)
         
         if sec_id not in sectors:
             sectors[sec_id] = {

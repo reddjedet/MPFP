@@ -122,3 +122,36 @@ data/user_holdings.json
 data/ppc_values.json
 
 
+# --- AI Agents, LLM Assistants & Runtimes (Gentle-AI, Pi/ATL, Engram, Aider, Claude, Cursor) ---
+# Gentle-AI
+.gentle/
+.gentle-ai/
+gentle/
+gentle.json
+*.gentle*
+
+# Pi / ATL
+.atl/
+.pi/
+.pi_*
+*.skill-registry*
+skill-registry.md
+
+# Engram
+.engram/
+.engram_cache/
+engram/
+engram.db
+engram.json
+*.engram*
+
+# Other AI Assistants & LLM tooling
+.aider*
+.claude/
+claude.json
+.cursor/
+.windsurf/
+.codeium/
+.continue/
+.cody/
+.opencode/

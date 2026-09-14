@@ -85,7 +85,7 @@ export const LauncherHub: React.FC<LauncherHubProps> = ({
               onClick={() => {
                 if (lastVisitedTab === 'portfolios' || lastVisitedTab === 'rotation') {
                   onSelectArea('portfolios', lastVisitedTab);
-                } else if (lastVisitedTab === 'cedears' || lastVisitedTab === 'renta-fija' || lastVisitedTab === 'earnings') {
+                } else if (lastVisitedTab === 'cedears' || lastVisitedTab === 'indices' || lastVisitedTab === 'renta-fija' || lastVisitedTab === 'earnings') {
                   onSelectArea('market', lastVisitedTab);
                 } else {
                   onSelectArea('lab', lastVisitedTab);

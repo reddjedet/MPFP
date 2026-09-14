@@ -8,7 +8,8 @@ import {
   Landmark,
   Calendar,
   Calculator,
-  BarChart3
+  BarChart3,
+  Globe
 } from 'lucide-react';
 import { WorkspaceArea } from './LauncherHub';
 
@@ -98,6 +99,7 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
       activeClass: 'bg-emerald-600/20 text-emerald-200 font-bold border border-emerald-500/40 shadow-sm',
       tabs: [
         { id: 'cedears', label: 'CEDEARs & RSI', icon: TrendingUp },
+        { id: 'indices', label: 'Índices & Ciclos', icon: Globe, badge: 'NUEVO' },
         { id: 'renta-fija', label: 'Renta Fija BYMA/MAE', icon: Landmark },
         { id: 'earnings', label: 'Calendario Earnings', icon: Calendar }
       ]

@@ -75,7 +75,8 @@ def calculate_efficient_frontier_curve(
 ) -> Tuple[List[float], List[float], List[np.ndarray]]:
     """Calcula la curva de la Frontera Eficiente minimizando la varianza para niveles de retorno objetivo."""
     n = len(mu)
-    # Evitar r_min > r_max (puede pasar si todos los retornos son muy similares)
+    max_feasible_return = float(np.max(mu))
+    r_max = min(r_max, max_feasible_return)
     if r_max <= r_min:
         r_max = r_min + 1e-4
     target_rets = np.linspace(r_min, r_max, n_points)
@@ -84,7 +85,7 @@ def calculate_efficient_frontier_curve(
     ef_weights = []
     
     bounds = tuple((0.0, 1.0) for _ in range(n))
-    initial_guess = np.ones(n) / n
+    last_w = np.ones(n) / n
     
     def port_vol(w):
         return np.sqrt(np.dot(w.T, np.dot(cov, w)))
@@ -94,18 +95,23 @@ def calculate_efficient_frontier_curve(
             {'type': 'eq', 'fun': lambda x: np.sum(x) - 1.0},
             {'type': 'eq', 'fun': lambda x: np.dot(x, mu) - tr}
         )
-        res = sco.minimize(port_vol, initial_guess, method='SLSQP', bounds=bounds, constraints=constraints)
+        res = sco.minimize(port_vol, last_w, method='SLSQP', bounds=bounds, constraints=constraints)
         
-        if res.success:
-            ef_vols.append(res.fun)
-            ef_rets.append(np.dot(res.x, mu))
-            ef_weights.append(res.x)
-        else:
-            # Fallback seguro en lugar de divergir
-            ef_vols.append(port_vol(initial_guess))
-            ef_rets.append(np.dot(initial_guess, mu))
-            ef_weights.append(initial_guess)
+        if res.success and res.fun > 0:
+            calc_ret = float(np.dot(res.x, mu))
+            if abs(calc_ret - tr) < 0.005:
+                last_w = res.x
+                ef_vols.append(float(res.fun))
+                ef_rets.append(calc_ret)
+                ef_weights.append(res.x)
             
+    # Garantizar ordenamiento estrictamente ascendente por retorno para evitar lazos o cuerdas
+    if ef_rets:
+        sorted_indices = np.argsort(ef_rets)
+        ef_vols = [ef_vols[i] for i in sorted_indices]
+        ef_rets = [ef_rets[i] for i in sorted_indices]
+        ef_weights = [ef_weights[i] for i in sorted_indices]
+
     return ef_vols, ef_rets, ef_weights
 
 def resolve_calendar_start_date(period: str) -> str:
@@ -552,7 +558,7 @@ def calculate_markowitz_model(
     mc_sharpes = (mc_rets - rf_rate) / (mc_vols + 1e-8)
     
     # 4. Frontera Eficiente (Curva)
-    r_top = max(float(np.max(mu)), r_ms * 1.15)
+    r_top = float(np.max(mu))
     ef_vols, ef_rets, ef_weights = calculate_efficient_frontier_curve(mu, cov, r_min=r_min, r_max=r_top, n_points=35)
     
     # 5. Cartera Actual (si fue provista)

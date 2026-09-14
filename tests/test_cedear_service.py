@@ -53,5 +53,37 @@ class TestCedearService(unittest.TestCase):
         self.assertIn("MELI", data["tickers"])
         self.assertIn("NVDA", data["tickers"])
 
+    def test_cedear_alert_inclusive_thresholds(self):
+        """Verifica que la alerta RSI sea inclusiva a 35.0 y 65.0."""
+        from unittest.mock import patch
+        import pandas as pd
+        from services.cedear_service import get_ticker_data
+
+        # Simular serie con RSI exactamente en 35.0 y 65.0
+        with patch("services.cedear_service.smart_cache", lambda *a, **kw: lambda fn: fn):
+            with patch("services.cedear_service.yf.download") as mock_yf:
+                with patch("services.cedear_service.calculate_rsi") as mock_calc:
+                    mock_df = pd.DataFrame({"Close": [100.0] * 20})
+                    mock_yf.return_value = mock_df
+                    
+                    # Caso exacto 35.0 (debe activar alerta)
+                    mock_calc.return_value = pd.Series([35.0] * 20)
+                    fn = getattr(get_ticker_data, "__wrapped__", get_ticker_data)
+                    data_35 = fn("AAPL")
+                    self.assertIsNotNone(data_35)
+                    self.assertTrue(data_35["alert"], "RSI 35.0 debe activar alerta inclusiva")
+
+                    # Caso exacto 65.0 (debe activar alerta)
+                    mock_calc.return_value = pd.Series([65.0] * 20)
+                    data_65 = fn("AAPL")
+                    self.assertIsNotNone(data_65)
+                    self.assertTrue(data_65["alert"], "RSI 65.0 debe activar alerta inclusiva")
+
+                    # Caso intermedio 50.0 (NO debe activar alerta)
+                    mock_calc.return_value = pd.Series([50.0] * 20)
+                    data_50 = fn("AAPL")
+                    self.assertIsNotNone(data_50)
+                    self.assertFalse(data_50["alert"], "RSI 50.0 no debe activar alerta")
+
 if __name__ == "__main__":
     unittest.main()

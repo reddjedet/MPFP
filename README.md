@@ -1,4 +1,4 @@
-# 🚀 Máquina de Planes, Finanzas y Portfolios (MPFP) — Terminal Cuantitativa y Asignación de Capital
+#  Máquina de Planes, Finanzas y Portfolios (MPFP) — Terminal Cuantitativa y Asignación de Capital
 
 Plataforma financiera integral para la gestión de carteras de inversión, arbitraje de rotación, optimización de Markowitz, valuación fundamental adaptativa por vía negativa, calendario de balances corporativos y análisis de renta fija soberana.
 

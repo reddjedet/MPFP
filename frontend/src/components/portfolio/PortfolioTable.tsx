@@ -23,6 +23,7 @@ interface PortfolioAssetRow {
   rsi?: number | null;
   adr_price?: number | null;
   ratio?: number | string;
+  is_etf?: boolean;
   earnings_badge?: {
     text?: string;
     badge_text?: string;
@@ -170,6 +171,12 @@ const ActionDrawer: React.FC<ActionDrawerProps> = ({ row, pfType, onRefresh, onC
   );
 };
 
+const KNOWN_ETFS = new Set([
+  'SPY', 'QQQ', 'DIA', 'IWM', 'EEM', 'EWZ', 'ARKK', 'SMH', 'URA', 'GLD', 'SLV', 'USO', 'VEA',
+  'XLB', 'XLC', 'XLE', 'XLF', 'XLI', 'XLK', 'XLP', 'XLRE', 'XLU', 'XLV', 'XLY',
+  'FXI', 'ILF', 'IVW', 'EWJ', 'GDX', 'IBIT', 'ARGT'
+]);
+
 export const PortfolioTable: React.FC<PortfolioTableProps> = ({ data, pfType, onRefresh }) => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
@@ -183,11 +190,20 @@ const columnHelper = createColumnHelper<PortfolioAssetRow>();
           const earningsText = row.earnings_badge?.badge_text || row.earnings_badge?.text;
           const gfText = row.gf_signal?.badge_text;
           const pfcfText = row.pfcf_signal?.badge_text;
+          const isEtf = row.is_etf || KNOWN_ETFS.has(info.getValue());
   
           return (
             <div className="flex flex-col gap-0.5">
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-white tracking-wide text-sm">{info.getValue() || '—'}</span>
+                {isEtf && (
+                  <span 
+                    className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40"
+                    title="Fondo Indexado (Exchange Traded Fund)"
+                  >
+                    ETF
+                  </span>
+                )}
                 <span className="text-[10px] text-zinc-500 font-mono">Ratio: {row.ratio || '1:1'}</span>
               </div>
               

@@ -23,6 +23,8 @@ def get_all_cedear_tickers():
             "ticker": tk,
             "name": sec.get("name", "Otros Activos"),
             "sector_id": sec.get("id", "other"),
+            "subsector": sec.get("subsector"),
+            "is_etf": sec.get("is_etf", False),
             "ratio": ratios.get(tk, 1.0)
         })
     return JSONResponse({
@@ -78,6 +80,8 @@ def get_cedears_quotes_json(tickers: str = Query(None)):
         ratio_raw = CEDEAR_RATIOS.get(tk, 1.0)
         ratio_val = float(ratio_raw) if isinstance(ratio_raw, (int, float)) and ratio_raw > 0 else 1.0
         in_pf = tk in portfolio_tickers
+        sec_info = get_ticker_sector(tk)
+        is_etf = bool(sec_info.get("is_etf", False))
 
         if not item:
             # Fallback placeholder if ticker not loaded yet
@@ -90,6 +94,7 @@ def get_cedears_quotes_json(tickers: str = Query(None)):
                 "rsi": None,
                 "alert": False,
                 "in_portfolio": in_pf,
+                "is_etf": is_etf,
                 "earnings_badge": get_ticker_earnings_badge(tk, cal=earnings_cal),
                 "gf_value": fair_values_map.get(tk),
                 "gf_signal": None,
@@ -119,6 +124,7 @@ def get_cedears_quotes_json(tickers: str = Query(None)):
             "rsi": round(float(rsi_val), 1) if rsi_val is not None else None,
             "alert": bool(rsi_val is not None and (rsi_val > 65.0 or rsi_val < 35.0)),
             "in_portfolio": in_pf,
+            "is_etf": is_etf,
             "earnings_badge": get_ticker_earnings_badge(tk, cal=earnings_cal),
             "gf_value": fair_values_map.get(tk),
             "gf_signal": evaluate_fair_value_signal(tk, adr_p, gf_val_map=fair_values_map) if adr_p else None,
@@ -169,3 +175,11 @@ def get_single_cedear_json(ticker: str):
         "pfcf_signal": evaluate_fcf_rsi_state(ticker_clean, pfcf_map.get(ticker_clean), rsi_val)
     }
     return JSONResponse(quote)
+
+
+from services.etf_service import fetch_sector_etf_thermometer
+
+@router.get("/etf_thermometer", response_class=JSONResponse)
+def get_etf_thermometer_endpoint():
+    data = fetch_sector_etf_thermometer()
+    return JSONResponse(data)

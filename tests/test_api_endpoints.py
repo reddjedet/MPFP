@@ -405,6 +405,30 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(sanitize_portfolio_name("BDI Momentum"), "bdi_momentum")
         self.assertEqual(sanitize_portfolio_name("  min - drawdown - 15  "), "min_drawdown_15")
 
+
+    @patch("routers.cedears.fetch_sector_etf_thermometer")
+    def test_cedears_etf_thermometer_endpoint(self, mock_fetch):
+        mock_fetch.return_value = [
+            {
+                "ticker": "XLK",
+                "name": "Tecnologia",
+                "sector": "Information Technology",
+                "close": 187.67,
+                "change_d": 1.32,
+                "perf_w": 0.25,
+                "perf_1m": -0.95,
+                "rsi": 55.10,
+                "trend_sma50": "BULLISH",
+                "trend_sma200": "BULLISH"
+            }
+        ]
+        resp = self.client.get("/api/cedears/etf_thermometer")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["ticker"], "XLK")
+        self.assertEqual(data[0]["perf_w"], 0.25)
+
 if __name__ == "__main__":
     unittest.main()
 

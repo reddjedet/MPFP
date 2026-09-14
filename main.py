@@ -10,7 +10,8 @@ from routers import (
     earnings, 
     valuation, 
     markowitz, 
-    rotation
+    rotation,
+    indices
 )
 from services.portfolio_service import load_portfolios
 from services.cedear_service import get_multiple_tickers_data
@@ -118,6 +119,7 @@ app.include_router(renta_fija.router, prefix="/api/renta_fija", tags=["renta_fij
 app.include_router(performance.router, prefix="/api/performance", tags=["performance"])
 app.include_router(markowitz.router, prefix="/api/markowitz", tags=["markowitz"])
 app.include_router(rotation.router, prefix="/api/rotation", tags=["rotation"])
+app.include_router(indices.router, prefix="/api/indices", tags=["indices"])
 
 @app.get("/health", response_class=JSONResponse)
 def health_check():
