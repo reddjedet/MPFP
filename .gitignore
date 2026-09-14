@@ -107,9 +107,8 @@ ehthumbs.db
 Thumbs.db
 .directory
 
-# --- Antigravity & Agent Scratch/Logs ---
-.agents/skills/**/__pycache__/
-.agents/scripts/**/__pycache__/
+# --- Antigravity & Agent Framework (Local Only) ---
+.agents/
 .opencode/open_env.json
 scratch/
 

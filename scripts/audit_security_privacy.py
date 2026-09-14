@@ -43,7 +43,8 @@ CRITICAL_IGNORES = [
     "data/ppc_values.json",
     ".atl/",
     ".gentle/",
-    ".engram/"
+    ".engram/",
+    ".agents/"
 ]
 
 def is_git_repo() -> bool:
