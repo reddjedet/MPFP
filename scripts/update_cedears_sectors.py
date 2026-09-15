@@ -32,6 +32,7 @@ ETF_RATIOS = {
 
 KNOWN_TICKER_SECTORS = {
     "CCJ": {"id": "energy", "name": "Energía & Materiales", "industry": "Minería y combustible nuclear"},
+    "NEE": {"id": "energy", "name": "Energía & Utilities", "industry": "Energía limpia, renovable y eléctrica"},
     "NNE": {"id": "energy", "name": "Energía & Industrial", "industry": "Tecnología nuclear avanzada y microreactores"},
     "BRKB": {"id": "financials", "name": "Finanzas & Fintech"},
     "SHOP": {"id": "tech", "name": "Tecnología & Cloud"},

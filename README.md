@@ -81,28 +81,36 @@ Plataforma financiera integral para la gestión de carteras de inversión, arbit
    
    - Curva en dólares (Bonares y Globales) y panel de LECAPs capitalizables.
    
-   - Cálculo de TIR, Modified Duration, Paridad y Upside teórico por compresión de spreads.
+   - Cálculo cuantitativo exacto de TIR y Modified Duration por bisección numérica, Paridad y TEM Mensual (%) destacada.
 9. **Performance Multiactivo (`/api/performance` / `PerformanceView.tsx`):**
    
    - Escaneo TradingView Scanner API multiactivo (`Perf.3M`, `Perf.6M`, `Perf.Y`, `Perf.YTD`, `SMA50`, `SMA200`).
+10. **Histórico de Índices & Ciclos Electorales (`/api/indices` / `MarketIndicesView.tsx`):**
+   
+   - Series históricas de retorno multiactivo (S&P Merval en USD y ARS, ETF ARGT, EWZ Brasil, Bovespa BRL, S&P 500, Nasdaq, Dow Jones) con normalización interactiva en Base 100.
+   
+   - Métricas cuantitativas de largo plazo (CAGR %, Max Drawdown %, Volatilidad anualizada).
+   
+   - Superposición de mandatos presidenciales y eventos electorales para Argentina, Brasil y Estados Unidos.
 
 ---
 
 ## Repositorios de Datos (`data/*.json`)
 
-La aplicación persiste de forma atómica y aislada sus datos en **9 archivos JSON**:
+La aplicación persiste de forma atómica y aislada sus datos en **10 archivos JSON**:
 
-| Archivo                           | Descripción                                                  | Servicio Responsable    |
-|:--------------------------------- |:------------------------------------------------------------ |:----------------------- |
-| `data/portfolios.json`            | Carteras modelo teóricas (pesos, activos y nominales demo)   | `portfolio_service.py`  |
-| `data/user_holdings.json`         | Tenencias de cartera (valores ficticios/demo, PPC, caja ARS) | `rotation_service.py`   |
-| `data/earnings_calendar.json`     | Fechas confirmadas y estimadas de balances                   | `earnings_service.py`   |
-| `data/fair_values.json`           | Estimaciones de GuruFocus Fair Value                         | `fair_value_service.py` |
-| `data/ppc_values.json`            | Precios Promedio de Compra globales                          | `ppc_service.py`        |
-| `data/pfcf_values.json`           | Múltiplos P/Normalized FCF                                   | `pfcf_service.py`       |
-| `data/valuation_profiles.json`    | Perfiles y modelos sectoriales de valuación                  | `valuation_service.py`  |
-| `data/user_valuation_inputs.json` | Inputs de valuación personalizados por el usuario            | `valuation_service.py`  |
-| `data/cedear_ratios.json`         | Ratios oficiales de conversión CEDEAR/Acción                 | `cedear_service.py`     |
+| Archivo                           | Descripción                                                  | Servicio Responsable         |
+|:--------------------------------- |:------------------------------------------------------------ |:---------------------------- |
+| `data/portfolios.json`            | Carteras modelo teóricas (pesos, activos y nominales demo)   | `portfolio_service.py`       |
+| `data/user_holdings.json`         | Tenencias multi-cuenta por broker (nominales, PPC, caja ARS) | `rotation_service.py`        |
+| `data/earnings_calendar.json`     | Fechas confirmadas y estimadas de balances                   | `earnings_service.py`        |
+| `data/fair_values.json`           | Estimaciones de GuruFocus Fair Value                         | `fair_value_service.py`      |
+| `data/ppc_values.json`            | Precios Promedio de Compra globales                          | `ppc_service.py`             |
+| `data/pfcf_values.json`           | Múltiplos P/Normalized FCF                                   | `pfcf_service.py`            |
+| `data/valuation_profiles.json`    | Perfiles y modelos sectoriales de valuación                  | `valuation_service.py`       |
+| `data/user_valuation_inputs.json` | Inputs de valuación personalizados por el usuario            | `valuation_service.py`       |
+| `data/cedear_ratios.json`         | Ratios oficiales de conversión CEDEAR/Acción                 | `cedear_service.py`          |
+| `data/historical_indices.json`    | Series históricas de índices bursátiles y mandatos políticos | `market_indices_service.py`  |
 
 ---
 
@@ -169,8 +177,8 @@ cp .env.example .env
 El pipeline ejecuta en $< 3$ segundos:
 
 1. **[1/3] Frontend:** Verificación de tipado TypeScript (`npx tsc --noEmit`) y bundle de producción en Vite.
-2. **[2/3] Backend:** Suite de **112 tests automatizados** en `tests/` con Snapshot Isolation estricto.
-3. **[3/3] Auditoría:** Diagnóstico de integridad de las 9 bases de datos JSON y filtros de ciberseguridad.
+2. **[2/3] Backend:** Suite de **125 tests automatizados** en `tests/` con Snapshot Isolation estricto.
+3. **[3/3] Auditoría:** Diagnóstico de integridad de las 10 bases de datos JSON (`audit_project.py`) y escaneo de ciberseguridad, tokens y privacidad pre-commit (`audit_security_privacy.py`).
 
 ---
 

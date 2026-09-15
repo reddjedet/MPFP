@@ -51,9 +51,11 @@ export const EtfSectorThermometer: React.FC = () => {
   return (
     <div className="bg-[#181920] border border-white/10 rounded-xl overflow-hidden shadow-sm">
       {/* Header colapsable */}
-      <div 
+      <button 
+        type="button"
         onClick={() => setCollapsed(!collapsed)}
-        className="px-4 py-2.5 bg-white/[0.02] border-b border-white/5 flex items-center justify-between cursor-pointer hover:bg-white/[0.04] transition-colors select-none"
+        aria-expanded={!collapsed}
+        className="w-full px-4 py-2.5 bg-white/[0.02] border-b border-white/5 flex items-center justify-between cursor-pointer hover:bg-white/[0.04] transition-colors select-none text-left"
       >
         <div className="flex items-center gap-2.5">
           <Activity className="w-4 h-4 text-blue-400" />
@@ -67,10 +69,10 @@ export const EtfSectorThermometer: React.FC = () => {
             • Flujo del dinero y rotación de capital entre semanas
           </span>
         </div>
-        <button className="text-zinc-400 hover:text-white p-1">
+        <span className="text-zinc-400 hover:text-white p-1 flex items-center">
           {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-        </button>
-      </div>
+        </span>
+      </button>
 
       {/* Contenido / Matriz de sectores */}
       {!collapsed && (

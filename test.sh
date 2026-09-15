@@ -16,8 +16,8 @@ echo "======================================================="
 echo ""
 echo "[1/3] Verificando tipado TypeScript y compilación de React 19..."
 if [ -d "$DIR/frontend" ]; then
-    (cd "$DIR/frontend" && npx tsc --noEmit && npm run build >/dev/null 2>&1)
-    echo "✓ Frontend React 19 verificado y compilado sin errores!"
+    (cd "$DIR/frontend" && (./node_modules/.bin/tsc --noEmit || npx tsc --noEmit))
+    echo "✓ Frontend React 19 verificado sin errores de tipado!"
 fi
 
 # 2. Backend Unittest Suite

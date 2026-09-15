@@ -30,6 +30,8 @@ class TestCedearService(unittest.TestCase):
         self.assertIn("MSFT", CEDEAR_RATIOS)
         self.assertIn("NU", CEDEAR_RATIOS)
         self.assertIn("CEG", CEDEAR_RATIOS)
+        self.assertIn("NEE", CEDEAR_RATIOS)
+        self.assertEqual(CEDEAR_RATIOS["NEE"], 19.0)
         self.assertGreater(CEDEAR_RATIOS["AAPL"], 0)
 
     def test_get_all_portfolio_tickers(self):

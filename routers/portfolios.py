@@ -16,6 +16,11 @@ from services.portfolio_service import (
     calculate_portfolio_alpha,
     get_portfolio_fixed_income_summary,
     calculate_sector_breakdown,
+    move_portfolio_to_trash,
+    load_portfolios_trash,
+    restore_portfolio_from_trash,
+    delete_permanently_from_trash,
+    MAX_TRASH_CAPACITY,
     DB_PATH
 )
 from services.security_service import (
@@ -297,15 +302,36 @@ def delete_custom_portfolio(pf_type: str):
     if not pf_clean:
         return JSONResponse({"success": False, "error": "Nombre de portfolio no válido."})
         
-    if pf_clean in ["bmb", "bal"]:
-        return JSONResponse({"success": False, "error": "No se puede eliminar el portfolio predeterminado (BMB o BAL)."})
-        
-    portfolios_data = load_portfolios()
-    if pf_clean in portfolios_data:
-        del portfolios_data[pf_clean]
-        save_portfolios(portfolios_data)
-        return JSONResponse({"success": True, "deleted": pf_clean})
-    return JSONResponse({"success": False, "error": "Portfolio no encontrado."})
+    res = move_portfolio_to_trash(pf_clean)
+    return JSONResponse(res)
+
+@router.get("/trash_json", response_class=JSONResponse)
+def get_portfolios_trash():
+    trash = load_portfolios_trash()
+    return JSONResponse({
+        "success": True,
+        "count": len(trash),
+        "max_capacity": MAX_TRASH_CAPACITY,
+        "trash": trash
+    })
+
+@router.post("/restore_json/{pf_type}", response_class=JSONResponse)
+def restore_custom_portfolio(pf_type: str):
+    pf_clean = sanitize_portfolio_name(pf_type)
+    if not pf_clean:
+        return JSONResponse({"success": False, "error": "Nombre de portfolio no válido."}, status_code=400)
+    res = restore_portfolio_from_trash(pf_clean)
+    if not res.get("success"):
+        return JSONResponse(res, status_code=404)
+    return JSONResponse(res)
+
+@router.delete("/trash_json/{pf_type}", response_class=JSONResponse)
+def purge_portfolio_from_trash(pf_type: str):
+    pf_clean = sanitize_portfolio_name(pf_type)
+    if not pf_clean:
+        return JSONResponse({"success": False, "error": "Nombre de portfolio no válido."}, status_code=400)
+    res = delete_permanently_from_trash(pf_clean)
+    return JSONResponse(res)
 
 @router.post("/rename_json", response_class=JSONResponse)
 def rename_custom_portfolio(body: RenamePortfolioRequest):

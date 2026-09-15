@@ -57,6 +57,11 @@ interface PortfolioAssetRow {
   } | null;
 }
 
+const formatRatio = (ratio?: number | string) => {
+  if (!ratio || ratio === 'N/A') return '1:1';
+  const str = String(ratio);
+  return str.includes(':') ? str : `${str}:1`;
+};
 
 interface PortfolioTableProps {
   data: any;
@@ -204,7 +209,7 @@ const columnHelper = createColumnHelper<PortfolioAssetRow>();
                     ETF
                   </span>
                 )}
-                <span className="text-[10px] text-zinc-500 font-mono">Ratio: {row.ratio || '1:1'}</span>
+                <span className="text-[10px] text-zinc-500 font-mono">Ratio: {formatRatio(row.ratio)}</span>
               </div>
               
               {/* Badge Stack de Señales */}

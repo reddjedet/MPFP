@@ -10,9 +10,11 @@ import {
   ArrowDownRight,
   Scale,
   Sparkles,
-  HelpCircle
+  HelpCircle,
+  Calculator
 } from 'lucide-react';
 import { Dropdown } from './ui/Dropdown';
+import { PurchaseCalculator } from './rotation/PurchaseCalculator';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import { BarChart } from 'echarts/charts';
@@ -135,6 +137,8 @@ export const RotationView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
+  const [calculatorOpen, setCalculatorOpen] = useState<boolean>(false);
+  const [calculatorTicker, setCalculatorTicker] = useState<string>('');
   const [sorting, setSorting] = useState<SortingState>([]);
 
   // Escuchar cambios remotos de cartera activa (ej: desde Cartera & Rebalanceo)
@@ -255,9 +259,21 @@ export const RotationView: React.FC = () => {
       cell: info => {
         const row = info.row.original;
         return (
-          <div className="flex flex-col">
-            <span className="font-extrabold text-slate-900 dark:text-white text-sm tracking-wide">{info.getValue()}</span>
-            <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">Ratio {row.ratio}:1</span>
+          <div className="flex items-center justify-between gap-1.5 group">
+            <div className="flex flex-col">
+              <span className="font-extrabold text-slate-900 dark:text-white text-sm tracking-wide">{info.getValue()}</span>
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">Ratio {row.ratio}:1</span>
+            </div>
+            <button
+              onClick={() => {
+                setCalculatorTicker(row.ticker);
+                setCalculatorOpen(true);
+              }}
+              className="p-1 rounded text-slate-400 hover:text-emerald-600 dark:text-zinc-500 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors opacity-70 group-hover:opacity-100"
+              title={`Calcular compra de ${row.ticker}`}
+            >
+              <Calculator className="w-3.5 h-3.5" />
+            </button>
           </div>
         );
       },
@@ -470,6 +486,19 @@ export const RotationView: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setCalculatorOpen(prev => !prev)}
+            className={`h-10 px-4 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              calculatorOpen
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/25'
+                : 'bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/10 dark:text-zinc-200'
+            }`}
+            title="Calculadora rápida de compra por capital"
+          >
+            <Calculator className="w-4 h-4" />
+            <span>Calculadora de Compra</span>
+          </button>
+
+          <button
             onClick={() => fetchAnalysis()}
             disabled={loading}
             className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-900 dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/10 dark:text-zinc-300 dark:hover:text-white transition-colors"
@@ -484,6 +513,17 @@ export const RotationView: React.FC = () => {
         <div className="glass-panel p-4 rounded-2xl border-red-500/30 bg-red-500/5 text-xs text-red-400 flex items-center justify-between">
           <span>{error}</span>
         </div>
+      )}
+
+      {/* CALCULADORA RÁPIDA DE COMPRA */}
+      {calculatorOpen && data && data.items && data.items.length > 0 && (
+        <PurchaseCalculator
+          items={data.items}
+          cashArs={data.cash_ars}
+          selectedTicker={calculatorTicker || data.items[0]?.ticker}
+          onSelectTicker={(tk) => setCalculatorTicker(tk)}
+          onClose={() => setCalculatorOpen(false)}
+        />
       )}
 
       {/* KPI CARDS */}
@@ -612,7 +652,22 @@ export const RotationView: React.FC = () => {
                           <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30 uppercase tracking-wider flex items-center gap-1 w-fit">
                             <ArrowUpRight className="w-3.5 h-3.5" /> COMPRAR
                           </span>
-                          <span className="text-xs font-extrabold text-slate-900 dark:text-white font-mono">{trade.buy.ticker}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-extrabold text-slate-900 dark:text-white font-mono">{trade.buy.ticker}</span>
+                            <button
+                              onClick={() => {
+                                if (trade.buy) {
+                                  setCalculatorTicker(trade.buy.ticker);
+                                  setCalculatorOpen(true);
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }
+                              }}
+                              className="p-1 rounded text-slate-400 hover:text-emerald-600 dark:text-zinc-500 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                              title={`Calcular compra de ${trade.buy.ticker}`}
+                            >
+                              <Calculator className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                         <div className="text-sm font-black text-slate-900 dark:text-white font-mono">
                           {trade.buy.nominals} VN <span className="text-xs font-normal text-slate-500 dark:text-zinc-400">(${(trade.buy.total_cash).toLocaleString('es-AR')})</span>

@@ -7,7 +7,7 @@ import io
 from services.earnings_service import load_earnings_calendar, _db as _earnings_db
 from services.fair_value_service import load_fair_values, _db as _gf_db
 from services.valuation_service import load_user_valuation_inputs, _user_inputs_db as _val_db
-from services.portfolio_service import load_portfolios, _db as _pf_db
+from services.portfolio_service import load_portfolios, _db as _pf_db, load_portfolios_trash, _trash_db
 from services.ppc_service import load_ppc_values, _db as _ppc_db
 from services.pfcf_service import load_pfcf_values, _db as _pfcf_db
 from services.rotation_service import load_user_holdings, _db as _holdings_db
@@ -52,6 +52,7 @@ class TestAPIEndpoints(unittest.TestCase):
         initial_ppc = dict(load_ppc_values())
         initial_pfcf = dict(load_pfcf_values())
         initial_holdings = dict(load_user_holdings())
+        initial_trash = list(load_portfolios_trash())
 
         cls._tmp_dir = tempfile.TemporaryDirectory()
         tmp_path = Path(cls._tmp_dir.name)
@@ -63,6 +64,7 @@ class TestAPIEndpoints(unittest.TestCase):
         cls._orig_ppc_path = _ppc_db.file_path
         cls._orig_pfcf_path = _pfcf_db.file_path
         cls._orig_holdings_path = _holdings_db.file_path
+        cls._orig_trash_path = _trash_db.file_path
 
         _earnings_db.file_path = tmp_path / "earnings.json"
         _earnings_db._cache = None
@@ -99,6 +101,11 @@ class TestAPIEndpoints(unittest.TestCase):
         _holdings_db._cache_valid = False
         _holdings_db.save(initial_holdings)
 
+        _trash_db.file_path = tmp_path / "portfolios_trash.json"
+        _trash_db._cache = None
+        _trash_db._cache_valid = False
+        _trash_db.save(initial_trash)
+
         cls._patcher = patch("routers.portfolios.get_multiple_tickers_data", side_effect=mock_get_multi_data)
         cls._patcher.start()
 
@@ -126,6 +133,9 @@ class TestAPIEndpoints(unittest.TestCase):
         _holdings_db.file_path = cls._orig_holdings_path
         _holdings_db._cache = None
         _holdings_db._cache_valid = False
+        _trash_db.file_path = cls._orig_trash_path
+        _trash_db._cache = None
+        _trash_db._cache_valid = False
         cls._tmp_dir.cleanup()
 
         
@@ -428,6 +438,86 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]["ticker"], "XLK")
         self.assertEqual(data[0]["perf_w"], 0.25)
+
+    def test_portfolio_trash_lifecycle_and_fifo_capacity(self):
+        """Verifica la papelera de reciclaje de portfolios, límite FIFO de 7 y restauración."""
+        from services.portfolio_service import save_portfolios, load_portfolios, save_portfolios_trash
+
+        # 1. Intentar eliminar cartera predeterminada (debe retornar success: False)
+        resp_protected = self.client.delete("/api/portfolios/delete_json/bmb")
+        self.assertEqual(resp_protected.status_code, 200)
+        self.assertFalse(resp_protected.json().get("success"))
+        self.assertIn("No se puede eliminar el portfolio predeterminado", resp_protected.json().get("error"))
+
+        # 2. Crear una cartera activa de prueba
+        pfs = load_portfolios()
+        pfs["cartera_test_trash"] = {
+            "mode": "weights",
+            "assets": {"AAPL": 50.0, "MSFT": 50.0}
+        }
+        save_portfolios(pfs)
+
+        # 3. Mover a la papelera mediante DELETE
+        resp_del = self.client.delete("/api/portfolios/delete_json/cartera_test_trash")
+        self.assertEqual(resp_del.status_code, 200)
+        del_data = resp_del.json()
+        self.assertTrue(del_data.get("success"))
+        self.assertEqual(del_data.get("moved_to_trash"), "cartera_test_trash")
+
+        # Verificar que ya no está en activas
+        self.assertNotIn("cartera_test_trash", load_portfolios())
+
+        # 4. Consultar papelera
+        resp_trash = self.client.get("/api/portfolios/trash_json")
+        self.assertEqual(resp_trash.status_code, 200)
+        trash_data = resp_trash.json()
+        self.assertTrue(trash_data.get("success"))
+        self.assertEqual(trash_data.get("max_capacity"), 7)
+        trashed_names = [x["name"] for x in trash_data.get("trash", [])]
+        self.assertIn("cartera_test_trash", trashed_names)
+
+        # 5. Probar política FIFO con límite de 7:
+        # Enviar 8 carteras adicionales numeradas del 0 al 7
+        save_portfolios_trash([])  # Resetear papelera para prueba limpia
+        pfs = load_portfolios()
+        for i in range(8):
+            pfs[f"test_fifo_{i}"] = {"mode": "weights", "assets": {"AAPL": 100.0}}
+        save_portfolios(pfs)
+
+        for i in range(8):
+            r = self.client.delete(f"/api/portfolios/delete_json/test_fifo_{i}")
+            self.assertEqual(r.status_code, 200)
+
+        # La papelera debe tener exactamente 7 elementos
+        resp_fifo = self.client.get("/api/portfolios/trash_json")
+        items = resp_fifo.json().get("trash", [])
+        self.assertEqual(len(items), 7)
+        item_names = [x["name"] for x in items]
+        # test_fifo_0 debió haber sido purgado (el 1ro de los 8)
+        self.assertNotIn("test_fifo_0", item_names)
+        # test_fifo_1 a test_fifo_7 deben permanecer
+        for i in range(1, 8):
+            self.assertIn(f"test_fifo_{i}", item_names)
+
+        # 6. Restaurar cartera (test_fifo_7)
+        resp_restore = self.client.post("/api/portfolios/restore_json/test_fifo_7")
+        self.assertEqual(resp_restore.status_code, 200)
+        self.assertTrue(resp_restore.json().get("success"))
+        # Ahora test_fifo_7 debe estar activa y removida de la papelera
+        self.assertIn("test_fifo_7", load_portfolios())
+        resp_trash_after = self.client.get("/api/portfolios/trash_json")
+        names_after = [x["name"] for x in resp_trash_after.json().get("trash", [])]
+        self.assertNotIn("test_fifo_7", names_after)
+        self.assertEqual(len(names_after), 6)
+
+        # 7. Eliminar definitivamente de la papelera (test_fifo_6)
+        resp_purge = self.client.delete("/api/portfolios/trash_json/test_fifo_6")
+        self.assertEqual(resp_purge.status_code, 200)
+        self.assertTrue(resp_purge.json().get("success"))
+        resp_trash_purged = self.client.get("/api/portfolios/trash_json")
+        names_purged = [x["name"] for x in resp_trash_purged.json().get("trash", [])]
+        self.assertNotIn("test_fifo_6", names_purged)
+        self.assertEqual(len(names_purged), 5)
 
 if __name__ == "__main__":
     unittest.main()

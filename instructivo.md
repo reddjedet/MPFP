@@ -22,8 +22,8 @@ Este documento recopila la totalidad de las funcionalidades, modelos matemático
 │  1. Rotación │2. Portfolios │ 3. Markowitz │ 4. CEDEARs  │ 5. Earnings │
 │  & Cartera   │ & Rebalanceo │  Laboratory  │  & Mercado  │  Calendar   │
 ├──────────────┼──────────────┼──────────────┼─────────────┼─────────────┤
-│ 6. Valuación │ 7. GuruFocus │ 8. Renta     │ 9. Perf. &  │ 10. Security│
-│  Fundamental │  & P/NormFCF │    Fija      │ Multi-Asset │  & Testing  │
+│ 6. Valuación │ 7. GuruFocus │ 8. Renta     │ 9. Perf. &  │ 10. Indices │
+│  Fundamental │  & P/NormFCF │    Fija      │ Multi-Asset │  & Ciclos   │
 └──────────────┴──────────────┴──────────────┴─────────────┴─────────────┘
 ```
 
@@ -110,12 +110,19 @@ Auditoría por **Vía Negativa** con 6 modelos financieros según el perfil sect
 
 ---
 
+### 10. Histórico de Índices & Ciclos Electorales (`services/market_indices_service.py` / `MarketIndicesView.tsx`)
+* **Series Multiactivo Normalizadas (Base 100):** Visualización comparativa de activos clave (S&P Merval en USD y ARS, ETF ARGT, EWZ Brasil, Bovespa BRL, S&P 500, Nasdaq, Dow Jones) indexados a 100 desde una fecha base común.
+* **Métricas Cuantitativas:** Cálculo de Tasa de Crecimiento Anual Compuesto (CAGR %), Máximo Drawdown histórico y Volatilidad anualizada.
+* **Superposición de Mandatos y Ciclos Políticos:** Áreas de color interactivo que representan mandatos presidenciales (Argentina, Brasil, EE.UU.) e hitos electorales clave para estudiar el comportamiento de mercado a través de ciclos políticos.
+
+---
+
 ## 3. Arquitectura de Datos (`data/`)
 
 | Archivo JSON | Descripción | Servicio Responsable |
 | :--- | :--- | :--- |
 | `data/portfolios.json` | Definición de carteras modelo, activos y pesos/nominales | `portfolio_service.py` |
-| `data/user_holdings.json` | Tenencias reales del usuario (nominales, PPC, caja ARS) | `rotation_service.py` |
+| `data/user_holdings.json` | Tenencias reales del usuario aisladas por broker (nominales, PPC, caja ARS) | `rotation_service.py` |
 | `data/earnings_calendar.json` | Fechas confirmadas y estimadas de balances | `earnings_service.py` |
 | `data/fair_values.json` | Estimaciones de GuruFocus Fair Value | `fair_value_service.py` |
 | `data/ppc_values.json` | Historial global de Precios Promedio de Compra | `ppc_service.py` |
@@ -123,6 +130,7 @@ Auditoría por **Vía Negativa** con 6 modelos financieros según el perfil sect
 | `data/valuation_profiles.json` | Perfiles y modelos de valuación fundamental | `valuation_service.py` |
 | `data/user_valuation_inputs.json` | Inputs de valuación personalizados por el usuario | `valuation_service.py` |
 | `data/cedear_ratios.json` | Ratios de conversión de CEDEARs a acción subyacente | `cedear_service.py` |
+| `data/historical_indices.json` | Series históricas multiactivo y catálogo de mandatos políticos | `market_indices_service.py` |
 
 ---
 
@@ -224,3 +232,25 @@ $$ \text{TEM} = (1 + \text{TEA})^{\frac{30}{365}} - 1 $$
 **3. Retorno de Capital Teórico (Upside por Compresión de Spread / TIR):**
 Dado un objetivo de compresión de TIR ($\text{TIR}_{\text{target}}$) y la Modified Duration ($MD$) del título:
 $$ \text{Upside\%} = (\text{TIR}_{\text{mercado}} - \text{TIR}_{\text{target}}) \times MD $$
+
+**4. TIR Cuantitativa y Duration por Bisección Numérica:**
+Para bonos con cupones periódicos y amortizaciones de capital ($C_t$ en fecha $t$), la TIR es la raíz de la ecuación del Valor Actual Neto ($VAN = 0$):
+$$ P + \text{Interés Corrido} = \sum_{t=1}^T \frac{C_t}{(1 + r)^{t / 365}} $$
+Resuelto mediante el algoritmo de bisección numérica acotada (40 iteraciones, tolerancia $< 10^{-5}$) y derivando la Modified Duration analítica ($MD = \frac{\text{Duration Macaulay}}{1 + r}$).
+
+---
+
+### 6. Métricas Cuantitativas de Índices Históricos
+
+**1. Normalización Base 100:**
+Dado el precio histórico $P_t$ y el precio de la fecha de anclaje inicial $P_0$:
+$$ I_t = \left( \frac{P_t}{P_0} \right) \times 100 $$
+
+**2. Tasa de Crecimiento Anual Compuesto (CAGR %):**
+$$ \text{CAGR} = \left( \frac{P_{\text{final}}}{P_{\text{inicial}}} \right)^{\frac{365}{\text{días}}} - 1 $$
+
+**3. Máximo Drawdown (Max DD %):**
+Calculado sobre el pico acumulado hasta el momento $t$:
+$$ \text{Pico}_t = \max_{s \le t} (P_s) $$
+$$ \text{Drawdown}_t = \frac{P_t - \text{Pico}_t}{\text{Pico}_t} $$
+$$ \text{Max DD} = \min_t (\text{Drawdown}_t) \times 100 $$

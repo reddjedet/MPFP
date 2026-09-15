@@ -25,6 +25,7 @@ Este documento constituye la **caja negra de ingeniería y lecciones aprendidas*
 | **INC-15** | **"Mock Math" y Fórmulas Ficticias en Renta Fija** (TIR estimada con fórmula lineal ad-hoc y filtro de ley roto) | Números mágicos sintéticos para "salvar" faltantes de datos y filtros en router por columnas inexistentes | Cálculo cuantitativo exacto de TIR y Duration por **bisección numérica**, flujos espejo y tipado de jurisdicción | 🟢 Blindado |
 | **INC-16** | **Omisión de Métricas Clave de Mercado** (Falta de TEM Mensual en tabla de LECAPs) | Diseño de UI desacoplado de las convenciones prácticas del mercado financiero local | Integración de `tem_mkt` en backend y destaque visual en verde esmeralda en frontend | 🟢 Blindado |
 | **INC-17** | **Oclusión de Menús por Stacking Contexts Hermanos** (Imposibilidad de seleccionar opciones superiores en dropdown) | Hermanos relativos con igual `z-index` (`z-20`): el segundo se apila encima y captura los clics de los hijos absolutos | Elevación jerárquica del stacking context padre (`z-40` vs `z-20`) para liberar el área de interacción | 🟢 Blindado |
+| **INC-18** | **Fricción de TDD Rígido en Micro-Iteraciones de UI** (Bloqueo y lentitud en ajustes cosméticos de frontend) | Aplicación uniforme e inflexible del ciclo Red-Green-Refactor estricto a componentes visuales y diseño | Protocolo Dual Adaptativo (**Opción A**): TDD estricto en backend/matemáticas y desarrollo ágil por hitos en UI con `npx tsc --noEmit` | 🟢 Blindado |
 
 ---
 
@@ -428,6 +429,26 @@ En la vista de Rebalanceo de Carteras (`PortfolioView`), al desplegar el menú d
 
 ---
 
+### 18. INC-18: Fricción Burocrática de TDD en Micro-Iteraciones de UI (Opción A - Desarrollo Ágil por Hitos)
+
+#### Síntoma y Contexto
+Durante iteraciones de diseño, ajustes de layout, cambios de espaciado, variantes de acento en botones o maquetación en React 19, la exigencia de escribir un test unitario previo (*Red-Green-Refactor*) antes de tocar cualquier línea generaba una enorme fricción burocrática, tests frágiles acoplados al árbol DOM y ralentizaba el ciclo de pair programming.
+
+#### Causa Raíz
+Aplicación dogmática e indiferenciada de una misma metodología de pruebas a dos dominios de naturaleza opuesta:
+1. **Lógica Financiera / Backend / Persistencia:** Requiere matemática determinista, tolerancia cero al error y contratos estrictos (TDD Red-Green-Refactor obligatorio).
+2. **Interfaz de Usuario / Estilos / Ergonomía:** Es inherentemente exploratoria, visual e iterativa; testear si un botón tiene `px-3` o `px-4` con unit tests previos agrega costo sin valor de calidad.
+
+#### Solución Definitiva
+Se formalizó el **Protocolo Dual Adaptativo (Opción A)**:
+1. **TDD Estricto:** Reservado para fórmulas cuantitativas (TIR, Markowitz, PPC, Fair Value), persistencia atómica multi-DB (`AtomicJsonDatabase`), filtros de seguridad y endpoints.
+2. **Protocolo Ágil por Hitos (Opción A):** Para frontend y UI. Durante el desarrollo se valida el tipado estricto quirúrgico con `npx tsc --noEmit`. Al concluir el hito (*Milestone Completion*), se ejecuta la suite completa de integración (`./test.sh`) y diagnósticos para certificar 0 regresiones.
+
+#### 💡 Regla de Oro
+> **Regla de Oro 18:** Adaptar el harness de calidad a la capa del sistema: rigor TDD estricto (*Red-Green-Refactor*) para modelos matemáticos, contratos de datos y persistencia; y protocolo ágil por hitos (*Opción A*) para el frontend, apalancándose en el compilador de TypeScript (`tsc --noEmit`) para agilidad visual sin comprometer la solidez de la suite de integración al consolidar.
+
+---
+
 ## 🎯 Resumen de Reglas de Oro Inquebrantables
 
 1. **Stack Puro:** React 19 SPA + FastAPI REST JSON. Cero templates Jinja2, cero HTMX, cero Plotly SSR.
@@ -436,7 +457,7 @@ En la vista de Rebalanceo de Carteras (`PortfolioView`), al desplegar el menú d
 4. **Validación Cuantitativa:** Filtrar diagonales de matrices y validar solvencia económica antes de emitir sugerencias.
 5. **Resiliencia de Mercado:** Caché en memoria con TTL dinámico bursátil y fallbacks seguros ante caídas de proveedores.
 6. **Sincronía de Gobernanza:** Actualizar `.agents/` y system prompts al mismo tiempo que la arquitectura del código.
-7. **Verificación Holística:** `./test.sh` debe compilar TypeScript en frontend y aprobar los 112 tests de backend sin excepciones.
+7. **Verificación Holística:** `./test.sh` debe compilar TypeScript en frontend y aprobar los 125 tests de backend sin excepciones.
 8. **Contratos Tipados:** Pydantic v2 en FastAPI y TypeScript interfaces en React para todos los endpoints.
 9. **Persistencia Atómica:** Escritura segura `.tmp` + `os.fsync()` + `os.replace()` con cerrojos `threading.RLock()`.
 10. **Dropdowns Reactivos:** Dropdowns controlados por estado en frontend, inmunes a bugs de captura GTK en Linux y sin recorte por `overflow-hidden`.
@@ -447,5 +468,6 @@ En la vista de Rebalanceo de Carteras (`PortfolioView`), al desplegar el menú d
 15. **Tolerancia Cero a "Mock Math":** Rigor cuantitativo estricto mediante algoritmos numéricos (bisección, flujos reales). Prohibido inventar heurísticas lineales o números mágicos.
 16. **Convenciones del Mercado Operativo:** Reflejar las métricas canónicas con las que operan los inversores reales (TEM en LECAPs, paridad y ley en soberanos).
 17. **Jerarquía de Stacking Contexts en Elementos Flotantes:** Garantizar que el contenedor relativo padre de un dropdown tenga mayor `z-index` que los hermanos contiguos en el DOM para evitar oclusión invisible de clics.
+18. **TDD Dual Adaptativo (Opción A):** TDD estricto previo para matemática financiera y persistencia; desarrollo ágil por hitos con chequeo de tipado TypeScript (`tsc --noEmit`) para frontend, corriendo suite integral al cierre del hito.
 
 

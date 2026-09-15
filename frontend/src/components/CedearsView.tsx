@@ -234,11 +234,6 @@ export const CedearsView: React.FC = () => {
     setWatchlist(prev => prev.filter(t => t !== tickerToRemove));
   };
 
-  const handleSyncPortfolioTickers = () => {
-    if (portfolioTickers.length === 0) return;
-    setWatchlist(prev => Array.from(new Set([...portfolioTickers, ...prev])));
-  };
-
   // Sugerencias reactivas del catálogo según lo que escribe el usuario
   const suggestions = useMemo(() => {
     const query = newTicker.trim().toLowerCase();
@@ -602,7 +597,7 @@ export const CedearsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Suggestion Chips & Portfolio Sync */}
+        {/* Suggestion Chips */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-white/5">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-zinc-500 tracking-wider mr-1">Sugeridos:</span>
@@ -616,16 +611,6 @@ export const CedearsView: React.FC = () => {
               </button>
             ))}
           </div>
-
-          {portfolioTickers.length > 0 && (
-            <button
-              onClick={handleSyncPortfolioTickers}
-              className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30 transition-colors flex items-center gap-1.5"
-            >
-              <Briefcase className="w-3.5 h-3.5" />
-              Sincronizar Cartera ({portfolioTickers.length})
-            </button>
-          )}
         </div>
 
         {/* Filter Pills */}

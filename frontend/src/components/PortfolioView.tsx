@@ -12,7 +12,8 @@ import {
   PieChart,
   Plus,
   Trash2,
-  Edit2
+  Edit2,
+  Archive
 } from 'lucide-react';
 import { Dropdown } from './ui/Dropdown';
 import { PortfolioTable } from './portfolio/PortfolioTable';
@@ -20,6 +21,7 @@ import { PortfolioCharts } from './portfolio/PortfolioCharts';
 import { PortfolioFixedIncomeTable, FixedIncomeSummary } from './portfolio/PortfolioFixedIncomeTable';
 import { CreatePortfolioModal } from './portfolio/CreatePortfolioModal';
 import { RenamePortfolioModal } from './portfolio/RenamePortfolioModal';
+import { PortfolioTrashModal } from './portfolio/PortfolioTrashModal';
 
 interface PortfolioAssetRow {
   ticker: string;
@@ -145,12 +147,26 @@ export const PortfolioView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isRenameModalOpen, setIsRenameModalOpen] = useState<boolean>(false);
+  const [isTrashModalOpen, setIsTrashModalOpen] = useState<boolean>(false);
+  const [trashCount, setTrashCount] = useState<number>(0);
 
   // Rebalancing controls
   const [anchor, setAnchor] = useState<string>('');
   const [qty, setQty] = useState<number>(1);
 
   // TanStack Sorting
+
+  const fetchTrashCount = async () => {
+    try {
+      const res = await fetch('/api/portfolios/trash_json');
+      if (res.ok) {
+        const json = await res.json();
+        setTrashCount(json.count || 0);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Fetch initial portfolios list
   const fetchPortfoliosList = async (): Promise<string[]> => {
@@ -183,19 +199,22 @@ export const PortfolioView: React.FC = () => {
       }
 
       const queryString = params.toString();
-      const url = queryString ? `/api/portfolios/rebalance_json/${pf}?${queryString}` : `/api/portfolios/rebalance_json/${pf}`;
+      const endpoint = queryString 
+        ? `/api/portfolios/rebalance_json/${pf}?${queryString}`
+        : `/api/portfolios/rebalance_json/${pf}`;
 
-      const res = await fetch(url);
+      const res = await fetch(endpoint);
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || errData.detail || `Error (${res.status}): al cargar datos del portfolio`);
+        const errJson = await res.json();
+        throw new Error(errJson.error || 'Error al calcular rebalanceo.');
       }
-      const json: PortfolioDataResponse = await res.json();
+      const json = await res.json();
       setData(json);
-      if (json.anchor) setAnchor(json.anchor);
-      if (json.qty) setQty(json.qty);
-    } catch (err: any) {
-      setError(err.message || 'Error desconocido');
+      setAnchor(json.anchor || '');
+      setQty(json.qty || 1);
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || 'Error de conexión con el servidor.');
     } finally {
       setLoading(false);
     }
@@ -204,6 +223,7 @@ export const PortfolioView: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
     const init = async () => {
+      fetchTrashCount();
       const pkeys = await fetchPortfoliosList();
       if (!isMounted) return;
       if (pkeys && pkeys.length > 0) {
@@ -254,9 +274,6 @@ export const PortfolioView: React.FC = () => {
       alert('No se pueden eliminar las carteras predeterminadas (BMB y BAL).');
       return;
     }
-    if (!window.confirm(`¿Estás seguro de eliminar la cartera "${selectedPf.toUpperCase()}"?`)) {
-      return;
-    }
 
     try {
       const res = await fetch(`/api/portfolios/delete_json/${selectedPf}`, { method: 'DELETE' });
@@ -266,8 +283,9 @@ export const PortfolioView: React.FC = () => {
         const nextPf = updatedList[0] || 'bmb';
         setSelectedPf(nextPf);
         fetchRebalanceData(nextPf);
+        fetchTrashCount();
       } else {
-        alert(data.error || 'Error al eliminar cartera.');
+        alert(data.error || 'Error al mover cartera a papelera.');
       }
     } catch (e) {
       console.error(e);
@@ -343,12 +361,25 @@ export const PortfolioView: React.FC = () => {
               <button
                 onClick={handleDeletePortfolio}
                 className="h-10 px-3 rounded-xl bg-white/5 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 font-bold text-xs flex items-center transition-all cursor-pointer"
-                title={`Eliminar cartera ${selectedPf.toUpperCase()}`}
+                title={`Enviar cartera ${selectedPf.toUpperCase()} a la papelera`}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
             </>
           )}
+
+          <button
+            onClick={() => setIsTrashModalOpen(true)}
+            className="h-10 px-3 rounded-xl bg-white/5 hover:bg-amber-500/20 text-zinc-400 hover:text-amber-400 border border-white/10 hover:border-amber-500/30 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer relative"
+            title="Papelera de reciclaje de carteras"
+          >
+            <Archive className="w-4 h-4" />
+            {trashCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[10px] font-mono font-bold leading-none">
+                {trashCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -651,6 +682,18 @@ export const PortfolioView: React.FC = () => {
           setSelectedPf(newName);
           fetchRebalanceData(newName);
         }}
+      />
+
+      <PortfolioTrashModal
+        isOpen={isTrashModalOpen}
+        onClose={() => setIsTrashModalOpen(false)}
+        onRestore={async (restoredPfKey) => {
+          await fetchPortfoliosList();
+          setSelectedPf(restoredPfKey);
+          fetchRebalanceData(restoredPfKey);
+          fetchTrashCount();
+        }}
+        onTrashChanged={fetchTrashCount}
       />
     </div>
   );

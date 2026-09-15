@@ -127,6 +127,18 @@ def check_database():
         else:
             print("  ⚠️ Archivo historical_indices.json no encontrado.")
 
+        # Verificar base de datos de Papelera de Reciclaje de Portfolios
+        trash_path = ROOT_DIR / "data" / "portfolios_trash.json"
+        if trash_path.exists():
+            with open(trash_path, "r", encoding="utf-8") as f:
+                trash_data = json.load(f)
+            if isinstance(trash_data, list):
+                print(f"  ✅ Papelera de Portfolios: {len(trash_data)}/7 carteras archivadas (política FIFO activa).")
+            else:
+                print("  ❌ Formato JSON inválido en portfolios_trash.json (debe ser una lista).")
+        else:
+            print("  ⚠️ Archivo portfolios_trash.json no encontrado.")
+
         return True
     except Exception as e:
         print(f"  ❌ Error al leer la base de datos: {e}")

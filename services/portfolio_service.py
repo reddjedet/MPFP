@@ -4,8 +4,103 @@ from typing import Any, Optional, Dict, List, Tuple
 from services.atomic_persistence import AtomicJsonDatabase
 import pandas as pd
 
+from datetime import datetime
+
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "portfolios.json"
 _db = AtomicJsonDatabase(DB_PATH)
+
+TRASH_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "portfolios_trash.json"
+_trash_db = AtomicJsonDatabase(TRASH_DB_PATH)
+MAX_TRASH_CAPACITY = 7
+
+def load_portfolios_trash() -> list[dict]:
+    """Carga la lista de carteras en papelera de reciclaje."""
+    data = _trash_db.load()
+    if isinstance(data, list):
+        return data
+    return []
+
+def save_portfolios_trash(data: list[dict]) -> None:
+    """Guarda la lista de carteras en papelera de reciclaje con límite máximo de 7."""
+    # Aplicar política FIFO: retener solo las últimas MAX_TRASH_CAPACITY carteras
+    pruned = data[-MAX_TRASH_CAPACITY:] if len(data) > MAX_TRASH_CAPACITY else data
+    _trash_db.save(pruned)
+
+def move_portfolio_to_trash(pf_clean: str) -> dict:
+    """
+    Traslada una cartera activa a la papelera de reciclaje.
+    Si la papelera supera las 7 carteras, la más antigua se elimina definitivamente (FIFO).
+    """
+    if pf_clean.lower() in ["bmb", "bal"]:
+        return {"success": False, "error": "No se puede eliminar el portfolio predeterminado (BMB o BAL)."}
+
+    portfolios_data = load_portfolios()
+    if pf_clean not in portfolios_data:
+        return {"success": False, "error": f"La cartera '{pf_clean}' no existe."}
+
+    pf_data = portfolios_data.pop(pf_clean)
+    save_portfolios(portfolios_data)
+
+    trash = load_portfolios_trash()
+    # Filtrar si ya existía una entrada previa con el mismo id
+    trash = [item for item in trash if item.get("id") != pf_clean]
+
+    entry = {
+        "id": pf_clean,
+        "name": pf_clean,
+        "data": pf_data,
+        "deleted_at": datetime.now().isoformat(),
+        "asset_count": len(pf_data.get("assets", {})),
+        "mode": pf_data.get("mode", "weights")
+    }
+    trash.append(entry)
+    save_portfolios_trash(trash)
+
+    updated_trash = load_portfolios_trash()
+    return {
+        "success": True,
+        "moved_to_trash": pf_clean,
+        "trash_count": len(updated_trash),
+        "max_capacity": MAX_TRASH_CAPACITY
+    }
+
+def restore_portfolio_from_trash(pf_clean: str) -> dict:
+    """
+    Rescata/restaura una cartera desde la papelera de reciclaje al catálogo activo.
+    """
+    trash = load_portfolios_trash()
+    found = None
+    for item in trash:
+        if item.get("id") == pf_clean or item.get("name") == pf_clean:
+            found = item
+            break
+
+    if not found:
+        return {"success": False, "error": f"La cartera '{pf_clean}' no se encuentra en la papelera."}
+
+    # Remover de la papelera
+    trash = [item for item in trash if item.get("id") != pf_clean and item.get("name") != pf_clean]
+    _trash_db.save(trash)
+
+    # Reinsertar en portfolios activos
+    portfolios_data = load_portfolios()
+    portfolios_data[pf_clean] = found.get("data", {"mode": "weights", "assets": {}})
+    save_portfolios(portfolios_data)
+
+    return {
+        "success": True,
+        "restored": pf_clean,
+        "portfolio": portfolios_data[pf_clean]
+    }
+
+def delete_permanently_from_trash(pf_clean: str) -> dict:
+    """
+    Elimina definitivamente una cartera individual que se encuentra en la papelera.
+    """
+    trash = load_portfolios_trash()
+    new_trash = [item for item in trash if item.get("id") != pf_clean and item.get("name") != pf_clean]
+    _trash_db.save(new_trash)
+    return {"success": True, "purged": pf_clean}
 
 def load_portfolios() -> dict:
     data = _db.load()
@@ -524,6 +619,7 @@ SECTOR_MAP: dict[str, dict[str, str]] = {
     "LKOD": {"id": "energy", "name": "Energía & Petróleo"},
     "NG": {"id": "energy", "name": "Energía & Utilities"},
     "NGG": {"id": "energy", "name": "Energía & Utilities"},
+    "NEE": {"id": "energy", "name": "Energía & Utilities", "industry": "Energía limpia, renovable y eléctrica"},
     "NNE": {"id": "energy", "name": "Energía & Industrial", "industry": "Tecnología nuclear avanzada y microreactores"},
     "NUE": {"id": "energy", "name": "Energía & Utilities"},
     "OGZD": {"id": "energy", "name": "Energía & Petróleo"},
