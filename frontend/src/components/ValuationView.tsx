@@ -165,16 +165,22 @@ export const ValuationView: React.FC = () => {
         if (res.ok) {
           const json = await res.json();
           setSectors(json.sectors || []);
-          if (json.selected_profile) {
-            setProfile(json.selected_profile);
-            const initialM: Record<string, number> = {};
-            json.selected_profile.fields.forEach((f: ValuationField) => {
-              initialM[f.key] = f.default;
-            });
-            setMetrics(initialM);
-          }
-          if (json.initial_eval) {
-            setResult(json.initial_eval);
+          const savedTicker = localStorage.getItem('finapp_valuation_ticker');
+          if (savedTicker) {
+            localStorage.removeItem('finapp_valuation_ticker');
+            handleSelectTicker(savedTicker);
+          } else {
+            if (json.selected_profile) {
+              setProfile(json.selected_profile);
+              const initialM: Record<string, number> = {};
+              json.selected_profile.fields.forEach((f: ValuationField) => {
+                initialM[f.key] = f.default;
+              });
+              setMetrics(initialM);
+            }
+            if (json.initial_eval) {
+              setResult(json.initial_eval);
+            }
           }
         }
       } catch (e) {
@@ -184,6 +190,15 @@ export const ValuationView: React.FC = () => {
       }
     };
     fetchInitial();
+
+    const handleRemoteVal = (e: any) => {
+      const tk = e.detail;
+      if (tk) {
+        handleSelectTicker(tk);
+      }
+    };
+    window.addEventListener('finapp_open_valuation', handleRemoteVal);
+    return () => window.removeEventListener('finapp_open_valuation', handleRemoteVal);
   }, []);
 
   // When selectedTicker changes, fetch its profile & trigger evaluation

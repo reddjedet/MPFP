@@ -167,37 +167,83 @@ export const EarningsView: React.FC = () => {
         );
       },
     }),
-    columnHelper.accessor('status_text', {
-      header: 'PRÓXIMO REPORTE',
+    columnHelper.accessor('delta_days', {
+      header: 'PRÓXIMO REPORTE (DÍAS)',
       cell: info => {
         const row = info.row.original;
+        const d = info.getValue();
         const isPast = row.status_tier === 'past';
         const isCurrent = row.status_tier === 'current_month';
         const isNext = row.status_tier === 'next_month';
 
-        let badgeStyle = 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-white/5 dark:text-zinc-300 dark:border-white/10';
-        if (isCurrent) {
-          badgeStyle = 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/40 shadow-sm shadow-red-500/10 animate-pulse';
-        } else if (isNext) {
-          badgeStyle = 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/15 dark:text-orange-400 dark:border-orange-500/30';
-        } else if (isPast) {
-          badgeStyle = 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-zinc-800 dark:text-zinc-500 dark:border-zinc-700';
+        let badgeText = '';
+        let badgeStyle = 'bg-white/5 text-zinc-300 border-white/10';
+
+        if (d === 0) {
+          badgeText = '🚨 ¡Reporta hoy!';
+          badgeStyle = 'bg-red-500/20 text-red-400 border-red-500/40 font-black animate-pulse shadow-sm shadow-red-500/20';
+        } else if (d === 1) {
+          badgeText = '⚡ Mañana (1d)';
+          badgeStyle = 'bg-amber-500/20 text-amber-400 border-amber-500/40 font-bold';
+        } else if (d !== null && d !== undefined && d > 1) {
+          if (d < 14) {
+            badgeText = `en ${d} días`;
+            badgeStyle = 'bg-amber-500/20 text-amber-300 border-amber-500/30 font-bold';
+          } else if (isCurrent) {
+            badgeText = `en ${d} días`;
+            badgeStyle = 'bg-blue-500/15 text-blue-300 border-blue-500/30 font-semibold';
+          } else {
+            badgeText = `en ${d} días`;
+            badgeStyle = 'bg-white/5 text-zinc-300 border-white/10 font-mono';
+          }
+        } else if (d !== null && d !== undefined && d < 0) {
+          badgeText = `hace ${Math.abs(d)} días`;
+          badgeStyle = 'bg-zinc-800/60 text-zinc-500 border-zinc-700 font-mono';
+        } else {
+          badgeText = row.status_text || (row.target_month_name ? `Mes de ${row.target_month_name}` : '—');
+          badgeStyle = isCurrent 
+            ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+            : isNext 
+            ? 'bg-orange-500/15 text-orange-400 border-orange-500/30'
+            : isPast
+            ? 'bg-zinc-800/60 text-zinc-500 border-zinc-700'
+            : 'bg-white/5 text-zinc-400 border-white/10';
         }
 
         return (
-          <div className="flex items-center gap-2">
-            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border uppercase tracking-wider ${badgeStyle}`}>
-              {info.getValue()}
+          <div className="relative group/tip inline-flex items-center gap-2 cursor-help">
+            <span className={`text-[11px] px-2.5 py-1 rounded-lg border uppercase tracking-wider font-mono ${badgeStyle}`}>
+              {badgeText}
             </span>
-            {row.delta_days !== null && row.delta_days !== undefined && row.delta_days >= 0 && (
-              <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">
-                ({row.delta_days === 0 ? 'Hoy' : `en ${row.delta_days}d`})
-              </span>
-            )}
+            {/* Tooltip flotante al hover con fecha exacta */}
+            <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/tip:flex flex-col gap-1 z-50 bg-[#121318] border border-white/20 text-[11px] p-2.5 rounded-lg shadow-2xl pointer-events-none whitespace-nowrap text-left">
+              <div className="text-white font-bold flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                <span>Reporte Corporativo ({row.ticker})</span>
+              </div>
+              <div className="text-zinc-300 font-mono text-xs">
+                {row.confirmed_date ? (
+                  <>Fecha exacta: <strong className="text-blue-300 font-bold">{row.confirmed_date_formatted || row.confirmed_date}</strong> (Confirmada)</>
+                ) : (
+                  <>Fecha tentativa: <strong className="text-amber-300 font-medium">No confirmada aún</strong></>
+                )}
+              </div>
+              {row.typical_window && (
+                <div className="text-[10px] text-zinc-400">
+                  Ventana histórica habitual: {row.typical_window}
+                </div>
+              )}
+              {d !== null && d !== undefined && (
+                <div className="text-[10px] text-zinc-400 border-t border-white/10 pt-1 mt-0.5 font-mono">
+                  {d >= 0 ? `Faltan exactamente ${d} días corridos` : `Reportó hace ${Math.abs(d)} días`}
+                </div>
+              )}
+            </div>
           </div>
         );
       },
     }),
+
     columnHelper.accessor('confirmed_date', {
       header: 'FECHA CONFIRMADA',
       cell: info => {

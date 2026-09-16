@@ -8,6 +8,7 @@ import {
   useReactTable, 
   SortingState 
 } from '@tanstack/react-table';
+import { useTicker360 } from '../context/Ticker360Context';
 import { 
   Search, 
   Plus, 
@@ -67,7 +68,11 @@ const KNOWN_ETFS = new Set([
 const DEFAULT_TICKERS = ["AAPL", "NVDA", "MSFT", "MELI", "LLY", "GOOGL", "AMZN", "SPY", "QQQ", "VIST", "MSTR", "JPM"];
 const SUGGESTED_TICKERS = ["AAPL", "NVDA", "MSFT", "MELI", "LLY", "GOOGL", "AMZN", "TSLA", "META", "SPY", "QQQ", "VIST", "MSTR", "JPM", "KO", "MCD", "BRKB", "AMD", "PLTR", "NU"];
 
-export const CedearsView: React.FC = () => {
+export interface CedearsViewProps {
+  onNavigateToTab?: (area: any, subTab: string) => void;
+}
+
+export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => {
   const [watchlist, setWatchlist] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('finapp_cedears_watchlist_v2');
@@ -87,6 +92,7 @@ export const CedearsView: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { openTicker360 } = useTicker360();
 
   // Catálogo completo de CEDEARs para autocompletado inteligente
   const [catalog, setCatalog] = useState<CedearCatalogItem[]>([]);
@@ -268,25 +274,29 @@ export const CedearsView: React.FC = () => {
     }
   };
 
-  // Filtered quotes based on search input & category filter
+  // Filtrado reactivo de cotizaciones
   const filteredQuotes = useMemo(() => {
     return quotes.filter(q => {
-      // Text search
-      const matchesSearch = q.symbol.toLowerCase().includes(searchFilter.toLowerCase().trim());
-      if (!matchesSearch) return false;
+      // 1. Filtro de búsqueda por texto (ticker o nombre)
+      if (searchFilter) {
+        const needle = searchFilter.toLowerCase();
+        const matchesSymbol = q.symbol.toLowerCase().includes(needle);
+        const catItem = catalog.find(c => c.ticker === q.symbol);
+        const matchesName = catItem ? catItem.name.toLowerCase().includes(needle) : false;
+        if (!matchesSymbol && !matchesName) return false;
+      }
 
-      // Category filter
+      // 2. Filtro por pills de categorías
       if (activeFilter === 'in_portfolio') {
-        return !!q.in_portfolio;
-      }
-      if (activeFilter === 'rsi_alerts') {
-        return q.alert || (q.rsi !== null && (q.rsi >= 65 || q.rsi <= 35));
-      }
-      if (activeFilter === 'valuation_signals') {
-        return !!q.gf_signal || !!q.pfcf_signal;
-      }
-      if (activeFilter === 'earnings') {
-        return !!q.earnings_badge;
+        return q.in_portfolio;
+      } else if (activeFilter === 'rsi_alerts') {
+        return q.rsi !== null && (q.rsi >= 65 || q.rsi <= 35);
+      } else if (activeFilter === 'valuation_signals') {
+        const hasGf = q.gf_signal && q.gf_signal.badge_text.toLowerCase().includes('margen');
+        const hasPfcf = q.pfcf_signal && (q.pfcf_signal.state_key === 'optimo' || q.pfcf_signal.state_key === 'compra_optima');
+        return hasGf || hasPfcf;
+      } else if (activeFilter === 'earnings') {
+        return Boolean(q.earnings_badge);
       }
       return true;
     });
@@ -303,7 +313,14 @@ export const CedearsView: React.FC = () => {
         return (
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-1.5">
-              <span className="font-black text-slate-900 dark:text-white text-sm tracking-wide">{info.getValue()}</span>
+              <button
+                type="button"
+                onClick={() => openTicker360(info.getValue(), row)}
+                className="font-black text-slate-900 dark:text-white text-sm tracking-wide hover:text-blue-400 hover:underline transition-colors text-left cursor-pointer"
+                title={`Ver Ficha 360° de ${info.getValue()}`}
+              >
+                {info.getValue()}
+              </button>
               {isEtf && (
                 <span 
                   className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40"
@@ -508,7 +525,7 @@ export const CedearsView: React.FC = () => {
       </div>
 
       {/* ETF Sector Thermometer */}
-      <EtfSectorThermometer />
+      <EtfSectorThermometer onNavigateToRotation={() => onNavigateToTab?.('market', 'etfs')} />
 
       {/* Ticker Search & Quick Add Bar */}
       <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-5 rounded-2xl shadow-sm flex flex-col gap-4">
@@ -687,7 +704,14 @@ export const CedearsView: React.FC = () => {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white">{quote.symbol}</span>
+                    <button
+                      type="button"
+                      onClick={() => openTicker360(quote.symbol, quote)}
+                      className="text-lg font-black tracking-tight text-slate-900 dark:text-white hover:text-blue-400 hover:underline transition-colors text-left cursor-pointer"
+                      title={`Ver Ficha 360° de ${quote.symbol}`}
+                    >
+                      {quote.symbol}
+                    </button>
                     {quote.in_portfolio && (
                       <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/40">
                         Cartera

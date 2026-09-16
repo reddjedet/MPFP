@@ -8,24 +8,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
 
 # --- Entornos Virtuales Python ---
 venv/
@@ -51,15 +36,10 @@ pnpm-debug.log*
 # --- Pruebas, Cobertura y Diagnóstico ---
 .pytest_cache/
 .tox/
-.nox/
 .coverage
 .coverage.*
 .cache
 coverage/
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
 test_output.txt
 
 # --- Logs, PIDs y Procesos de Ejecución ---
@@ -89,10 +69,6 @@ data/.tmp_*
 # --- IDEs, Editores y Entorno de Desarrollo ---
 .vscode/
 .idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
 *.swp
 *~
 .antigravity/
@@ -101,50 +77,43 @@ data/.tmp_*
 .DS_Store
 .DS_Store?
 ._*
-.Spotlight-V100
 .Trashes
-ehthumbs.db
 Thumbs.db
 .directory
 
 # --- Antigravity & Agent Framework (Local Only) ---
 .agents/
-.opencode/open_env.json
+.opencode/
 scratch/
-
-# Caché persistente de mercado
-data/.cache_market.json
-data/.cache_market.tmp
+brain/
+WORKFLOW.md
 
 # --- Datos Privados del Usuario (Local Only) ---
+data/.cache_market.json
+data/.cache_market.tmp
 data/user_holdings.json
 data/ppc_values.json
+data/user_valuation_inputs.json
+data/portfolios.json
+data/portfolios_trash.json
 
-
-# --- AI Agents, LLM Assistants & Runtimes (Gentle-AI, Pi/ATL, Engram, Aider, Claude, Cursor) ---
-# Gentle-AI
+# --- AI Agents, LLM Assistants & Runtimes ---
 .gentle/
 .gentle-ai/
 gentle/
 gentle.json
 *.gentle*
-
-# Pi / ATL
 .atl/
 .pi/
 .pi_*
 *.skill-registry*
 skill-registry.md
-
-# Engram
 .engram/
 .engram_cache/
 engram/
 engram.db
 engram.json
 *.engram*
-
-# Other AI Assistants & LLM tooling
 .aider*
 .claude/
 claude.json
@@ -153,4 +122,3 @@ claude.json
 .codeium/
 .continue/
 .cody/
-.opencode/

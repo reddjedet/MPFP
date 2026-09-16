@@ -1,12 +1,14 @@
+from typing import Optional
 from fastapi import APIRouter, Form, Query
 from fastapi.responses import JSONResponse
 from services.portfolio_service import get_all_portfolio_tickers, get_ticker_sector
 from services.cedear_service import get_ticker_data, get_multiple_tickers_data, CEDEAR_RATIOS, load_cedear_ratios
 from services.security_service import sanitize_ticker
-from services.earnings_service import get_ticker_earnings_badge, load_earnings_calendar
+from services.earnings_service import get_ticker_earnings_badge, load_earnings_calendar, calculate_earnings_status
 from services.fair_value_service import load_fair_values, evaluate_fair_value_signal
 from services.ppc_service import load_ppc_values, evaluate_ppc_return
 from services.pfcf_service import get_pfcf_value, evaluate_fcf_rsi_state, load_pfcf_values
+from services.rotation_service import load_user_holdings
 
 router = APIRouter()
 
@@ -140,7 +142,7 @@ def get_cedears_quotes_json(tickers: str = Query(None)):
     })
 
 @router.get("/quote_json/{ticker}", response_class=JSONResponse)
-def get_single_cedear_json(ticker: str):
+def get_single_cedear_json(ticker: str, portfolio: Optional[str] = Query(None)):
     ticker_clean = sanitize_ticker(ticker)
     if not ticker_clean:
         return JSONResponse({"error": "Ticker inválido"}, status_code=400)
@@ -159,27 +161,82 @@ def get_single_cedear_json(ticker: str):
     rsi_val = data.get("rsi")
     ppc_val = ppc_map.get(ticker_clean)
 
+    # Sector, Compañía y metadatos de activo
+    sec_info = get_ticker_sector(ticker_clean)
+    company_name = sec_info.get("name") or ticker_clean
+    sector_name = sec_info.get("name", "Otros Activos")
+    sector_id = sec_info.get("id", "other")
+    is_etf = sec_info.get("is_etf", False)
+
+    # Detalle de balance
+    cal_item = earnings_cal.get(ticker_clean)
+    earnings_detail = None
+    if not cal_item and ticker_clean == "BRKB":
+        cal_item = earnings_cal.get("BRK.B")
+    if cal_item:
+        st = calculate_earnings_status(ticker_clean, cal_item)
+        if st.get("company"):
+            company_name = st.get("company")
+        delta_d = st.get("delta_days")
+        earnings_detail = {
+            "company": st.get("company", company_name),
+            "fiscal_close": st.get("fiscal_close", "—"),
+            "typical_window": st.get("typical_window", "—"),
+            "confirmed_date": st.get("confirmed_date_formatted", "—"),
+            "delta_days": delta_d,
+            "target_month_name": st.get("target_month_name", ""),
+            "status_text": st.get("status_text", ""),
+            "status_tier": st.get("status_tier", ""),
+            "badge_class": st.get("badge_class", ""),
+            "is_urgent": delta_d is not None and 0 <= delta_d < 14
+        }
+
+    # Tenencia en cartera activa
+    user_holdings = load_user_holdings(portfolio)
+    nominals = user_holdings.get("holdings", {}).get(ticker_clean, 0)
+    pos_val_ars = round(nominals * loc_p, 2) if (loc_p and nominals) else 0.0
+
+    # Margen de seguridad vs GuruFocus Fair Value
+    gf_val = fair_values_map.get(ticker_clean)
+    discount_pct = None
+    if gf_val and adr_p and gf_val > 0:
+        discount_pct = round(((gf_val - adr_p) / gf_val) * 100, 1)
+
     quote = {
         "symbol": ticker_clean,
+        "company_name": company_name,
+        "sector_id": sector_id,
+        "sector_name": sector_name,
+        "is_etf": is_etf,
         "adr": adr_p,
         "local": loc_p,
         "ratio": data.get("ratio", CEDEAR_RATIOS.get(ticker_clean, 1.0)),
         "rsi": rsi_val,
         "alert": data.get("alert", False),
         "earnings_badge": get_ticker_earnings_badge(ticker_clean, cal=earnings_cal),
-        "gf_value": fair_values_map.get(ticker_clean),
+        "earnings_detail": earnings_detail,
+        "gf_value": gf_val,
+        "discount_pct": discount_pct,
         "gf_signal": evaluate_fair_value_signal(ticker_clean, adr_p, gf_val_map=fair_values_map) if adr_p else None,
         "ppc": ppc_val,
         "ppc_return": evaluate_ppc_return(ticker_clean, loc_p, ppc_val) if (loc_p and ppc_val) else None,
         "pfcf": pfcf_map.get(ticker_clean),
-        "pfcf_signal": evaluate_fcf_rsi_state(ticker_clean, pfcf_map.get(ticker_clean), rsi_val)
+        "pfcf_signal": evaluate_fcf_rsi_state(ticker_clean, pfcf_map.get(ticker_clean), rsi_val),
+        "portfolio": portfolio or "bmb",
+        "nominals": nominals,
+        "position_value_ars": pos_val_ars
     }
     return JSONResponse(quote)
 
 
-from services.etf_service import fetch_sector_etf_thermometer
+from services.etf_service import fetch_sector_etf_thermometer, fetch_etf_rotation_analysis
 
 @router.get("/etf_thermometer", response_class=JSONResponse)
 def get_etf_thermometer_endpoint():
     data = fetch_sector_etf_thermometer()
+    return JSONResponse(data)
+
+@router.get("/etf_rotation_analysis", response_class=JSONResponse)
+def get_etf_rotation_analysis_endpoint(universe: str = "sectors"):
+    data = fetch_etf_rotation_analysis(universe=universe)
     return JSONResponse(data)

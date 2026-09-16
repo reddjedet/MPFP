@@ -109,6 +109,8 @@ class TestPortfolioCalculations(unittest.TestCase):
         self.assertEqual(item["ppc_base_100"], 110.0)
         self.assertAlmostEqual(item["ppc_unit"], 1.1, places=4)
         self.assertGreater(item["projected_payoff"], 1000.0)
+        self.assertIn("tna_compra", item)
+        self.assertIn("weighted_tna_compra", res)
         self.assertEqual(res["nearest_maturity_ticker"], "S30S6")
         self.assertTrue(res["has_imminent_maturity"])
 

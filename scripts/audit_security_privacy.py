@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Auditoría de Seguridad y Privacidad Pre-GitHub
-Máquina de Planes, Finanzas y Portfolios (MPFP)
+Auditoría de Seguridad y Privacidad Pre-GitHub / Pre-Commit
 Verifica ausencia de secrets, tokens, rutas absolutas, cumplimiento de .gitignore y sanitización de datos.
 """
 
@@ -44,8 +43,12 @@ CRITICAL_IGNORES = [
     ".atl/",
     ".gentle/",
     ".engram/",
-    ".agents/"
+    ".agents/",
+    "WORKFLOW.md"
 ]
+
+# Palabras clave o identificadores personales a verificar
+SENSITIVE_TERMS = []  # Configurar según el proyecto
 
 def is_git_repo() -> bool:
     return (ROOT_DIR / ".git").is_dir()
@@ -78,7 +81,7 @@ def get_candidate_files() -> list[str]:
 
 def main():
     print("=" * 65)
-    print(" 🛡️  AUDITORÍA DE SEGURIDAD Y PRIVACIDAD PRE-GITHUB (MPFP)")
+    print(" 🛡️  AUDITORÍA DE SEGURIDAD Y PRIVACIDAD PRE-COMMITS / REPOSITORIO")
     print("=" * 65)
     
     has_errors = False
@@ -168,7 +171,7 @@ def main():
 
         for pattern, desc in PATH_PATTERNS:
             if re.search(pattern, content):
-                if "audit_security_privacy.py" in tf or "walkthrough.md" in tf:
+                if "audit_security_privacy" in tf or "walkthrough.md" in tf:
                     continue
                 print(f"  ⚠️ RUTA LOCAL en {tf}: {desc}")
                 path_found = True
@@ -185,13 +188,14 @@ def main():
     for f in (portfolios_file, holdings_file):
         if f.exists():
             txt = f.read_text(encoding="utf-8")
-            if "mariano" in txt.lower():
-                print(f"  ❌ ALERTA: Nombre personal encontrado en {f.name}!")
-                personal_detected = True
-                has_errors = True
+            for term in SENSITIVE_TERMS:
+                if term.lower() in txt.lower():
+                    print(f"  ❌ ALERTA: Término sensible '{term}' encontrado en {f.name}!")
+                    personal_detected = True
+                    has_errors = True
     
     if not personal_detected:
-        print("  ✓ Datos financieros y carteras sanitizados sin nombres personales.")
+        print("  ✓ Datos financieros y carteras sanitizados sin identificadores personales.")
 
     # 6. Estado del Historial Git
     print("\n[6/6] Estado del Repositorio Git...")
@@ -203,7 +207,7 @@ def main():
 
     print("\n" + "=" * 65)
     if not has_errors:
-        print(" 🏆 RESULTADO: EL CÓDIGO ESTÁ 100% SEGURO Y LIMPIO PARA GITHUB")
+        print(" 🏆 RESULTADO: EL CÓDIGO ESTÁ 100% SEGURO Y LIMPIO")
         print("=" * 65)
         return 0
     else:

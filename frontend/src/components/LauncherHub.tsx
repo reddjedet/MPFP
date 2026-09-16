@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  PieChart, 
+  Wallet,
   TrendingUp, 
   FlaskConical, 
   ChevronRight,
@@ -48,28 +48,28 @@ export const LauncherHub: React.FC<LauncherHubProps> = ({
             onClick={() => onSelectArea('portfolios', 'portfolios')}
             className="w-full h-11 px-4 rounded-[3px] bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2.5 cursor-pointer shadow-sm border border-blue-500/40"
           >
-            <PieChart className="w-4 h-4 text-white shrink-0" />
-            <span>Portfolios & Tenencias</span>
+            <Wallet className="w-4 h-4 text-white shrink-0" />
+            <span>Centro de Cartera</span>
           </button>
 
           {/* FILA INFERIOR: 2 BOTONES SECUNDARIOS SIMÉTRICOS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
-            {/* Secundario Izquierdo: Monitor de Mercado */}
+            {/* Secundario Izquierdo: Radar de Mercado */}
             <button
               onClick={() => onSelectArea('market', 'cedears')}
               className="w-full h-11 px-4 rounded-[3px] bg-[#202124] hover:bg-[#2a2c33] active:bg-[#1a1b1e] border border-white/10 hover:border-white/20 text-zinc-200 hover:text-white font-medium text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
             >
               <TrendingUp className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Monitor de Mercado</span>
+              <span>Radar de Mercado</span>
             </button>
 
-            {/* Secundario Derecho: Laboratorio Cuantitativo */}
+            {/* Secundario Derecho: Estrategia & Lab */}
             <button
               onClick={() => onSelectArea('lab', 'markowitz')}
               className="w-full h-11 px-4 rounded-[3px] bg-[#202124] hover:bg-[#2a2c33] active:bg-[#1a1b1e] border border-white/10 hover:border-white/20 text-zinc-200 hover:text-white font-medium text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
             >
               <FlaskConical className="w-4 h-4 text-purple-400 shrink-0" />
-              <span>Laboratorio Cuantitativo</span>
+              <span>Estrategia & Lab</span>
             </button>
           </div>
         </div>
@@ -85,7 +85,7 @@ export const LauncherHub: React.FC<LauncherHubProps> = ({
               onClick={() => {
                 if (lastVisitedTab === 'portfolios' || lastVisitedTab === 'rotation') {
                   onSelectArea('portfolios', lastVisitedTab);
-                } else if (lastVisitedTab === 'cedears' || lastVisitedTab === 'indices' || lastVisitedTab === 'renta-fija' || lastVisitedTab === 'earnings') {
+                } else if (lastVisitedTab === 'cedears' || lastVisitedTab === 'etfs' || lastVisitedTab === 'indices' || lastVisitedTab === 'renta-fija' || lastVisitedTab === 'earnings') {
                   onSelectArea('market', lastVisitedTab);
                 } else {
                   onSelectArea('lab', lastVisitedTab);

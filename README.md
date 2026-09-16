@@ -171,7 +171,7 @@ cp .env.example .env
 ### Ejecutar Pruebas y Diagnóstico Integral
 
 ```bash
-./test.sh
+./scripts/test.sh
 ```
 
 El pipeline ejecuta en $< 3$ segundos:

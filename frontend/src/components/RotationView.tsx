@@ -34,6 +34,7 @@ import {
 } from '@tanstack/react-table';
 import { HoldingsDrawer } from './rotation/HoldingsDrawer';
 import { useChartTheme } from '../hooks/useChartTheme';
+import { useTicker360 } from '../context/Ticker360Context';
 
 echarts.use([
   BarChart,
@@ -140,6 +141,7 @@ export const RotationView: React.FC = () => {
   const [calculatorOpen, setCalculatorOpen] = useState<boolean>(false);
   const [calculatorTicker, setCalculatorTicker] = useState<string>('');
   const [sorting, setSorting] = useState<SortingState>([]);
+  const { openTicker360 } = useTicker360();
 
   // Escuchar cambios remotos de cartera activa (ej: desde Cartera & Rebalanceo)
   useEffect(() => {
@@ -261,7 +263,14 @@ export const RotationView: React.FC = () => {
         return (
           <div className="flex items-center justify-between gap-1.5 group">
             <div className="flex flex-col">
-              <span className="font-extrabold text-slate-900 dark:text-white text-sm tracking-wide">{info.getValue()}</span>
+              <button
+                type="button"
+                onClick={() => openTicker360(info.getValue(), row)}
+                className="font-extrabold text-slate-900 dark:text-white text-sm tracking-wide hover:text-blue-400 hover:underline transition-colors text-left cursor-pointer"
+                title={`Ver Ficha 360° de ${info.getValue()}`}
+              >
+                {info.getValue()}
+              </button>
               <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">Ratio {row.ratio}:1</span>
             </div>
             <button

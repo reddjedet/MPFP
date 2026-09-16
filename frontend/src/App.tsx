@@ -1,8 +1,12 @@
-import React, { useState, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
+import { Ticker360Provider } from './context/Ticker360Context';
+import { Ticker360Drawer } from './components/common/Ticker360Drawer';
+import { CommandPalette } from './components/ui/CommandPalette';
 import { LauncherHub, WorkspaceArea } from './components/LauncherHub';
 import { WorkspaceHeader } from './components/WorkspaceHeader';
 import { PortfolioView } from './components/PortfolioView';
+import { UnifiedPortfolioView } from './components/portfolio/UnifiedPortfolioView';
 import { MarkowitzLab } from './components/MarkowitzLab';
 import { CedearsView } from './components/CedearsView';
 import { MarketIndicesView } from './components/MarketIndicesView';
@@ -11,6 +15,7 @@ import { ValuationView } from './components/ValuationView';
 import { PerformanceView } from './components/PerformanceView';
 import { FixedIncomeView } from './components/FixedIncomeView';
 import { RotationView } from './components/RotationView';
+import { EtfRotationView } from './components/EtfRotationView';
 
 interface Props {
   children: ReactNode;
@@ -99,6 +104,20 @@ function MainLayout() {
     return 'portfolios';
   });
 
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
+
+  // Atajo global Ctrl+K / Cmd+K para CommandPalette
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
   const handleSelectArea = (area: WorkspaceArea, defaultSubTab: string) => {
     setCurrentArea(area);
     setSubTab(defaultSubTab);
@@ -147,12 +166,21 @@ function MainLayout() {
 
   if (currentArea === 'hub') {
     return (
-      <LauncherHub
-        onSelectArea={handleSelectArea}
-        rememberLastView={rememberLastView}
-        onToggleRemember={handleToggleRemember}
-        lastVisitedTab={subTab}
-      />
+      <>
+        <LauncherHub
+          onSelectArea={handleSelectArea}
+          rememberLastView={rememberLastView}
+          onToggleRemember={handleToggleRemember}
+          lastVisitedTab={subTab}
+        />
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          onNavigate={handleSelectArea}
+          onGoHome={handleGoHome}
+        />
+        <Ticker360Drawer onNavigateToTab={handleSelectArea} />
+      </>
     );
   }
 
@@ -164,13 +192,15 @@ function MainLayout() {
         onSelectArea={handleSelectArea}
         onSelectSubTab={handleSelectSubTab}
         onGoHome={handleGoHome}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
       />
 
       <main className="flex-1 p-4 md:p-8 overflow-y-auto max-w-[1600px] w-full mx-auto">
         <ErrorBoundary key={subTab}>
-          {subTab === 'portfolios' && <PortfolioView />}
-          {subTab === 'rotation' && <RotationView />}
-          {subTab === 'cedears' && <CedearsView />}
+          {subTab === 'portfolios' && <UnifiedPortfolioView initialSubTab="model" onNavigateToTab={handleSelectArea} />}
+          {subTab === 'rotation' && <UnifiedPortfolioView initialSubTab="operation" onNavigateToTab={handleSelectArea} />}
+          {subTab === 'cedears' && <CedearsView onNavigateToTab={handleSelectArea} />}
+          {subTab === 'etfs' && <EtfRotationView />}
           {subTab === 'indices' && <MarketIndicesView />}
           {subTab === 'renta-fija' && <FixedIncomeView />}
           {subTab === 'earnings' && <EarningsView />}
@@ -179,6 +209,14 @@ function MainLayout() {
           {subTab === 'performance' && <PerformanceView />}
         </ErrorBoundary>
       </main>
+
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigate={handleSelectArea}
+        onGoHome={handleGoHome}
+      />
+      <Ticker360Drawer onNavigateToTab={handleSelectArea} />
     </div>
   );
 }
@@ -186,7 +224,9 @@ function MainLayout() {
 export default function App() {
   return (
     <ThemeProvider>
-      <MainLayout />
+      <Ticker360Provider>
+        <MainLayout />
+      </Ticker360Provider>
     </ThemeProvider>
   );
 }

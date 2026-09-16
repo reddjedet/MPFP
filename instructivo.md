@@ -144,7 +144,7 @@ Auditoría por **Vía Negativa** con 6 modelos financieros según el perfil sect
    * Toda la suite en `tests/` implementa aislamiento no destructivo (`setUpClass` / `tearDownClass` con `tempfile.TemporaryDirectory()`) para garantizar cero polución de las carteras reales del usuario.
 3. **Comando de Verificación de Salud:**
    ```bash
-   ./test.sh
+   ./scripts/test.sh
    ```
 
 ---

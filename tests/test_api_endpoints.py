@@ -519,6 +519,31 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertNotIn("test_fifo_6", names_purged)
         self.assertEqual(len(names_purged), 5)
 
+    @patch("routers.cedears.get_ticker_data")
+    def test_quote_json_360_endpoint(self, mock_get_ticker):
+        mock_get_ticker.return_value = {
+            "symbol": "AAPL",
+            "adr": 220.0,
+            "local": 15000.0,
+            "ratio": 10.0,
+            "rsi": 28.5,
+            "alert": True
+        }
+        resp = self.client.get("/api/cedears/quote_json/AAPL?portfolio=min_drawdown_15")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["symbol"], "AAPL")
+        self.assertIn("company_name", data)
+        self.assertIn("sector_id", data)
+        self.assertIn("nominals", data)
+        self.assertIn("position_value_ars", data)
+        self.assertIn("rsi", data)
+        self.assertEqual(data["rsi"], 28.5)
+        
+        # Invalid ticker test
+        resp_invalid = self.client.get("/api/cedears/quote_json/!INVALID@")
+        self.assertEqual(resp_invalid.status_code, 400)
+
 if __name__ == "__main__":
     unittest.main()
 

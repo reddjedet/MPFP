@@ -7,6 +7,9 @@ export interface FixedIncomeItem {
   tipo: string;
   vence: string;
   dias: number | null;
+  dias_transcurridos?: number | null;
+  dias_totales?: number | null;
+  pct_ciclo?: number | null;
   is_imminent: boolean;
   nominals: number;
   ppc_unit: number;
@@ -16,6 +19,8 @@ export interface FixedIncomeItem {
   tem_mkt: number | null;
   tea: number | null;
   tna: number | null;
+  tna_compra?: number | null;
+  tea_compra?: number | null;
   md: number | null;
   vf_base_100: number | null;
   invested_capital: number;
@@ -27,6 +32,7 @@ export interface FixedIncomeItem {
   projected_profit_pct: number;
   target_weight_portfolio: number;
   target_weight_rf: number;
+  real_weight_rf?: number;
 }
 
 export interface FixedIncomeSummary {
@@ -43,6 +49,7 @@ export interface FixedIncomeSummary {
   total_projected_maturity_payoff: number;
   total_projected_profit_ars: number;
   total_projected_profit_pct: number;
+  weighted_tna_compra?: number | null;
   nearest_maturity_days: number | null;
   nearest_maturity_ticker: string | null;
   has_imminent_maturity: boolean;
@@ -150,13 +157,18 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
             <div className="text-xl font-mono font-bold text-blue-400 tracking-tight">
               ${summary.total_projected_maturity_payoff.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
               <span className="text-xs font-mono font-bold text-emerald-400">
                 +${summary.total_projected_profit_ars.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
               <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300">
                 +{summary.total_projected_profit_pct.toFixed(2)}% total
               </span>
+              {summary.weighted_tna_compra !== null && summary.weighted_tna_compra !== undefined && (
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                  TNA Pond: {summary.weighted_tna_compra.toFixed(1)}%
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -197,66 +209,140 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-white/10 bg-white/[0.02] text-zinc-400 uppercase font-semibold text-[10px] tracking-wider">
-                <th className="px-3 py-3">Instrumento</th>
-                <th className="px-3 py-3 text-center">Vencimiento</th>
-                <th className="px-3 py-3 text-right">Peso Obj.</th>
-                <th className="px-3 py-3 text-right">Nominales</th>
-                <th className="px-3 py-3 text-right">PPC ($)</th>
-                <th className="px-3 py-3 text-right">Spot ($)</th>
-                <th className="px-3 py-3 text-right">Val. Mercado</th>
-                <th className="px-3 py-3 text-right">Devengado PnL</th>
-                <th className="px-3 py-3 text-center">Tasa Mercado</th>
-                <th className="px-3 py-3 text-right">Cobro Finish</th>
-                <th className="px-3 py-3 text-right">Ganancia Vto.</th>
-                <th className="px-3 py-3 text-center">Acción</th>
+              {/* TIER 1: MACRO-GRUPOS DE UTILIDAD */}
+              <tr className="border-b border-white/10 bg-[#121318] text-[10px] uppercase font-mono font-bold tracking-wider">
+                <th colSpan={2} className="px-2.5 py-2 border-r border-white/10 text-blue-400 bg-blue-500/5">
+                  1. Instrumento & Plazo
+                </th>
+                <th colSpan={1} className="px-2.5 py-2 border-r border-white/10 text-purple-400 bg-purple-500/5 text-center">
+                  2. Asignación
+                </th>
+                <th colSpan={4} className="px-2.5 py-2 border-r border-white/10 text-emerald-400 bg-emerald-500/5 text-center">
+                  3. Mi Inversión (Compra)
+                </th>
+                <th colSpan={4} className="px-2.5 py-2 border-r border-white/10 text-zinc-300 bg-white/[0.02] text-center">
+                  4. Mercado Spot (Hoy)
+                </th>
+                <th colSpan={2} className="px-2.5 py-2 border-r border-white/10 text-amber-400 bg-amber-500/5 text-center">
+                  5. Al Vencimiento (Finish)
+                </th>
+                <th className="px-2 py-2 text-center text-zinc-500 bg-white/[0.01]">
+                  Acción
+                </th>
+              </tr>
+
+              {/* TIER 2: COLUMNAS CLARAS Y DIRECTAS */}
+              <tr className="border-b border-white/10 bg-white/[0.02] text-zinc-400 uppercase font-semibold text-[10px] tracking-wider font-mono">
+                {/* 1. Instrumento & Plazo */}
+                <th className="px-2.5 py-2">Instrumento</th>
+                <th className="px-2.5 py-2 text-center border-r border-white/10">Vto. & Ciclo</th>
+
+                {/* 2. Asignación */}
+                <th className="px-2.5 py-2 text-right border-r border-white/10" title="Ponderación objetivo en la cartera y tramo de renta fija">
+                  Peso Obj.
+                </th>
+
+                {/* 3. Mi Inversión */}
+                <th className="px-2.5 py-2 text-right">Nominales</th>
+                <th className="px-2.5 py-2 text-right">PPC ($)</th>
+                <th className="px-2.5 py-2 text-right">Invertido ($)</th>
+                <th className="px-2.5 py-2 text-center border-r border-white/10">TNA Compra</th>
+
+                {/* 4. Mercado Spot */}
+                <th className="px-2.5 py-2 text-right">SPOT ($)</th>
+                <th className="px-2.5 py-2 text-right">Val. Mercado</th>
+                <th className="px-2.5 py-2 text-right">Ganancia Acumulada</th>
+                <th className="px-2.5 py-2 text-center border-r border-white/10">Tasa Mercado</th>
+
+                {/* 5. Al Vencimiento */}
+                <th className="px-2.5 py-2 text-right">Cobro Finish</th>
+                <th className="px-2.5 py-2 text-right border-r border-white/10">Ganancia Vto.</th>
+
+                {/* Acción */}
+                <th className="px-2 py-2 text-center">Editar</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 font-mono">
+            <tbody className="divide-y divide-white/5 font-mono text-xs">
               {summary.items.map((item) => {
                 const isEditing = editingTicker === item.ticker;
 
                 return (
-                  <tr key={item.ticker} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-3 py-2.5 font-sans">
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-sm text-white font-mono">{item.ticker}</span>
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  <tr key={item.ticker} className="hover:bg-white/[0.02] transition-colors border-b border-white/5">
+                    {/* 1. Instrumento */}
+                    <td className="px-2.5 py-2 font-sans">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-xs text-white font-mono">{item.ticker}</span>
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-blue-500/20 text-blue-300 border border-blue-500/30 font-mono">
                           {item.tipo}
                         </span>
                       </div>
-                      <div className="text-[10px] text-zinc-400 truncate max-w-[140px]">{item.nombre}</div>
+                      <div className="text-[10px] text-zinc-400 truncate max-w-[120px]">{item.nombre}</div>
                     </td>
 
-                    <td className="px-3 py-2.5 text-center">
-                      <div className="text-zinc-200">{item.vence}</div>
+                    {/* Vto & Ciclo */}
+                    <td className="px-2.5 py-2 text-center border-r border-white/10">
+                      <div className="text-zinc-200 font-mono text-xs font-semibold">{item.vence}</div>
                       {item.dias !== null && (
-                        <span className={`inline-block text-[9px] px-1.5 py-0.2 rounded font-bold ${item.is_imminent ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'text-zinc-400'}`}>
-                          {item.dias}d
-                        </span>
+                        <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                          <span className={`inline-block text-[9px] px-1.5 py-0.2 rounded font-bold font-mono ${
+                            item.is_imminent 
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse' 
+                              : 'text-zinc-400 bg-white/5'
+                          }`}>
+                            {item.dias}d restantes
+                          </span>
+                          {item.pct_ciclo !== null && item.pct_ciclo !== undefined && (
+                            <div className="w-14 bg-black/40 h-1 rounded-full overflow-hidden mt-0.5" title={`${item.dias_transcurridos || 0}d transcurridos de ${item.dias_totales || item.dias}d (${item.pct_ciclo}%)`}>
+                              <div 
+                                className={`h-full ${item.pct_ciclo >= 80 ? 'bg-amber-400' : 'bg-blue-400'}`} 
+                                style={{ width: `${item.pct_ciclo}%` }} 
+                              />
+                            </div>
+                          )}
+                        </div>
                       )}
                     </td>
 
-                    <td className="px-3 py-2.5 text-right">
-                      <div className="text-white font-bold">{item.target_weight_portfolio.toFixed(2)}%</div>
-                      <div className="text-[10px] text-zinc-400">({item.target_weight_rf.toFixed(1)}% RF)</div>
+                    {/* 2. Asignación: Peso Objetivo con Hover Tooltip ergonómico */}
+                    <td className="px-2.5 py-2 text-right font-mono border-r border-white/10">
+                      <div className="relative group/tip inline-flex flex-col items-end cursor-help">
+                        <span className="font-bold text-white text-xs">{item.target_weight_portfolio.toFixed(2)}%</span>
+                        {item.target_weight_rf > 0 && (
+                          <span className="text-[9px] text-zinc-500 font-mono">
+                            ({item.target_weight_rf.toFixed(1)}% RF)
+                          </span>
+                        )}
+                        {/* Tooltip contextual al hover */}
+                        <div className="absolute bottom-full right-0 mb-1 hidden group-hover/tip:flex flex-col gap-0.5 z-50 bg-[#121318] border border-white/20 text-[10px] p-2 rounded shadow-2xl pointer-events-none whitespace-nowrap text-left">
+                          <span className="text-white font-bold mb-0.5">Ponderación Objetivo:</span>
+                          <span className="text-zinc-300 font-mono">Cartera Total: <strong className="text-emerald-400 font-bold">{item.target_weight_portfolio.toFixed(2)}%</strong></span>
+                          <span className="text-zinc-300 font-mono">Tramo Renta Fija: <strong className="text-blue-400 font-bold">{item.target_weight_rf.toFixed(1)}%</strong></span>
+                          {item.real_weight_rf !== undefined && item.real_weight_rf > 0 && (
+                            <span className="text-zinc-400 font-mono text-[9px] mt-0.5 border-t border-white/10 pt-0.5">
+                              Real en RF: {item.real_weight_rf.toFixed(1)}%
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </td>
 
-                    <td className="px-3 py-2.5 text-right font-bold text-white">
+                    {/* 3. Mi Inversión: Nominales */}
+                    <td className="px-2.5 py-2 text-right font-bold text-white font-mono">
                       {isEditing ? (
                         <input
                           type="number"
                           min="0"
                           value={editNominals}
                           onChange={(e) => setEditNominals(parseInt(e.target.value) || 0)}
-                          className="w-24 bg-black/50 border border-blue-500/50 rounded px-2 py-1 text-right text-xs text-white outline-none"
+                          className="w-20 bg-black/50 border border-blue-500/50 rounded px-1.5 py-0.5 text-right text-xs text-white outline-none"
                         />
                       ) : (
                         item.nominals.toLocaleString('es-AR')
                       )}
                     </td>
 
-                    <td className="px-3 py-2.5 text-right">
+                    {/* Precio Compra (PPC) */}
+                    <td className="px-2.5 py-2 text-right font-mono">
                       {isEditing ? (
                         <input
                           type="number"
@@ -264,26 +350,48 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
                           value={editPpc}
                           placeholder="PPC"
                           onChange={(e) => setEditPpc(e.target.value)}
-                          className="w-20 bg-black/50 border border-blue-500/50 rounded px-2 py-1 text-right text-xs text-white outline-none"
+                          className="w-16 bg-black/50 border border-blue-500/50 rounded px-1.5 py-0.5 text-right text-xs text-white outline-none"
                         />
                       ) : (
                         <div>
-                          <span className="text-zinc-200">${item.ppc_base_100.toFixed(2)}</span>
-                          <div className="text-[9px] text-zinc-400 font-mono">(${item.ppc_unit.toFixed(4)} u)</div>
+                          <span className="text-zinc-200 font-semibold">${item.ppc_base_100.toFixed(2)}</span>
+                          <div className="text-[9px] text-zinc-500">(${item.ppc_unit.toFixed(4)} u)</div>
                         </div>
                       )}
                     </td>
 
-                    <td className="px-3 py-2.5 text-right">
-                      <span className="text-zinc-200 font-bold">${item.precio_spot_base_100.toFixed(2)}</span>
-                      <div className="text-[9px] text-zinc-400 font-mono">(${item.precio_spot_unit.toFixed(4)} u)</div>
+                    {/* Invertido ($) */}
+                    <td className="px-2.5 py-2 text-right font-bold text-zinc-200 font-mono">
+                      ${item.invested_capital.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
 
-                    <td className="px-3 py-2.5 text-right font-bold text-white">
+                    {/* TNA Compra */}
+                    <td className="px-2.5 py-2 text-center font-mono border-r border-white/10">
+                      {item.tna_compra !== null && item.tna_compra !== undefined ? (
+                        <div>
+                          <span className="text-emerald-400 font-bold text-xs">{item.tna_compra.toFixed(2)}%</span>
+                          {item.tea_compra && (
+                            <span className="text-[9px] text-zinc-400 block font-sans">TEA {item.tea_compra.toFixed(1)}%</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-zinc-500 font-sans">-</span>
+                      )}
+                    </td>
+
+                    {/* 4. Mercado Spot: SPOT ($) */}
+                    <td className="px-2.5 py-2 text-right font-mono">
+                      <span className="text-zinc-200 font-bold">${item.precio_spot_base_100.toFixed(2)}</span>
+                      <div className="text-[9px] text-zinc-500">(${item.precio_spot_unit.toFixed(4)} u)</div>
+                    </td>
+
+                    {/* Val. Mercado */}
+                    <td className="px-2.5 py-2 text-right font-bold text-white font-mono">
                       ${item.current_market_value.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
 
-                    <td className="px-3 py-2.5 text-right">
+                    {/* Ganancia Acumulada */}
+                    <td className="px-2.5 py-2 text-right font-mono">
                       <div className={`font-bold ${item.pnl_ars >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                         {item.pnl_ars >= 0 ? '+' : ''}${item.pnl_ars.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
@@ -292,37 +400,46 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
                       </div>
                     </td>
 
-                    <td className="px-3 py-2.5 text-center">
-                      {item.tem_mkt !== null ? (
+                    {/* Tasa Mercado */}
+                    <td className="px-2.5 py-2 text-center font-mono border-r border-white/10">
+                      {item.tem_mkt !== null && item.tem_mkt !== undefined ? (
                         <div>
-                          <span className="text-white font-bold">{item.tem_mkt.toFixed(2)}%</span>
-                          <span className="text-[10px] text-zinc-400 block font-sans">TEM</span>
+                          <span className="text-white font-bold text-xs">TEM {item.tem_mkt.toFixed(2)}%</span>
+                          {item.tna !== null && item.tna !== undefined && (
+                            <span className="text-[9px] text-zinc-400 block font-sans">TNA {item.tna.toFixed(1)}%</span>
+                          )}
                         </div>
-                      ) : item.tea !== null ? (
-                        <div>
-                          <span className="text-white font-bold">{item.tea.toFixed(1)}%</span>
-                          <span className="text-[10px] text-zinc-400 block font-sans">TEA</span>
-                        </div>
+                      ) : item.tna !== null && item.tna !== undefined ? (
+                        <span className="text-white font-bold text-xs">TNA {item.tna.toFixed(1)}%</span>
                       ) : (
                         <span className="text-zinc-500 font-sans">-</span>
                       )}
                     </td>
 
-                    <td className="px-3 py-2.5 text-right font-bold text-blue-400">
-                      ${item.projected_payoff.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      <div className="text-[9px] text-zinc-400 font-mono">VF: ${item.vf_base_100?.toFixed(2)}</div>
+                    {/* 5. Al Vencimiento: Cobro Finish */}
+                    <td className="px-2.5 py-2 text-right font-mono">
+                      <div className="font-bold text-blue-400 text-xs">
+                        ${item.projected_payoff.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                      {item.vf_base_100 && (
+                        <span className="inline-block text-[9px] px-1 py-0.2 rounded bg-blue-500/15 text-blue-300 font-mono mt-0.5">
+                          VF: ${item.vf_base_100.toFixed(2)}
+                        </span>
+                      )}
                     </td>
 
-                    <td className="px-3 py-2.5 text-right">
-                      <div className="text-emerald-400 font-bold">
+                    {/* Ganancia a Vto */}
+                    <td className="px-2.5 py-2 text-right font-mono border-r border-white/10">
+                      <div className="text-emerald-400 font-bold text-xs">
                         +${item.projected_profit_ars.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
-                      <div className="text-[10px] text-emerald-400/90">
+                      <span className="inline-block text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-300 mt-0.5">
                         +{item.projected_profit_pct.toFixed(2)}%
-                      </div>
+                      </span>
                     </td>
 
-                    <td className="px-3 py-2.5 text-center">
+                    {/* Acción */}
+                    <td className="px-2 py-2 text-center font-mono">
                       {isEditing ? (
                         <div className="flex items-center justify-center gap-1">
                           <button
@@ -345,8 +462,8 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
                       ) : (
                         <button
                           onClick={() => startEdit(item)}
-                          className="p-1.5 rounded hover:bg-white/10 text-zinc-400 hover:text-white cursor-pointer transition-colors"
-                          title="Editar nominales y PPC"
+                          className="p-1.5 text-zinc-400 hover:text-white rounded hover:bg-white/5 transition-colors cursor-pointer"
+                          title="Editar nominales y precio de compra"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>

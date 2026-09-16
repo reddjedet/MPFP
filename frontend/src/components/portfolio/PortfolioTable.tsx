@@ -8,6 +8,7 @@ import {
   useReactTable, 
   SortingState 
 } from '@tanstack/react-table';
+import { useTicker360 } from '../../context/Ticker360Context';
 
 interface PortfolioAssetRow {
   ticker: string;
@@ -185,32 +186,43 @@ const KNOWN_ETFS = new Set([
 export const PortfolioTable: React.FC<PortfolioTableProps> = ({ data, pfType, onRefresh }) => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const { openTicker360 } = useTicker360();
   
-const columnHelper = createColumnHelper<PortfolioAssetRow>();
-    const columns = useMemo(() => [
-      columnHelper.accessor('ticker', {
-        header: 'ACTIVO',
-        cell: info => {
-          const row = info.row.original;
-          const earningsText = row.earnings_badge?.badge_text || row.earnings_badge?.text;
-          const gfText = row.gf_signal?.badge_text;
-          const pfcfText = row.pfcf_signal?.badge_text;
-          const isEtf = row.is_etf || KNOWN_ETFS.has(info.getValue());
-  
-          return (
-            <div className="flex flex-col gap-0.5">
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-white tracking-wide text-sm">{info.getValue() || '—'}</span>
-                {isEtf && (
-                  <span 
-                    className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40"
-                    title="Fondo Indexado (Exchange Traded Fund)"
-                  >
-                    ETF
-                  </span>
-                )}
-                <span className="text-[10px] text-zinc-500 font-mono">Ratio: {formatRatio(row.ratio)}</span>
-              </div>
+  const columnHelper = createColumnHelper<PortfolioAssetRow>();
+  const columns = useMemo(() => [
+    columnHelper.accessor('ticker', {
+      header: 'ACTIVO',
+      cell: info => {
+        const row = info.row.original;
+        const earningsText = row.earnings_badge?.badge_text || row.earnings_badge?.text;
+        const gfText = row.gf_signal?.badge_text;
+        const pfcfText = row.pfcf_signal?.badge_text;
+        const isEtf = row.is_etf || KNOWN_ETFS.has(info.getValue());
+
+        return (
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openTicker360(info.getValue(), row);
+                }}
+                className="font-extrabold text-white tracking-wide text-sm hover:text-blue-400 hover:underline transition-colors text-left cursor-pointer"
+                title={`Ver Ficha 360° de ${info.getValue()}`}
+              >
+                {info.getValue() || '—'}
+              </button>
+              {isEtf && (
+                <span 
+                  className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40"
+                  title="Fondo Indexado (Exchange Traded Fund)"
+                >
+                  ETF
+                </span>
+              )}
+              <span className="text-[10px] text-zinc-500 font-mono">Ratio: {formatRatio(row.ratio)}</span>
+            </div>
               
               {/* Badge Stack de Señales */}
               {(earningsText || gfText || pfcfText) && (

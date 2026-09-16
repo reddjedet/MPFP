@@ -1,6 +1,7 @@
 import React from 'react';
 import { 
   Home, 
+  Wallet,
   PieChart, 
   TrendingUp, 
   FlaskConical, 
@@ -9,7 +10,9 @@ import {
   Calendar,
   Calculator,
   BarChart3,
-  Globe
+  Globe,
+  Compass,
+  Search
 } from 'lucide-react';
 import { WorkspaceArea } from './LauncherHub';
 
@@ -43,6 +46,7 @@ interface WorkspaceHeaderProps {
   onSelectArea: (area: WorkspaceArea, defaultSubTab: string) => void;
   onSelectSubTab: (subTab: string) => void;
   onGoHome: () => void;
+  onOpenCommandPalette?: () => void;
 }
 
 export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
@@ -50,21 +54,22 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
   currentSubTab,
   onSelectArea,
   onSelectSubTab,
-  onGoHome
+  onGoHome,
+  onOpenCommandPalette
 }) => {
-  // Configuración de Macro-Áreas de Nivel 1
+  // Configuración de Macro-Áreas de Nivel 1 (3 Espacios Orientados a Tareas)
   const macroAreas: MacroAreaConfig[] = [
     {
       id: 'portfolios',
-      name: 'Portfolios & Tenencias',
+      name: 'Centro de Cartera',
       defaultSubTab: 'portfolios',
-      icon: PieChart,
+      icon: Wallet,
       activeClass: 'bg-blue-600/15 text-blue-300 border-b-2 border-blue-500 font-bold',
       iconColor: 'text-blue-400'
     },
     {
       id: 'market',
-      name: 'Monitor de Mercado',
+      name: 'Radar de Mercado',
       defaultSubTab: 'cedears',
       icon: TrendingUp,
       activeClass: 'bg-emerald-600/15 text-emerald-300 border-b-2 border-emerald-500 font-bold',
@@ -72,7 +77,7 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
     },
     {
       id: 'lab',
-      name: 'Laboratorio Cuantitativo',
+      name: 'Estrategia & Lab',
       defaultSubTab: 'markowitz',
       icon: FlaskConical,
       activeClass: 'bg-purple-600/15 text-purple-300 border-b-2 border-purple-500 font-bold',
@@ -83,13 +88,13 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
   // Configuración de Sub-Pestañas de Nivel 2 por Área
   const areaConfigs: Record<WorkspaceArea, AreaConfig> = {
     portfolios: {
-      name: 'Portfolios',
+      name: 'Cartera',
       color: 'blue',
       badgeClass: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
       activeClass: 'bg-blue-600/20 text-blue-200 font-bold border border-blue-500/40 shadow-sm',
       tabs: [
-        { id: 'portfolios', label: 'Cartera & Rebalanceo', icon: PieChart },
-        { id: 'rotation', label: 'Rotación & Cartera Real', icon: ArrowLeftRight, badge: 'V4' }
+        { id: 'portfolios', label: 'Cockpit Consolidado', icon: Wallet },
+        { id: 'rotation', label: 'Rotación Táctica', icon: ArrowLeftRight, badge: 'V4' }
       ]
     },
     market: {
@@ -98,21 +103,22 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
       badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
       activeClass: 'bg-emerald-600/20 text-emerald-200 font-bold border border-emerald-500/40 shadow-sm',
       tabs: [
-        { id: 'cedears', label: 'CEDEARs & RSI', icon: TrendingUp },
-        { id: 'indices', label: 'Índices & Ciclos', icon: Globe, badge: 'NUEVO' },
-        { id: 'renta-fija', label: 'Renta Fija BYMA/MAE', icon: Landmark },
-        { id: 'earnings', label: 'Calendario Earnings', icon: Calendar }
+        { id: 'cedears', label: 'Screener CEDEARs', icon: TrendingUp },
+        { id: 'etfs', label: 'Rotación ETFs vs SPY', icon: Compass, badge: 'NUEVO' },
+        { id: 'indices', label: 'Índices & Ciclos', icon: Globe },
+        { id: 'renta-fija', label: 'Curvas Renta Fija', icon: Landmark },
+        { id: 'earnings', label: 'Matriz de Earnings', icon: Calendar }
       ]
     },
     lab: {
-      name: 'Laboratorio',
+      name: 'Estrategia',
       color: 'purple',
       badgeClass: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
       activeClass: 'bg-purple-600/20 text-purple-200 font-bold border border-purple-500/40 shadow-sm',
       tabs: [
-        { id: 'markowitz', label: 'Frontera Markowitz', icon: FlaskConical },
-        { id: 'valuation', label: 'Valuación Fundamental', icon: Calculator },
-        { id: 'performance', label: 'Performance Multi-Activo', icon: BarChart3 }
+        { id: 'markowitz', label: 'Laboratorio Markowitz', icon: FlaskConical },
+        { id: 'valuation', label: 'Valuación DCF/FCF', icon: Calculator },
+        { id: 'performance', label: 'Backtest Performance', icon: BarChart3 }
       ]
     }
   };
@@ -163,14 +169,32 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
           })}
         </nav>
 
-        {/* Telemetría y Estado Eigengrau */}
-        <div className="flex items-center gap-3 text-[11px] font-mono text-zinc-500 shrink-0">
-          <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-zinc-400 font-bold hidden md:inline">127.0.0.1</span>
-          </span>
-          <span className="hidden lg:inline">•</span>
-          <span className="text-zinc-400 font-semibold hidden lg:inline">Eigengrau</span>
+        {/* Buscador Global Spotlight & Telemetría */}
+        <div className="flex items-center gap-3 shrink-0">
+          {onOpenCommandPalette && (
+            <button
+              type="button"
+              onClick={onOpenCommandPalette}
+              title="Buscar activo o comando (Ctrl+K)"
+              className="flex items-center gap-2 px-2.5 h-7 rounded-[3px] bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 transition-colors cursor-pointer text-xs group"
+            >
+              <Search className="w-3.5 h-3.5 text-zinc-400 group-hover:text-blue-400 transition-colors" />
+              <span className="hidden sm:inline text-[11px] text-zinc-400 group-hover:text-zinc-200">Buscar...</span>
+              <kbd className="hidden sm:inline-flex text-[9px] font-mono px-1.5 py-0.2 rounded bg-black/40 border border-white/10 text-zinc-400">
+                Ctrl K
+              </kbd>
+            </button>
+          )}
+
+          {/* Telemetría y Estado Eigengrau */}
+          <div className="hidden md:flex items-center gap-2.5 text-[11px] font-mono text-zinc-500 shrink-0">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-zinc-400 font-bold hidden lg:inline">127.0.0.1</span>
+            </span>
+            <span className="hidden lg:inline">•</span>
+            <span className="text-zinc-400 font-semibold">Eigengrau</span>
+          </div>
         </div>
       </div>
 
