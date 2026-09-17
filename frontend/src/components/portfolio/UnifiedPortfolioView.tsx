@@ -246,10 +246,11 @@ export const UnifiedPortfolioView: React.FC = () => {
                   <span className="text-[10px] text-zinc-500 font-bold uppercase">Ancla</span>
                   <select 
                     id="anchorInput"
-                    defaultValue={rebalanceData?.bottleneck_ticker || rebalanceData?.anchor_ticker || ''}
+                    key={`anchor-${selectedPf}-${rebalanceData?.bottleneck_ticker}`}
+                    defaultValue={rebalanceData?.bottleneck_ticker || ''}
                     className="w-24 bg-zinc-950 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono uppercase focus:ring-1 focus:ring-blue-500 outline-none cursor-pointer"
                   >
-                    {rebalanceData?.items?.map((item: any) => (
+                    {rebalanceData?.result?.map((item: any) => (
                       <option key={item.ticker} value={item.ticker}>
                         {item.ticker}
                       </option>
@@ -263,7 +264,8 @@ export const UnifiedPortfolioView: React.FC = () => {
                     type="number" 
                     min="1"
                     id="qtyInput"
-                    defaultValue={rebalanceData?.anchor_qty || rebalanceData?.bottleneck_qty || 1}
+                    key={`qty-${selectedPf}-${rebalanceData?.bottleneck_qty}`}
+                    defaultValue={rebalanceData?.bottleneck_qty || 1}
                     className="w-16 bg-zinc-950 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
                   />
                 </div>
