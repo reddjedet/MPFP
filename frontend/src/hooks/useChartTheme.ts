@@ -18,23 +18,26 @@ export interface ChartThemeTokens {
 }
 
 export function useChartTheme(): ChartThemeTokens {
+  // For now, always return dark theme tokens.
+  // When light mode is fully implemented, this can read from
+  // document.documentElement.classList or a Zustand theme slice.
   return {
     isDark: true,
     theme: 'dark',
-    textPrimary: '#ffffff',
-    textMuted: '#9ea3b0',
+    textPrimary: '#e9e9e2',
+    textMuted: '#8a8a98',
     axisLine: 'rgba(255,255,255,0.1)',
     splitLine: 'rgba(255,255,255,0.05)',
-    tooltipBg: '#181920',
-    tooltipText: '#ffffff',
+    tooltipBg: '#1c1c24',
+    tooltipText: '#e9e9e2',
     tooltipBorder: 'rgba(255,255,255,0.15)',
     tooltipShadow: 'none',
-    cardBorder: '#0f1015',
+    cardBorder: '#16161d',
     calLineColor: '#f59e0b',
     sharpeOptimalColor: '#ffd600',
     benchmarkColor: '#ff9f0a',
-    scatterAssetLabelColor: '#ffffff',
-    scatterAssetLabelBorder: '#000000',
+    scatterAssetLabelColor: '#e9e9e2',
+    scatterAssetLabelBorder: '#16161d',
   };
 }
 

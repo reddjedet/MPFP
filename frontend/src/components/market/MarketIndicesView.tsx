@@ -11,8 +11,8 @@ import {
   MarkLineComponent
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { useChartTheme } from '../hooks/useChartTheme';
-import { Dropdown, DropdownOption } from './ui/Dropdown';
+import { useChartTheme } from '@/hooks/useChartTheme';
+import { Dropdown, DropdownOption } from '@/components/ui/Dropdown';
 import {
   TrendingUp,
   TrendingDown,
@@ -398,16 +398,16 @@ export const MarketIndicesView: React.FC = () => {
               (m) => dateStr >= m.start_date && dateStr <= m.end_date
             );
             if (mand) {
-              activePresident = `<div class="text-[11px] text-zinc-400 mt-1 pb-1 border-b border-white/10 flex items-center justify-between">
+              activePresident = `<div class="text-[11px] text-muted-foreground mt-1 pb-1 border-b border-border flex items-center justify-between">
                 <span>Gestión:</span>
-                <span class="font-bold text-zinc-200" style="color:${mand.color}">${mand.president}</span>
+                <span class="font-bold text-foreground" style="color:${mand.color}">${mand.president}</span>
               </div>`;
             }
           }
 
-          let html = `<div class="font-mono text-xs font-bold text-white mb-1 pb-1 border-b border-white/10 flex items-center justify-between gap-4">
+          let html = `<div class="font-mono text-xs font-bold text-foreground mb-1 pb-1 border-b border-border flex items-center justify-between gap-4">
             <span>${dateStr}</span>
-            <span class="text-[10px] text-zinc-400 uppercase font-sans">${region.toUpperCase()}</span>
+            <span class="text-[10px] text-muted-foreground uppercase font-sans">${region.toUpperCase()}</span>
           </div>${activePresident}<div class="space-y-1 mt-1.5">`;
 
           params.forEach((item) => {
@@ -425,9 +425,9 @@ export const MarketIndicesView: React.FC = () => {
               html += `<div class="flex items-center justify-between gap-4 text-xs font-mono">
                 <span class="flex items-center gap-1.5">
                   <span class="w-2 h-2 rounded-full" style="background-color: ${item.color}"></span>
-                  <span class="text-zinc-300 font-sans">${item.seriesName}:</span>
+                  <span class="text-muted-foreground font-sans">${item.seriesName}:</span>
                 </span>
-                <span class="font-bold text-white">${valFormatted}</span>
+                <span class="font-bold text-foreground">${valFormatted}</span>
               </div>`;
             }
           });
@@ -530,7 +530,7 @@ export const MarketIndicesView: React.FC = () => {
   return (
     <div className="space-y-5 select-none w-full max-w-full overflow-x-hidden">
       {/* 1. BARRA SUPERIOR: SELECTOR DE REGIÓN Y CONTROLES PRINCIPALES */}
-      <div className="bg-[#181920] border border-white/10 rounded-[3px] p-4 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 shadow-md">
+      <div className="bg-secondary border border-border rounded-lg p-4 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 shadow-md">
         {/* Selector de Regiones (Píldoras) */}
         <div className="flex flex-wrap items-center gap-1.5">
           <button
@@ -538,10 +538,10 @@ export const MarketIndicesView: React.FC = () => {
               setRegion('arg');
               setSelectedMandateId('all');
             }}
-            className={`px-3 py-1.5 rounded-[3px] text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
               region === 'arg'
                 ? 'bg-blue-600/25 text-blue-300 border border-blue-500/50 shadow-sm'
-                : 'bg-white/5 text-zinc-400 hover:text-zinc-200 hover:bg-white/10 border border-transparent'
+                : 'bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent'
             }`}
           >
             <span>🇦🇷</span>
@@ -553,10 +553,10 @@ export const MarketIndicesView: React.FC = () => {
               setRegion('br');
               setSelectedMandateId('all');
             }}
-            className={`px-3 py-1.5 rounded-[3px] text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
               region === 'br'
                 ? 'bg-emerald-600/25 text-emerald-300 border border-emerald-500/50 shadow-sm'
-                : 'bg-white/5 text-zinc-400 hover:text-zinc-200 hover:bg-white/10 border border-transparent'
+                : 'bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent'
             }`}
           >
             <span>🇧🇷</span>
@@ -568,10 +568,10 @@ export const MarketIndicesView: React.FC = () => {
               setRegion('usa');
               setSelectedMandateId('all');
             }}
-            className={`px-3 py-1.5 rounded-[3px] text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
               region === 'usa'
                 ? 'bg-purple-600/25 text-purple-300 border border-purple-500/50 shadow-sm'
-                : 'bg-white/5 text-zinc-400 hover:text-zinc-200 hover:bg-white/10 border border-transparent'
+                : 'bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent'
             }`}
           >
             <span>🇺🇸</span>
@@ -583,10 +583,10 @@ export const MarketIndicesView: React.FC = () => {
               setRegion('global');
               setSelectedMandateId('all');
             }}
-            className={`px-3 py-1.5 rounded-[3px] text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
               region === 'global'
                 ? 'bg-amber-600/25 text-amber-300 border border-amber-500/50 shadow-sm'
-                : 'bg-white/5 text-zinc-400 hover:text-zinc-200 hover:bg-white/10 border border-transparent'
+                : 'bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent'
             }`}
           >
             <Globe className="w-3.5 h-3.5 text-amber-400" />
@@ -597,7 +597,7 @@ export const MarketIndicesView: React.FC = () => {
         {/* Filtros de Rango Temporal y Controles */}
         <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-start xl:justify-end">
           {/* Horizontes Rápidos */}
-          <div className="flex items-center bg-black/40 border border-white/10 rounded-[3px] p-0.5">
+          <div className="flex items-center bg-secondary border border-border rounded-lg p-0.5">
             {(['1y', '3y', '5y', '10y', '20y', 'max'] as PeriodType[]).map((p) => (
               <button
                 key={p}
@@ -605,10 +605,10 @@ export const MarketIndicesView: React.FC = () => {
                   setPeriod(p);
                   setSelectedMandateId('all');
                 }}
-                className={`px-2 py-1 text-[11px] font-mono font-medium rounded-[2px] transition-all cursor-pointer ${
+                className={`px-2 py-1 text-[11px] font-mono font-medium rounded-lg transition-all cursor-pointer ${
                   period === p
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-blue-600 text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {p.toUpperCase()}
@@ -625,7 +625,7 @@ export const MarketIndicesView: React.FC = () => {
                 onChange={handleSelectMandate}
                 size="sm"
                 accentColor="blue"
-                icon={<Landmark className="w-3.5 h-3.5 text-blue-400" />}
+                icon={<Landmark className="w-3.5 h-3.5 text-foreground" />}
                 placeholder="Filtrar por Mandato..."
               />
             </div>
@@ -633,23 +633,23 @@ export const MarketIndicesView: React.FC = () => {
 
           {/* Toggle de Moneda (si aplica) */}
           {(region === 'arg' || region === 'br') && (
-            <div className="flex items-center bg-black/40 border border-white/10 rounded-[3px] p-0.5 text-[11px] font-mono">
+            <div className="flex items-center bg-secondary border border-border rounded-lg p-0.5 text-[11px] font-mono">
               <button
                 onClick={() => setCurrency('usd')}
-                className={`px-2 py-1 rounded-[2px] cursor-pointer transition-colors ${
+                className={`px-2 py-1 rounded-lg cursor-pointer transition-colors ${
                   currency === 'usd'
-                    ? 'bg-emerald-600 text-white font-bold'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-emerald-600 text-foreground font-bold'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 USD
               </button>
               <button
                 onClick={() => setCurrency('local')}
-                className={`px-2 py-1 rounded-[2px] cursor-pointer transition-colors ${
+                className={`px-2 py-1 rounded-lg cursor-pointer transition-colors ${
                   currency === 'local'
-                    ? 'bg-emerald-600 text-white font-bold'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-emerald-600 text-foreground font-bold'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {region === 'arg' ? 'ARS' : 'BRL'}
@@ -662,7 +662,7 @@ export const MarketIndicesView: React.FC = () => {
             onClick={fetchHistory}
             disabled={refreshing}
             title="Refrescar cotizaciones"
-            className="p-1.5 rounded-[3px] bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 transition-all cursor-pointer disabled:opacity-50"
+            className="p-1.5 rounded-lg bg-secondary/50 hover:bg-secondary/50 text-muted-foreground hover:text-foreground border border-border transition-all cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
@@ -672,88 +672,88 @@ export const MarketIndicesView: React.FC = () => {
       {/* 2. SCORECARD DE RENDIMIENTO CUANTITATIVO DEL PERÍODO VISIBLE */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* Retorno Acumulado */}
-        <div className="bg-[#181920] border border-white/10 rounded-[3px] p-3 shadow-sm">
-          <div className="flex items-center justify-between text-zinc-400 text-xs mb-1">
+        <div className="bg-secondary border border-border rounded-lg p-3 shadow-sm">
+          <div className="flex items-center justify-between text-muted-foreground text-xs mb-1">
             <span>Retorno Acumulado</span>
-            <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
+            <TrendingUp className="w-3.5 h-3.5 text-foreground" />
           </div>
           <div className="flex items-baseline gap-2">
             <span
               className={`text-xl font-black font-mono tracking-tight ${
-                (metrics?.total_return_pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                (metrics?.total_return_pct ?? 0) >= 0 ? 'text-positive' : 'text-negative'
               }`}
             >
               {(metrics?.total_return_pct ?? 0) >= 0 ? '+' : ''}
               {metrics?.total_return_pct?.toFixed(2) ?? '0.00'}%
             </span>
           </div>
-          <div className="text-[10px] text-zinc-500 font-mono mt-1">
+          <div className="text-[10px] text-muted-foreground font-mono mt-1">
             Desde {metrics?.start_price !== undefined ? (normalized || region === 'global' ? `${metrics.start_price} pts` : currency === 'local' && region === 'arg' ? `ARS $${metrics.start_price.toLocaleString('es-AR')}` : currency === 'local' && region === 'br' ? `BRL R$${metrics.start_price.toLocaleString('pt-BR')}` : `USD $${metrics.start_price.toLocaleString('en-US')}`) : '—'} a {metrics?.end_price !== undefined ? (normalized || region === 'global' ? `${metrics.end_price} pts` : currency === 'local' && region === 'arg' ? `ARS $${metrics.end_price.toLocaleString('es-AR')}` : currency === 'local' && region === 'br' ? `BRL R$${metrics.end_price.toLocaleString('pt-BR')}` : `USD $${metrics.end_price.toLocaleString('en-US')}`) : '—'}
           </div>
         </div>
 
         {/* CAGR Anualizado */}
-        <div className="bg-[#181920] border border-white/10 rounded-[3px] p-3 shadow-sm">
-          <div className="flex items-center justify-between text-zinc-400 text-xs mb-1">
+        <div className="bg-secondary border border-border rounded-lg p-3 shadow-sm">
+          <div className="flex items-center justify-between text-muted-foreground text-xs mb-1">
             <span>CAGR Anualizado</span>
-            <Percent className="w-3.5 h-3.5 text-emerald-400" />
+            <Percent className="w-3.5 h-3.5 text-positive" />
           </div>
           <div className="flex items-baseline gap-2">
             <span
               className={`text-xl font-black font-mono tracking-tight ${
-                (metrics?.cagr_pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                (metrics?.cagr_pct ?? 0) >= 0 ? 'text-positive' : 'text-negative'
               }`}
             >
               {(metrics?.cagr_pct ?? 0) >= 0 ? '+' : ''}
               {metrics?.cagr_pct?.toFixed(2) ?? '0.00'}%
             </span>
-            <span className="text-[10px] text-zinc-500 uppercase">año</span>
+            <span className="text-[10px] text-muted-foreground uppercase">año</span>
           </div>
-          <div className="text-[10px] text-zinc-500 font-mono mt-1">
+          <div className="text-[10px] text-muted-foreground font-mono mt-1">
             Tasa geométrica anual
           </div>
         </div>
 
         {/* Máximo Drawdown */}
-        <div className="bg-[#181920] border border-white/10 rounded-[3px] p-3 shadow-sm">
-          <div className="flex items-center justify-between text-zinc-400 text-xs mb-1">
+        <div className="bg-secondary border border-border rounded-lg p-3 shadow-sm">
+          <div className="flex items-center justify-between text-muted-foreground text-xs mb-1">
             <span>Máximo Drawdown</span>
-            <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+            <TrendingDown className="w-3.5 h-3.5 text-negative" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-black font-mono tracking-tight text-red-400">
+            <span className="text-xl font-black font-mono tracking-tight text-negative">
               {metrics?.max_drawdown_pct?.toFixed(2) ?? '0.00'}%
             </span>
           </div>
-          <div className="text-[10px] text-zinc-500 font-mono mt-1">
+          <div className="text-[10px] text-muted-foreground font-mono mt-1">
             Caída máxima desde pico
           </div>
         </div>
 
         {/* Volatilidad Anualizada */}
-        <div className="bg-[#181920] border border-white/10 rounded-[3px] p-3 shadow-sm">
-          <div className="flex items-center justify-between text-zinc-400 text-xs mb-1">
+        <div className="bg-secondary border border-border rounded-lg p-3 shadow-sm">
+          <div className="flex items-center justify-between text-muted-foreground text-xs mb-1">
             <span>Volatilidad Anualizada</span>
-            <Activity className="w-3.5 h-3.5 text-purple-400" />
+            <Activity className="w-3.5 h-3.5 text-foreground" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-black font-mono tracking-tight text-purple-400">
+            <span className="text-xl font-black font-mono tracking-tight text-foreground">
               {metrics?.annualized_volatility_pct?.toFixed(2) ?? '0.00'}%
             </span>
           </div>
-          <div className="text-[10px] text-zinc-500 font-mono mt-1">
+          <div className="text-[10px] text-muted-foreground font-mono mt-1">
             Desvío estándar anualizado
           </div>
         </div>
       </div>
 
       {/* 3. GRÁFICO PRINCIPAL DE APACHE ECHARTS CON SUPERPOSICIÓN ELECTORAL */}
-      <div className="bg-[#181920] border border-white/10 rounded-[3px] p-4 shadow-md">
+      <div className="bg-secondary border border-border rounded-lg p-4 shadow-md">
         {/* Cabecera del Gráfico con Toggles */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-border">
           <div className="flex flex-wrap items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+            <TrendingUp className="w-4 h-4 text-positive" />
+            <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">
               {region === 'arg'
                 ? 'Evolución Histórica — S&P Merval'
                 : region === 'br'
@@ -762,10 +762,10 @@ export const MarketIndicesView: React.FC = () => {
                 ? 'Evolución Histórica — Wall Street (S&P 500)'
                 : 'Comparativa Global de Mercados (Base 100)'}
             </h3>
-            <span className="px-2 py-0.5 rounded-[3px] bg-white/5 border border-white/10 text-[10px] text-zinc-400 font-mono">
+            <span className="px-2 py-0.5 rounded-lg bg-secondary/50 border border-border text-[10px] text-muted-foreground font-mono">
               {historyData?.dates?.length ?? 0} registros
             </span>
-            <span className="px-2 py-0.5 rounded-[3px] text-[10px] font-mono font-semibold flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+            <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-semibold flex items-center gap-1 bg-emerald-500/10 text-positive border border-emerald-500/30">
               {region === 'global'
                 ? 'Moneda: USD (Base 100)'
                 : normalized
@@ -784,13 +784,13 @@ export const MarketIndicesView: React.FC = () => {
               type="button"
               onClick={() => setUseLogScale(!useLogScale)}
               title={useLogScale ? "Desactivar escala logarítmica (lineal)" : "Activar escala logarítmica (útil para series con crecimiento exponencial)"}
-              className={`px-2.5 py-1 rounded-[3px] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
                 useLogScale
                   ? 'bg-blue-600/25 text-blue-300 border-blue-500/40 shadow-sm'
-                  : 'bg-white/5 text-zinc-400 hover:text-zinc-200 border-white/10'
+                  : 'bg-secondary/50 text-muted-foreground hover:text-foreground border-border'
               }`}
             >
-              <Scale className="w-3.5 h-3.5 text-blue-400" />
+              <Scale className="w-3.5 h-3.5 text-foreground" />
               <span>Escala Log</span>
               <span className={`w-2 h-2 rounded-full transition-colors ${useLogScale ? 'bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.6)]' : 'bg-zinc-600'}`} />
             </button>
@@ -801,10 +801,10 @@ export const MarketIndicesView: React.FC = () => {
               onClick={() => setNormalized(!normalized)}
               disabled={region === 'global'}
               title={region === 'global' ? "La comparativa global siempre se expresa en Base 100" : normalized ? "Ver precios e índices nominales" : "Normalizar a Base 100 desde el inicio del período seleccionado"}
-              className={`px-2.5 py-1 rounded-[3px] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
                 normalized || region === 'global'
                   ? 'bg-indigo-600/25 text-indigo-300 border-indigo-500/40 shadow-sm'
-                  : 'bg-white/5 text-zinc-400 hover:text-zinc-200 border-white/10'
+                  : 'bg-secondary/50 text-muted-foreground hover:text-foreground border-border'
               } ${region === 'global' ? 'opacity-80 cursor-default' : ''}`}
             >
               <Layers className="w-3.5 h-3.5 text-indigo-400" />
@@ -815,10 +815,10 @@ export const MarketIndicesView: React.FC = () => {
             {/* Toggle Ciclos Electorales */}
             {region === 'global' ? (
               <div
-                className="px-2.5 py-1 rounded-[3px] text-xs font-medium flex items-center gap-1.5 bg-white/5 text-zinc-500 border border-white/5 cursor-not-allowed"
+                className="px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 bg-secondary/50 text-muted-foreground border border-border cursor-not-allowed"
                 title="Los ciclos electorales y bandas presidenciales se visualizan al filtrar por país (Argentina, Brasil o EE.UU.)"
               >
-                <Vote className="w-3.5 h-3.5 text-zinc-500" />
+                <Vote className="w-3.5 h-3.5 text-muted-foreground" />
                 <span>Ciclos (Filtrar por país)</span>
               </div>
             ) : (
@@ -826,10 +826,10 @@ export const MarketIndicesView: React.FC = () => {
                 type="button"
                 onClick={() => setShowElections(!showElections)}
                 title={showElections ? "Ocultar bandas presidenciales e hitos electorales" : "Mostrar bandas presidenciales e hitos electorales en el gráfico"}
-                className={`px-2.5 py-1 rounded-[3px] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
                   showElections
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
-                    : 'bg-white/5 text-zinc-400 hover:text-zinc-200 border-white/10'
+                    : 'bg-secondary/50 text-muted-foreground hover:text-foreground border-border'
                 }`}
               >
                 <Vote className="w-3.5 h-3.5 text-amber-400" />
@@ -843,7 +843,7 @@ export const MarketIndicesView: React.FC = () => {
         {/* Canvas de ECharts */}
         <div className="w-full h-[420px] mt-2">
           {loading ? (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-zinc-500 font-mono text-xs">
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground font-mono text-xs">
               <RefreshCw className="w-5 h-5 animate-spin text-blue-500" />
               <span>Cargando series históricas...</span>
             </div>
@@ -861,22 +861,22 @@ export const MarketIndicesView: React.FC = () => {
 
       {/* 4. TABLA CUANTITATIVA DE RENDIMIENTO POR MANDATO PRESIDENCIAL */}
       {region !== 'global' && cyclesData?.performance_table && (
-        <div className="bg-[#181920] border border-white/10 rounded-[3px] p-4 shadow-md">
-          <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
+        <div className="bg-secondary border border-border rounded-lg p-4 shadow-md">
+          <div className="flex items-center justify-between pb-3 border-b border-border mb-3">
             <div className="flex items-center gap-2">
-              <Landmark className="w-4 h-4 text-blue-400" />
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+              <Landmark className="w-4 h-4 text-foreground" />
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">
                 Rendimiento Bursátil por Mandato Presidencial
               </h3>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-[3px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-emerald-500/10 text-positive border border-emerald-500/30">
               Métricas en USD ({cyclesData.primary_ticker || (region === 'arg' ? 'MERVAL USD' : region === 'br' ? 'EWZ USD' : 'S&P 500 USD')})
             </span>
           </div>
 
           <div className="overflow-x-auto w-full">
-            <table className="w-full text-left text-xs text-zinc-300 font-mono">
-              <thead className="bg-black/40 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-white/10">
+            <table className="w-full text-left text-xs text-muted-foreground font-mono">
+              <thead className="bg-secondary text-muted-foreground uppercase text-[10px] tracking-wider border-b border-border">
                 <tr>
                   <th className="px-3 py-2">Presidente / Mandato</th>
                   <th className="px-3 py-2">Partido</th>
@@ -897,28 +897,28 @@ export const MarketIndicesView: React.FC = () => {
                       selectedMandateId === row.id ? 'bg-blue-600/10' : ''
                     }`}
                   >
-                    <td className="px-3 py-2 font-sans font-bold text-white flex items-center gap-2">
+                    <td className="px-3 py-2 font-sans font-bold text-foreground flex items-center gap-2">
                       <span
                         className="w-2 h-2 rounded-full shrink-0"
                         style={{ backgroundColor: row.color }}
                       />
                       <span>{row.president}</span>
                     </td>
-                    <td className="px-3 py-2 text-zinc-400 font-sans text-[11px]">
+                    <td className="px-3 py-2 text-muted-foreground font-sans text-[11px]">
                       {row.party}
                     </td>
-                    <td className="px-3 py-2 text-zinc-500 text-[11px]">
+                    <td className="px-3 py-2 text-muted-foreground text-[11px]">
                       {row.start_date.slice(0, 7)} al {row.end_date.slice(0, 7)}
                     </td>
-                    <td className="px-3 py-2 text-right text-zinc-300">
+                    <td className="px-3 py-2 text-right text-muted-foreground">
                       ${row.initial_level?.toFixed(1) ?? '—'}
                     </td>
-                    <td className="px-3 py-2 text-right text-zinc-300">
+                    <td className="px-3 py-2 text-right text-muted-foreground">
                       ${row.final_level?.toFixed(1) ?? '—'}
                     </td>
                     <td
                       className={`px-3 py-2 text-right font-bold ${
-                        row.total_return_pct >= 0 ? 'text-emerald-400' : 'text-red-400'
+                        row.total_return_pct >= 0 ? 'text-positive' : 'text-negative'
                       }`}
                     >
                       {row.total_return_pct >= 0 ? '+' : ''}
@@ -926,19 +926,19 @@ export const MarketIndicesView: React.FC = () => {
                     </td>
                     <td
                       className={`px-3 py-2 text-right ${
-                        row.cagr_pct >= 0 ? 'text-emerald-400' : 'text-red-400'
+                        row.cagr_pct >= 0 ? 'text-positive' : 'text-negative'
                       }`}
                     >
                       {row.cagr_pct >= 0 ? '+' : ''}
                       {row.cagr_pct.toFixed(1)}%
                     </td>
-                    <td className="px-3 py-2 text-right text-red-400">
+                    <td className="px-3 py-2 text-right text-negative">
                       {row.max_drawdown_pct.toFixed(1)}%
                     </td>
                     <td className="px-3 py-2 text-center">
                       <button
                         onClick={() => handleSelectMandate(row.id)}
-                        className="px-2 py-0.5 rounded-[2px] bg-white/5 hover:bg-white/15 text-blue-400 hover:text-white border border-white/10 text-[10px] transition-all cursor-pointer"
+                        className="px-2 py-0.5 rounded-lg bg-secondary/50 hover:bg-white/15 text-foreground hover:text-foreground border border-border text-[10px] transition-all cursor-pointer"
                       >
                         Ver en Gráfico
                       </button>
@@ -953,15 +953,15 @@ export const MarketIndicesView: React.FC = () => {
 
       {/* 5. CICLO PRESIDENCIAL DE 4 AÑOS (SOLO PARA ESTADOS UNIDOS) */}
       {region === 'usa' && cyclesData?.us_cycle_stats && (
-        <div className="bg-[#181920] border border-white/10 rounded-[3px] p-4 shadow-md">
-          <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
+        <div className="bg-secondary border border-border rounded-lg p-4 shadow-md">
+          <div className="flex items-center justify-between pb-3 border-b border-border mb-3">
             <div className="flex items-center gap-2">
-              <Award className="w-4 h-4 text-purple-400" />
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+              <Award className="w-4 h-4 text-foreground" />
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">
                 Teoría del Ciclo Presidencial de 4 Años en Wall Street
               </h3>
             </div>
-            <span className="text-[11px] text-zinc-500 font-mono">
+            <span className="text-[11px] text-muted-foreground font-mono">
               Stock Trader's Almanac Historical Benchmark
             </span>
           </div>
@@ -970,22 +970,22 @@ export const MarketIndicesView: React.FC = () => {
             {cyclesData.us_cycle_stats.map((stat) => (
               <div
                 key={stat.year_num}
-                className="bg-black/30 border border-white/5 rounded-[3px] p-3 flex flex-col justify-between"
+                className="bg-black/30 border border-border rounded-lg p-3 flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center justify-between text-xs font-bold text-white mb-1 font-sans">
+                  <div className="flex items-center justify-between text-xs font-bold text-foreground mb-1 font-sans">
                     <span>{stat.label}</span>
-                    <span className="text-emerald-400 font-mono">
+                    <span className="text-positive font-mono">
                       +{stat.avg_return_pct}% prom.
                     </span>
                   </div>
-                  <div className="text-[11px] text-zinc-400 font-sans mt-2 leading-relaxed">
+                  <div className="text-[11px] text-muted-foreground font-sans mt-2 leading-relaxed">
                     {stat.historical_bias}
                   </div>
                 </div>
-                <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-zinc-500">
+                <div className="mt-3 pt-2 border-t border-border flex items-center justify-between text-[10px] font-mono text-muted-foreground">
                   <span>Tasa de Acierto (Win Rate):</span>
-                  <span className="text-blue-400 font-bold">{stat.win_rate_pct}%</span>
+                  <span className="text-foreground font-bold">{stat.win_rate_pct}%</span>
                 </div>
               </div>
             ))}
@@ -994,27 +994,27 @@ export const MarketIndicesView: React.FC = () => {
       )}
 
       {/* 6. SÍNTESIS DE DINÁMICA ELECTORAL Y APRENDIZAJES CLAVE */}
-      <div className="bg-[#181920] border border-white/10 rounded-[3px] p-4 text-xs text-zinc-400 leading-relaxed shadow-md">
-        <div className="flex items-center gap-2 font-bold text-white uppercase tracking-wider mb-2">
-          <Calendar className="w-3.5 h-3.5 text-blue-400" />
+      <div className="bg-secondary border border-border rounded-lg p-4 text-xs text-muted-foreground leading-relaxed shadow-md">
+        <div className="flex items-center gap-2 font-bold text-foreground uppercase tracking-wider mb-2">
+          <Calendar className="w-3.5 h-3.5 text-foreground" />
           <span>Dinámica de Mercados en Años Electorales: Claves de Análisis</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-          <div className="p-3 bg-black/20 rounded-[3px] border border-white/5">
-            <h4 className="font-bold text-blue-400 mb-1">🇦🇷 Ciclos en Argentina</h4>
-            <p className="text-zinc-400 text-[11px]">
+          <div className="p-3 bg-black/20 rounded-lg border border-border">
+            <h4 className="font-bold text-foreground mb-1">🇦🇷 Ciclos en Argentina</h4>
+            <p className="text-muted-foreground text-[11px]">
               El Merval en USD experimenta rallies de fuerte expectativa pre-electoral cuando el mercado anticipa reformas o giros pro-mercado (ej. 2015 y 2023). Por el contrario, sorpresas electorales imprevistas desencadenan shocks de revaluación extrema (ej. PASO 2019, caída histórica del 48% en un solo día).
             </p>
           </div>
-          <div className="p-3 bg-black/20 rounded-[3px] border border-white/5">
-            <h4 className="font-bold text-emerald-400 mb-1">🇧🇷 Ciclos en Brasil</h4>
-            <p className="text-zinc-400 text-[11px]">
+          <div className="p-3 bg-black/20 rounded-lg border border-border">
+            <h4 className="font-bold text-positive mb-1">🇧🇷 Ciclos en Brasil</h4>
+            <p className="text-muted-foreground text-[11px]">
               El Ibovespa y el ETF EWZ en USD reflejan una interacción dual entre el ciclo global de commodities (soja y mineral de hierro) y la disciplina fiscal del gobierno de turno. El período 2003-2007 combinó boom externo y ortodoxia, mientras que 2015-2016 demostró cómo la crisis política y el impeachment generaron pisos de valuación históricos.
             </p>
           </div>
-          <div className="p-3 bg-black/20 rounded-[3px] border border-white/5">
-            <h4 className="font-bold text-purple-400 mb-1">🇺🇸 Ciclos en EE.UU.</h4>
-            <p className="text-zinc-400 text-[11px]">
+          <div className="p-3 bg-black/20 rounded-lg border border-border">
+            <h4 className="font-bold text-foreground mb-1">🇺🇸 Ciclos en EE.UU.</h4>
+            <p className="text-muted-foreground text-[11px]">
               El S&P 500 muestra consistencia estadística con el ciclo de 4 años: el Año 3 (pre-electoral) es históricamente el más alcista (+16.2% promedio), mientras que el Año 2 (Midterms) genera correcciones temporales que preceden fuertes rallies alcistas una vez que se despeja la incertidumbre del Congreso.
             </p>
           </div>

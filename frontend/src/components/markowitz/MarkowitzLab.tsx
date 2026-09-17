@@ -9,13 +9,13 @@ import {
   Award,
   Check
 } from 'lucide-react';
-import { Dropdown } from './ui/Dropdown';
-import { CedearBasketSelector } from './markowitz/CedearBasketSelector';
-import { PortfolioStatsTable } from './markowitz/PortfolioStatsTable';
-import { MarkowitzWeightsChart } from './markowitz/MarkowitzWeightsChart';
-import { MarkowitzCharts } from './markowitz/MarkowitzCharts';
-import { CandidatePortfolioCard, CandidatePortfolioData } from './markowitz/CandidatePortfolioCard';
-import { SelectedPortfolioModal, SelectedPointData } from './markowitz/SelectedPortfolioModal';
+import { Dropdown } from '@/components/ui/Dropdown';
+import { CedearBasketSelector } from './CedearBasketSelector';
+import { PortfolioStatsTable } from './PortfolioStatsTable';
+import { MarkowitzWeightsChart } from './MarkowitzWeightsChart';
+import { MarkowitzCharts } from './MarkowitzCharts';
+import { CandidatePortfolioCard, CandidatePortfolioData } from './CandidatePortfolioCard';
+import { SelectedPortfolioModal, SelectedPointData } from './SelectedPortfolioModal';
 
 const currentYear = new Date().getFullYear();
 const PERIOD_OPTIONS = [
@@ -325,36 +325,36 @@ export const MarkowitzLab: React.FC = () => {
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12 relative">
       {/* Toast Notificación flotante de persistencia */}
       {saveToast && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-2xl flex items-center gap-2 border border-emerald-400/40 animate-bounce">
-          <Check className="w-4 h-4 text-white" />
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl bg-emerald-600 text-foreground font-bold text-xs shadow-2xl flex items-center gap-2 border border-emerald-400/40 animate-bounce">
+          <Check className="w-4 h-4 text-foreground" />
           <span>{saveToast}</span>
         </div>
       )}
 
-      <div className="glass-panel p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+      <div className="bg-card border border-border p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
         
         <div className="flex items-center gap-4 relative z-10">
-          <div className="p-3 bg-emerald-50 dark:bg-white/5 rounded-2xl border border-emerald-200 dark:border-white/10 shadow-inner">
-            <Scale className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          <div className="p-3 bg-emerald-50 dark:bg-secondary/50 rounded-2xl border border-emerald-200 dark:border-border shadow-inner">
+            <Scale className="w-6 h-6 text-emerald-600 dark:text-positive" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-foreground tracking-tight flex items-center gap-3">
               MARKOWITZ LAB
-              <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-widest border border-emerald-200 dark:border-emerald-500/20">
+              <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-500/20 dark:text-positive text-[10px] font-bold uppercase tracking-widest border border-emerald-200 dark:border-emerald-500/20">
                 QUANT
               </span>
             </h2>
-            <p className="text-sm text-slate-600 dark:text-zinc-400 font-medium">Teoría Moderna de Carteras & Frontera Eficiente</p>
+            <p className="text-sm text-slate-600 dark:text-muted-foreground font-medium">Teoría Moderna de Carteras & Frontera Eficiente</p>
           </div>
         </div>
       </div>
 
-      <div className="glass-panel p-6 rounded-2xl relative z-20 flex flex-col gap-5">
+      <div className="bg-card border border-border p-6 rounded-2xl relative z-20 flex flex-col gap-5">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
           <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Cartera Base</label>
+            <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Cartera Base</label>
             <Dropdown
               value={selectedPf}
               options={
@@ -371,7 +371,7 @@ export const MarkowitzLab: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Período (Desde 1 de Enero)</label>
+            <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Período (Desde 1 de Enero)</label>
             <Dropdown
               value={period}
               options={PERIOD_OPTIONS}
@@ -383,7 +383,7 @@ export const MarkowitzLab: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Régimen de Rebalanceo</label>
+            <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Régimen de Rebalanceo</label>
             <Dropdown
               value={rebalanceRegime}
               options={REBALANCE_OPTIONS}
@@ -398,7 +398,7 @@ export const MarkowitzLab: React.FC = () => {
             <button 
               onClick={() => fetchData()}
               disabled={loading || basketTickers.length < 2}
-              className="w-full h-11 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 cursor-pointer"
+              className="w-full h-11 bg-emerald-600 hover:bg-emerald-500 text-foreground font-bold px-4 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 cursor-pointer"
               title={basketTickers.length < 2 ? 'Se requieren al menos 2 CEDEARs para optimizar' : 'Calcular Frontera Eficiente'}
             >
               {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <TrendingUp className="w-5 h-5" />}
@@ -418,7 +418,7 @@ export const MarkowitzLab: React.FC = () => {
       </div>
 
       {error && (
-        <div className="glass-panel p-6 rounded-2xl border-red-500/30 text-red-400 text-sm flex items-center gap-3">
+        <div className="bg-card border border-border p-6 rounded-2xl border-red-500/30 text-negative text-sm flex items-center gap-3">
           <AlertTriangle className="w-5 h-5" />
           {error}
         </div>
@@ -431,17 +431,17 @@ export const MarkowitzLab: React.FC = () => {
             <div className="flex flex-col gap-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
                 <div>
-                  <h3 className="text-lg font-black text-white flex items-center gap-2">
+                  <h3 className="text-lg font-black text-foreground flex items-center gap-2">
                     <span className="p-1.5 bg-amber-500/10 rounded-lg text-amber-400 border border-amber-500/20">
                       <Award className="w-4 h-4" />
                     </span>
                     Carteras Candidatas Óptimas (Portfolio Visualizer Style)
                   </h3>
-                  <p className="text-xs text-zinc-400 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Propuestas generadas por el optimizador cuadrático con métricas cuantitativas completas e integración persistente.
                   </p>
                 </div>
-                <div className="text-[11px] font-mono text-zinc-400 bg-white/5 border border-white/10 px-3 py-1 rounded-lg flex items-center gap-2 w-fit">
+                <div className="text-[11px] font-mono text-muted-foreground bg-secondary/50 border border-border px-3 py-1 rounded-lg flex items-center gap-2 w-fit">
                   <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                   <span>Persistencia garantizada en disco</span>
                 </div>
@@ -477,15 +477,15 @@ export const MarkowitzLab: React.FC = () => {
           
           <PortfolioStatsTable data={data} />
           
-          <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4 border border-slate-200/80 dark:border-white/10 shadow-sm">
+          <div className="bg-card border border-border p-6 rounded-2xl flex flex-col gap-4 border border-slate-200/80 dark:border-border shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2.5">
-                <span className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20">
+              <h3 className="text-lg font-black text-slate-900 dark:text-foreground flex items-center gap-2.5">
+                <span className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-600 dark:text-foreground border border-blue-100 dark:border-blue-500/20">
                   <Sliders className="w-5 h-5" />
                 </span>
                 Distribución de Pesos Óptimos
               </h3>
-              <span className="text-xs font-mono text-slate-500 dark:text-zinc-400">
+              <span className="text-xs font-mono text-slate-500 dark:text-muted-foreground">
                 Ponderaciones normalizadas según optimizador cuadrático SLSQP
               </span>
             </div>

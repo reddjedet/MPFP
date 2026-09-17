@@ -13,8 +13,8 @@ import {
   HelpCircle,
   Calculator
 } from 'lucide-react';
-import { Dropdown } from './ui/Dropdown';
-import { PurchaseCalculator } from './rotation/PurchaseCalculator';
+import { Dropdown } from '@/components/ui/Dropdown';
+import { PurchaseCalculator } from './PurchaseCalculator';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import { BarChart } from 'echarts/charts';
@@ -32,9 +32,9 @@ import {
   useReactTable, 
   SortingState 
 } from '@tanstack/react-table';
-import { HoldingsDrawer } from './rotation/HoldingsDrawer';
-import { useChartTheme } from '../hooks/useChartTheme';
-import { useTicker360 } from '../context/Ticker360Context';
+import { HoldingsDrawer } from './HoldingsDrawer';
+import { useChartTheme } from '@/hooks/useChartTheme';
+import { useAppStore } from '@/store/useAppStore';
 
 echarts.use([
   BarChart,
@@ -141,7 +141,7 @@ export const RotationView: React.FC = () => {
   const [calculatorOpen, setCalculatorOpen] = useState<boolean>(false);
   const [calculatorTicker, setCalculatorTicker] = useState<string>('');
   const [sorting, setSorting] = useState<SortingState>([]);
-  const { openTicker360 } = useTicker360();
+  const { openTickerDrawer: openTicker360 } = useAppStore();
 
   // Escuchar cambios remotos de cartera activa (ej: desde Cartera & Rebalanceo)
   useEffect(() => {
@@ -266,19 +266,19 @@ export const RotationView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => openTicker360(info.getValue(), row)}
-                className="font-extrabold text-slate-900 dark:text-white text-sm tracking-wide hover:text-blue-400 hover:underline transition-colors text-left cursor-pointer"
+                className="font-extrabold text-slate-900 dark:text-foreground text-sm tracking-wide hover:text-foreground hover:underline transition-colors text-left cursor-pointer"
                 title={`Ver Ficha 360° de ${info.getValue()}`}
               >
                 {info.getValue()}
               </button>
-              <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">Ratio {row.ratio}:1</span>
+              <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">Ratio {row.ratio}:1</span>
             </div>
             <button
               onClick={() => {
                 setCalculatorTicker(row.ticker);
                 setCalculatorOpen(true);
               }}
-              className="p-1 rounded text-slate-400 hover:text-emerald-600 dark:text-zinc-500 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors opacity-70 group-hover:opacity-100"
+              className="p-1 rounded text-slate-400 hover:text-emerald-600 dark:text-muted-foreground dark:hover:text-positive hover:bg-slate-100 dark:hover:bg-secondary/50 transition-colors opacity-70 group-hover:opacity-100"
               title={`Calcular compra de ${row.ticker}`}
             >
               <Calculator className="w-3.5 h-3.5" />
@@ -289,7 +289,7 @@ export const RotationView: React.FC = () => {
     }),
     columnHelper.accessor('price', {
       header: 'PRECIO ARS',
-      cell: info => <span className="font-mono text-xs font-bold text-slate-900 dark:text-white tabular-nums">${info.getValue().toLocaleString('es-AR')}</span>,
+      cell: info => <span className="font-mono text-xs font-bold text-slate-900 dark:text-foreground tabular-nums">${info.getValue().toLocaleString('es-AR')}</span>,
     }),
     columnHelper.accessor('real_nominals', {
       header: 'TENENCIA REAL',
@@ -297,8 +297,8 @@ export const RotationView: React.FC = () => {
         const row = info.row.original;
         return (
           <div className="flex flex-col font-mono text-xs">
-            <span className="font-bold text-slate-900 dark:text-white">{info.getValue()} VN</span>
-            <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-normal">
+            <span className="font-bold text-slate-900 dark:text-foreground">{info.getValue()} VN</span>
+            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-normal">
               ${row.real_value.toLocaleString('es-AR')} ({row.real_weight.toFixed(1)}%)
             </span>
           </div>
@@ -311,8 +311,8 @@ export const RotationView: React.FC = () => {
         const row = info.row.original;
         return (
           <div className="flex flex-col font-mono text-xs">
-            <span className="font-bold text-emerald-600 dark:text-emerald-400">{info.getValue()} VN</span>
-            <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-normal">
+            <span className="font-bold text-emerald-600 dark:text-positive">{info.getValue()} VN</span>
+            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-normal">
               ${row.target_value.toLocaleString('es-AR')} ({row.target_weight.toFixed(1)}%)
             </span>
           </div>
@@ -349,7 +349,7 @@ export const RotationView: React.FC = () => {
           );
         } else if (row.pfcf_signal && (row.pfcf_signal.state_key === 'optimo' || row.pfcf_signal.state_key === 'compra_optima')) {
           signalBadge = (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-positive/10 dark:text-emerald-300 dark:border-emerald-500/30">
               {row.pfcf_signal.badge_text}
             </span>
           );
@@ -358,8 +358,8 @@ export const RotationView: React.FC = () => {
           signalBadge = (
             <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${
               isPos 
-                ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/30'
-                : 'text-rose-700 bg-rose-50 border-rose-200 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/30'
+                ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-positive dark:bg-emerald-500/10 dark:border-emerald-500/30'
+                : 'text-rose-700 bg-rose-50 border-rose-200 dark:text-negative dark:bg-red-500/10 dark:border-red-500/30'
             }`}>
               PPC {isPos ? '+' : ''}{row.ppc_return.return_pct.toFixed(1)}%
             </span>
@@ -376,9 +376,9 @@ export const RotationView: React.FC = () => {
         return (
           <div className="flex items-center gap-2" title={tooltipLines}>
             <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded border tabular-nums ${
-              isOB ? 'text-rose-700 bg-rose-50 border-rose-200 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/30' : 
-              isOS ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/30' : 
-              'text-slate-600 bg-slate-100 border-slate-200 dark:text-zinc-400 dark:bg-white/5 dark:border-white/10'
+              isOB ? 'text-rose-700 bg-rose-50 border-rose-200 dark:text-negative dark:bg-red-500/10 dark:border-red-500/30' : 
+              isOS ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-positive dark:bg-emerald-500/10 dark:border-emerald-500/30' : 
+              'text-slate-600 bg-slate-100 border-slate-200 dark:text-muted-foreground dark:bg-secondary/50 dark:border-border'
             }`}>
               RSI {rsiVal !== null ? rsiVal.toFixed(1) : '—'}
             </span>
@@ -402,7 +402,7 @@ export const RotationView: React.FC = () => {
         }
         if (status === 'surplus') {
           return (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/30">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-500/15 dark:text-foreground dark:border-blue-500/30">
               VENDER SOBRANTE
             </span>
           );
@@ -429,7 +429,7 @@ export const RotationView: React.FC = () => {
           );
         }
         return (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 dark:bg-white/5 dark:text-zinc-400 dark:border-white/10">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 dark:bg-secondary/50 dark:text-muted-foreground dark:border-border">
             BALANCEADO
           </span>
         );
@@ -450,19 +450,19 @@ export const RotationView: React.FC = () => {
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-16">
       
       {/* CABECERA Y SELECTOR */}
-      <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-20 shadow-sm">
+      <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-20 shadow-sm">
         <div className="flex items-center gap-4 relative z-10">
-          <div className="p-3.5 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-xl shadow-blue-500/20">
+          <div className="p-3.5 rounded-2xl bg-foreground text-background text-foreground shadow-xl shadow-blue-500/20">
             <ArrowLeftRight className="w-7 h-7" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 dark:text-foreground tracking-tight flex items-center gap-2">
               <span>Rotación Inteligente & Cartera Real</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30 uppercase tracking-widest">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-positive dark:border-emerald-500/30 uppercase tracking-widest">
                 V4 Cuant
               </span>
             </h1>
-            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">
               Compara tu tenencia informada contra tu cartera objetivo y planifica los próximos rebalanceos.
             </p>
           </div>
@@ -471,7 +471,7 @@ export const RotationView: React.FC = () => {
         {/* Controles de Selección */}
         <div className="flex flex-wrap items-center gap-3 relative z-30">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Cartera Objetivo:</label>
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Cartera Objetivo:</label>
             <Dropdown
               value={targetPf}
               options={
@@ -488,7 +488,7 @@ export const RotationView: React.FC = () => {
 
           <button
             onClick={() => setDrawerOpen(true)}
-            className="h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
+            className="h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-foreground text-xs font-bold transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
           >
             <SlidersHorizontal className="w-4 h-4" />
             <span>Gestionar Tenencia ({selectedPortfolioName})</span>
@@ -498,8 +498,8 @@ export const RotationView: React.FC = () => {
             onClick={() => setCalculatorOpen(prev => !prev)}
             className={`h-10 px-4 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               calculatorOpen
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/25'
-                : 'bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/10 dark:text-zinc-200'
+                ? 'bg-emerald-600 text-foreground shadow-lg shadow-emerald-500/25'
+                : 'bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 dark:bg-secondary/50 dark:hover:bg-secondary/50 dark:border-border dark:text-foreground'
             }`}
             title="Calculadora rápida de compra por capital"
           >
@@ -510,7 +510,7 @@ export const RotationView: React.FC = () => {
           <button
             onClick={() => fetchAnalysis()}
             disabled={loading}
-            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-900 dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/10 dark:text-zinc-300 dark:hover:text-white transition-colors"
+            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-900 dark:bg-secondary/50 dark:hover:bg-secondary/50 dark:border-border dark:text-muted-foreground dark:hover:text-foreground transition-colors"
             title="Refrescar datos"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -519,7 +519,7 @@ export const RotationView: React.FC = () => {
       </div>
 
       {error && (
-        <div className="glass-panel p-4 rounded-2xl border-red-500/30 bg-red-500/5 text-xs text-red-400 flex items-center justify-between">
+        <div className="bg-card border border-border p-4 rounded-2xl border-red-500/30 bg-red-500/5 text-xs text-negative flex items-center justify-between">
           <span>{error}</span>
         </div>
       )}
@@ -538,15 +538,15 @@ export const RotationView: React.FC = () => {
       {/* KPI CARDS */}
       {data && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
-            <div className="flex items-center justify-between text-slate-500 dark:text-zinc-400">
+          <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
+            <div className="flex items-center justify-between text-slate-500 dark:text-muted-foreground">
               <span className="text-[11px] font-bold uppercase tracking-wider">Patrimonio Real Total</span>
-              <Wallet className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+              <Wallet className="w-4 h-4 text-blue-500 dark:text-foreground" />
             </div>
-            <div className="text-xl font-black text-slate-900 dark:text-white font-mono mt-1">
+            <div className="text-xl font-black text-slate-900 dark:text-foreground font-mono mt-1">
               ${data.total_real_equity.toLocaleString('es-AR')}
             </div>
-            <div className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">
+            <div className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">
               {data.cash_ars > 0 ? (
                 <>Acciones: ${data.total_real_stock_value.toLocaleString('es-AR')} • Caja: ${data.cash_ars.toLocaleString('es-AR')}</>
               ) : (
@@ -555,44 +555,44 @@ export const RotationView: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
-            <div className="flex items-center justify-between text-slate-500 dark:text-zinc-400">
+          <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
+            <div className="flex items-center justify-between text-slate-500 dark:text-muted-foreground">
               <span className="text-[11px] font-bold uppercase tracking-wider">Rendimiento Real (PPC)</span>
-              <TrendingUp className={`w-4 h-4 ${data.total_pnl_ars >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-red-400'}`} />
+              <TrendingUp className={`w-4 h-4 ${data.total_pnl_ars >= 0 ? 'text-emerald-500 dark:text-positive' : 'text-rose-500 dark:text-negative'}`} />
             </div>
-            <div className={`text-xl font-black font-mono mt-1 ${data.total_pnl_ars >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-red-400'}`}>
+            <div className={`text-xl font-black font-mono mt-1 ${data.total_pnl_ars >= 0 ? 'text-emerald-600 dark:text-positive' : 'text-rose-600 dark:text-negative'}`}>
               {data.total_pnl_ars >= 0 ? '+' : ''}${data.total_pnl_ars.toLocaleString('es-AR')}
             </div>
-            <div className={`text-[10px] font-bold font-mono ${data.total_pnl_pct >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-red-400'}`}>
+            <div className={`text-[10px] font-bold font-mono ${data.total_pnl_pct >= 0 ? 'text-emerald-600 dark:text-positive' : 'text-rose-600 dark:text-negative'}`}>
               {data.total_pnl_pct >= 0 ? '+' : ''}{data.total_pnl_pct.toFixed(2)}% vs. Costo Invertido
             </div>
           </div>
 
-          <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
-            <div className="flex items-center justify-between text-slate-500 dark:text-zinc-400">
+          <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
+            <div className="flex items-center justify-between text-slate-500 dark:text-muted-foreground">
               <div className="flex items-center gap-1.5 cursor-help" title="Distancia promedio entre los pesos reales de tus activos y los objetivos del modelo. Un valor bajo indica alta fidelidad; un valor alto señala necesidad de rebalancear.">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Desvío Promedio (Gap)</span>
-                <HelpCircle className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500" />
+                <HelpCircle className="w-3.5 h-3.5 text-slate-400 dark:text-muted-foreground" />
               </div>
               <Scale className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
             </div>
-            <div className="text-xl font-black text-slate-900 dark:text-white font-mono mt-1">
+            <div className="text-xl font-black text-slate-900 dark:text-foreground font-mono mt-1">
               {data.avg_tracking_error.toFixed(1)}%
             </div>
-            <div className="text-[10px] text-slate-500 dark:text-zinc-500 cursor-help" title="Distancia promedio entre los pesos reales de tus activos y los objetivos del modelo. Un valor bajo indica alta fidelidad; un valor alto señala necesidad de rebalancear.">
+            <div className="text-[10px] text-slate-500 dark:text-muted-foreground cursor-help" title="Distancia promedio entre los pesos reales de tus activos y los objetivos del modelo. Un valor bajo indica alta fidelidad; un valor alto señala necesidad de rebalancear.">
               Tracking error medio vs. {data.target_portfolio_name}
             </div>
           </div>
 
-          <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
-            <div className="flex items-center justify-between text-slate-500 dark:text-zinc-400">
+          <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
+            <div className="flex items-center justify-between text-slate-500 dark:text-muted-foreground">
               <span className="text-[11px] font-bold uppercase tracking-wider">Oportunidades de Rotación</span>
               <Sparkles className="w-4 h-4 text-amber-500 dark:text-yellow-400" />
             </div>
             <div className="text-xl font-black text-amber-600 dark:text-yellow-400 font-mono mt-1">
               {data.rotation_trades.length} sugeridas
             </div>
-            <div className="text-[10px] text-slate-500 dark:text-zinc-500">
+            <div className="text-[10px] text-slate-500 dark:text-muted-foreground">
               Toma de ganancias &gt; Rebalanceo inteligente
             </div>
           </div>
@@ -605,11 +605,11 @@ export const RotationView: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-500 dark:text-yellow-400" />
-              <h2 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+              <h2 className="text-sm font-extrabold text-slate-900 dark:text-foreground uppercase tracking-wider">
                 Sugerencias de Rotación de Capital (Accionables)
               </h2>
             </div>
-            <span className="text-xs text-slate-500 dark:text-zinc-400 font-mono">Financiadas por toma de ganancias y superávit</span>
+            <span className="text-xs text-slate-500 dark:text-muted-foreground font-mono">Financiadas por toma de ganancias y superávit</span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -618,51 +618,51 @@ export const RotationView: React.FC = () => {
               return (
                 <div 
                   key={trade.id} 
-                  className="bg-white dark:bg-white/[0.02] p-5 rounded-2xl border border-slate-200 dark:border-white/10 flex flex-col justify-between gap-4 relative overflow-hidden shadow-sm"
+                  className="bg-white dark:bg-white/[0.02] p-5 rounded-2xl border border-slate-200 dark:border-border flex flex-col justify-between gap-4 relative overflow-hidden shadow-sm"
                 >
                   <div className="flex items-start justify-between">
                     <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-md uppercase tracking-wider border ${
                       isHigh
                         ? 'bg-white text-amber-800 border-amber-400 dark:bg-yellow-500/20 dark:text-yellow-300 dark:border-yellow-500/30'
-                        : 'bg-white text-slate-700 border-slate-300 dark:bg-zinc-800/60 dark:text-zinc-300 dark:border-zinc-700/50'
+                        : 'bg-white text-slate-700 border-slate-300 dark:bg-zinc-800/60 dark:text-muted-foreground dark:border-zinc-700/50'
                     }`}>
                       Prioridad {trade.priority}
                     </span>
-                    <span className="text-xs font-mono font-bold text-slate-500 dark:text-zinc-400">
-                      Saldo neto: <strong className="text-slate-900 dark:text-white font-black">${trade.net_cash_ars.toLocaleString('es-AR')}</strong>
+                    <span className="text-xs font-mono font-bold text-slate-500 dark:text-muted-foreground">
+                      Saldo neto: <strong className="text-slate-900 dark:text-foreground font-black">${trade.net_cash_ars.toLocaleString('es-AR')}</strong>
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     {/* SELL CARD */}
                     {trade.sell ? (
-                      <div className="p-3.5 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 flex flex-col gap-2">
+                      <div className="p-3.5 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border flex flex-col gap-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30 uppercase tracking-wider flex items-center gap-1 w-fit">
                             <ArrowDownRight className="w-3.5 h-3.5" /> VENDER
                           </span>
-                          <span className="text-xs font-extrabold text-slate-900 dark:text-white font-mono">{trade.sell.ticker}</span>
+                          <span className="text-xs font-extrabold text-slate-900 dark:text-foreground font-mono">{trade.sell.ticker}</span>
                         </div>
-                        <div className="text-sm font-black text-slate-900 dark:text-white font-mono">
-                          {trade.sell.nominals} VN <span className="text-xs font-normal text-slate-500 dark:text-zinc-400">(${(trade.sell.total_cash).toLocaleString('es-AR')})</span>
+                        <div className="text-sm font-black text-slate-900 dark:text-foreground font-mono">
+                          {trade.sell.nominals} VN <span className="text-xs font-normal text-slate-500 dark:text-muted-foreground">(${(trade.sell.total_cash).toLocaleString('es-AR')})</span>
                         </div>
-                        <p className="text-[11px] text-slate-600 dark:text-zinc-300 leading-snug font-normal">{trade.sell.reason}</p>
+                        <p className="text-[11px] text-slate-600 dark:text-muted-foreground leading-snug font-normal">{trade.sell.reason}</p>
                       </div>
                     ) : (
-                      <div className="p-3.5 rounded-xl border border-dashed border-slate-300 dark:border-zinc-700/50 bg-white dark:bg-transparent flex flex-col items-center justify-center text-slate-600 dark:text-zinc-400 text-xs text-center">
+                      <div className="p-3.5 rounded-xl border border-dashed border-slate-300 dark:border-zinc-700/50 bg-white dark:bg-transparent flex flex-col items-center justify-center text-slate-600 dark:text-muted-foreground text-xs text-center">
                         Sin venta<br/>(Aporte de capital)
                       </div>
                     )}
 
                     {/* BUY CARD */}
                     {trade.buy ? (
-                      <div className="p-3.5 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 flex flex-col gap-2">
+                      <div className="p-3.5 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border flex flex-col gap-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30 uppercase tracking-wider flex items-center gap-1 w-fit">
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-positive dark:border-emerald-500/30 uppercase tracking-wider flex items-center gap-1 w-fit">
                             <ArrowUpRight className="w-3.5 h-3.5" /> COMPRAR
                           </span>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-extrabold text-slate-900 dark:text-white font-mono">{trade.buy.ticker}</span>
+                            <span className="text-xs font-extrabold text-slate-900 dark:text-foreground font-mono">{trade.buy.ticker}</span>
                             <button
                               onClick={() => {
                                 if (trade.buy) {
@@ -671,22 +671,22 @@ export const RotationView: React.FC = () => {
                                   window.scrollTo({ top: 0, behavior: 'smooth' });
                                 }
                               }}
-                              className="p-1 rounded text-slate-400 hover:text-emerald-600 dark:text-zinc-500 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                              className="p-1 rounded text-slate-400 hover:text-emerald-600 dark:text-muted-foreground dark:hover:text-positive hover:bg-slate-100 dark:hover:bg-secondary/50 transition-colors"
                               title={`Calcular compra de ${trade.buy.ticker}`}
                             >
                               <Calculator className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
-                        <div className="text-sm font-black text-slate-900 dark:text-white font-mono">
-                          {trade.buy.nominals} VN <span className="text-xs font-normal text-slate-500 dark:text-zinc-400">(${(trade.buy.total_cash).toLocaleString('es-AR')})</span>
+                        <div className="text-sm font-black text-slate-900 dark:text-foreground font-mono">
+                          {trade.buy.nominals} VN <span className="text-xs font-normal text-slate-500 dark:text-muted-foreground">(${(trade.buy.total_cash).toLocaleString('es-AR')})</span>
                         </div>
-                        <p className="text-[11px] text-slate-600 dark:text-zinc-300 leading-snug font-normal">{trade.buy.reason}</p>
+                        <p className="text-[11px] text-slate-600 dark:text-muted-foreground leading-snug font-normal">{trade.buy.reason}</p>
                       </div>
                     ) : (
                       <div className="p-3.5 rounded-xl border border-dashed border-slate-300 dark:border-zinc-700/60 bg-white dark:bg-transparent flex flex-col items-center justify-center text-center gap-1">
-                        <span className="text-[11px] font-bold text-slate-800 dark:text-zinc-200">Mantener en Caja</span>
-                        <span className="text-[10px] text-slate-500 dark:text-zinc-400">Esperar pullback en activos objetivo</span>
+                        <span className="text-[11px] font-bold text-slate-800 dark:text-foreground">Mantener en Caja</span>
+                        <span className="text-[10px] text-slate-500 dark:text-muted-foreground">Esperar pullback en activos objetivo</span>
                       </div>
                     )}
                   </div>
@@ -698,12 +698,12 @@ export const RotationView: React.FC = () => {
       )}
 
       {/* GRÁFICO COMPARATIVO DE NOMINALES */}
-      <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-6 rounded-2xl flex flex-col gap-4 shadow-sm">
+      <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border p-6 rounded-2xl flex flex-col gap-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-black text-slate-900 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-2">
+          <h2 className="text-xs font-black text-slate-900 dark:text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <span>Comparativa de Nominales: Tenencia Real vs. Cartera Objetivo</span>
           </h2>
-          <span className="text-xs font-mono text-slate-500 dark:text-zinc-500">Escalado al capital real de tu cuenta</span>
+          <span className="text-xs font-mono text-slate-500 dark:text-muted-foreground">Escalado al capital real de tu cuenta</span>
         </div>
         <div className="h-72 w-full">
           <ReactECharts 
@@ -717,16 +717,16 @@ export const RotationView: React.FC = () => {
       </div>
 
       {/* TABLA DE BRECHAS Y ANÁLISIS DETALLADO */}
-      <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-6 rounded-2xl flex flex-col gap-4 shadow-sm">
+      <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border p-6 rounded-2xl flex flex-col gap-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-black text-slate-900 dark:text-zinc-300 uppercase tracking-wider">
+          <h2 className="text-xs font-black text-slate-900 dark:text-muted-foreground uppercase tracking-wider">
             Detalle de Brecha Cuantitativa por Activo
           </h2>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-border">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-zinc-400 font-bold uppercase text-[10px]">
+            <thead className="bg-slate-50 dark:bg-secondary/50 border-b border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground font-bold uppercase text-[10px]">
               {table.getHeaderGroups().map(headerGroup => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map(header => (

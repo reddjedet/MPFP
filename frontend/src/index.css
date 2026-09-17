@@ -1,49 +1,110 @@
 @import "tailwindcss";
 
-:root {
-  --bg-app: #0f1015;
-  --bg-sidebar: rgba(24, 25, 32, 0.85);
-  --bg-glass: rgba(24, 25, 32, 0.7);
-  --bg-input: rgba(0, 0, 0, 0.4);
-  --border-glass: rgba(255, 255, 255, 0.08);
-  --text-main: #ffffff;
-  --text-muted: #9ea3b0;
-  --card-hover: rgba(255, 255, 255, 0.03);
+@theme {
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
 }
 
-body {
-  background-color: var(--bg-app);
-  color: var(--text-main);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
 }
 
-.glass-panel {
-  background: var(--bg-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-glass);
-  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+@layer base {
+  :root {
+    --background: #e9e9e2;
+    --foreground: #16161d;
+    --card: #ffffff;
+    --card-foreground: #16161d;
+    --primary: #16161d;
+    --primary-foreground: #e9e9e2;
+    --secondary: #d4d4cd;
+    --secondary-foreground: #16161d;
+    --muted: #d4d4cd;
+    --muted-foreground: #6b6b66;
+    --border: #d4d4cd;
+    --input: #d4d4cd;
+    --ring: #16161d;
+    
+    --positive: #2d7a4d;
+    --negative: #b33a3a;
+    
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: #16161d; /* Eigengrau */
+    --foreground: #e9e9e2;
+    --card: #1c1c24;
+    --card-foreground: #e9e9e2;
+    --primary: #e9e9e2;
+    --primary-foreground: #16161d;
+    --secondary: #2a2a35;
+    --secondary-foreground: #e9e9e2;
+    --muted: #2a2a35;
+    --muted-foreground: #8a8a98;
+    --border: #2a2a35;
+    --input: #2a2a35;
+    --ring: #e9e9e2;
+    
+    --positive: #4ade80; /* Semantic Green */
+    --negative: #f87171; /* Semantic Red */
+  }
 }
 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground overflow-hidden;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Tabular numbers for financial data */
 .tabular-nums {
   font-variant-numeric: tabular-nums lining-nums;
 }
 
-/* Form inputs and select dropdowns (Dark Institutional) */
-input, select {
-  color: #ffffff;
-}
-
+/* Form inputs and select dropdowns */
 select option {
-  background-color: #181920;
-  color: #ffffff;
+  background-color: var(--card);
+  color: var(--foreground);
 }
 
 input::placeholder {
-  color: #52525b;
+  color: var(--muted-foreground);
 }
 
-/* Institutional Dark Scrollbars */
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -54,41 +115,64 @@ input::placeholder {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--muted);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.35);
+  background: var(--muted-foreground);
   background-clip: padding-box;
 }
 
-/* Dark Text Selection */
+/* Text Selection */
 ::selection {
   background-color: rgba(59, 130, 246, 0.45);
-  color: #ffffff;
+  color: var(--foreground);
 }
 
-/* Soft, Accessible Focus Rings */
+/* Accessible Focus Rings */
 :focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
-/* Dark Adaptive Links */
+/* Adaptive Links */
 a {
-  color: #60a5fa;
+  color: var(--positive);
   transition: color 0.2s ease;
 }
 
 a:hover {
-  color: #93c5fd;
+  opacity: 0.8;
 }
 
-/* Horizontal Rules / Dividers */
+/* Dividers */
 hr {
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--border);
 }
 
+/* Ticker tape animation */
+@keyframes ticker {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-33.3333%, 0, 0);
+  }
+}
+
+.animate-ticker {
+  animation: ticker 25s linear infinite;
+  will-change: transform;
+}
+
+/* Hide scrollbar utility */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}

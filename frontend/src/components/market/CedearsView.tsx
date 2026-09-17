@@ -1,4 +1,4 @@
-import { EtfSectorThermometer } from "./EtfSectorThermometer";
+import { EtfSectorThermometer } from "@/components/EtfSectorThermometer";
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   createColumnHelper, 
@@ -8,7 +8,7 @@ import {
   useReactTable, 
   SortingState 
 } from '@tanstack/react-table';
-import { useTicker360 } from '../context/Ticker360Context';
+import { useAppStore } from '@/store/useAppStore';
 import { 
   Search, 
   Plus, 
@@ -92,7 +92,7 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const { openTicker360 } = useTicker360();
+  const { openTickerDrawer } = useAppStore();
 
   // Catálogo completo de CEDEARs para autocompletado inteligente
   const [catalog, setCatalog] = useState<CedearCatalogItem[]>([]);
@@ -315,8 +315,8 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => openTicker360(info.getValue(), row)}
-                className="font-black text-slate-900 dark:text-white text-sm tracking-wide hover:text-blue-400 hover:underline transition-colors text-left cursor-pointer"
+                onClick={() => openTickerDrawer(info.getValue(), row)}
+                className="font-black text-slate-900 dark:text-foreground text-sm tracking-wide hover:text-foreground hover:underline transition-colors text-left cursor-pointer"
                 title={`Ver Ficha 360° de ${info.getValue()}`}
               >
                 {info.getValue()}
@@ -338,7 +338,7 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">Ratio {row.ratio}:1</span>
+            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">Ratio {row.ratio}:1</span>
           </div>
         );
       },
@@ -348,7 +348,7 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
       cell: info => {
         const val = info.getValue();
         return (
-          <span className="font-mono font-bold text-slate-900 dark:text-white tabular-nums text-xs">
+          <span className="font-mono font-bold text-slate-900 dark:text-foreground tabular-nums text-xs">
             {typeof val === 'number' ? `A$ ${val.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : '—'}
           </span>
         );
@@ -360,7 +360,7 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
         const val = info.getValue();
         return (
           <span 
-            className="font-mono font-bold text-emerald-400 tabular-nums text-xs"
+            className="font-mono font-bold text-positive tabular-nums text-xs"
             title="Precio implícito de 1 CEDEAR en USD (ADR / Ratio)"
           >
             {typeof val === 'number' ? `U$ ${val.toFixed(2)}` : '—'}
@@ -374,7 +374,7 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
         const val = info.getValue();
         return (
           <span 
-            className="font-mono text-slate-500 dark:text-zinc-400 tabular-nums text-xs"
+            className="font-mono text-slate-500 dark:text-muted-foreground tabular-nums text-xs"
             title="Precio de la acción subyacente en EE.UU."
           >
             {typeof val === 'number' ? `U$ ${val.toFixed(2)}` : '—'}
@@ -390,10 +390,10 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
         const isOverbought = val >= 65;
         const isOversold = val <= 35;
         const colorClass = isOverbought 
-          ? 'text-rose-700 bg-rose-50 border-rose-200 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/30' 
+          ? 'text-rose-700 bg-rose-50 border-rose-200 dark:text-negative dark:bg-red-500/10 dark:border-red-500/30' 
           : (isOversold 
-            ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/30' 
-            : 'text-slate-700 bg-slate-100 border-slate-200 dark:text-zinc-300 dark:bg-white/5 dark:border-white/10');
+            ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-positive dark:bg-emerald-500/10 dark:border-emerald-500/30' 
+            : 'text-slate-700 bg-slate-100 border-slate-200 dark:text-muted-foreground dark:bg-secondary/50 dark:border-border');
         return (
           <span className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded border tabular-nums ${colorClass}`}>
             {val.toFixed(1)}
@@ -433,14 +433,14 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
                 title={row.pfcf_signal.tooltip}
                 className={`cursor-help text-[10px] px-2 py-0.5 rounded font-semibold border transition-colors ${
                   row.pfcf_signal.state_key === 'optimo' || row.pfcf_signal.state_key === 'compra_optima'
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/25'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-positive/10 dark:text-positive dark:border-emerald-500/25'
                     : (row.pfcf_signal.state_key === 'no_comprar' || row.pfcf_signal.state_key === 'sobrevaluado'
-                      ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/25'
+                      ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-negative/10 dark:text-negative dark:border-red-500/25'
                       : (row.pfcf_signal.state_key === 'sub_optimo'
                         ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/25'
                         : (row.pfcf_signal.state_key === 'hold'
                           ? 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/25'
-                          : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700')))
+                          : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-zinc-800 dark:text-muted-foreground dark:border-zinc-700')))
                 }`}
               >
                 {row.pfcf_signal.badge_text}
@@ -459,7 +459,7 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
       cell: info => (
         <button
           onClick={() => handleRemoveTicker(info.row.original.symbol)}
-          className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-negative hover:bg-red-500/10 transition-colors"
           title="Eliminar de la lista"
         >
           <Trash2 className="w-3.5 h-3.5" />
@@ -482,13 +482,13 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
       {/* Header & Controls */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-foreground flex items-center gap-3">
             Cotizaciones CEDEAR
-            <span className="text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30">
+            <span className="text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-foreground dark:border-blue-500/30">
               Live Feed • BYMA / US
             </span>
           </h1>
-          <p className="text-sm text-slate-500 dark:text-zinc-400 mt-1">
+          <p className="text-sm text-slate-500 dark:text-muted-foreground mt-1">
             Monitor institucional de cotizaciones en tiempo real, precios en ARS y USD, ratio de conversión, RSI y valuación fundamental.
           </p>
         </div>
@@ -496,17 +496,17 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
           {/* View Mode Toggle */}
-          <div className="flex items-center bg-slate-100 dark:bg-black/40 p-1 rounded-xl border border-slate-200 dark:border-white/10">
+          <div className="flex items-center bg-slate-100 dark:bg-secondary p-1 rounded-xl border border-slate-200 dark:border-border">
             <button
               onClick={() => setViewMode('table')}
-              className={`p-2 rounded-lg transition-colors ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'}`}
+              className={`p-2 rounded-lg transition-colors ${viewMode === 'table' ? 'bg-blue-600 text-foreground' : 'text-slate-500 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground'}`}
               title="Vista de Tabla"
             >
               <TableIcon className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'}`}
+              className={`p-2 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-blue-600 text-foreground' : 'text-slate-500 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground'}`}
               title="Vista de Cuadrícula"
             >
               <LayoutGrid className="w-4 h-4" />
@@ -516,7 +516,7 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
           <button
             onClick={() => fetchQuotes(watchlist)}
             disabled={refreshing}
-            className="h-9 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-white/5 dark:hover:bg-white/10 dark:text-zinc-300 dark:hover:text-white dark:border-white/10 font-bold text-xs flex items-center gap-2 transition-all shadow-sm"
+            className="h-9 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-secondary/50 dark:hover:bg-secondary/50 dark:text-muted-foreground dark:hover:text-foreground dark:border-border font-bold text-xs flex items-center gap-2 transition-all shadow-sm"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             Actualizar
@@ -528,7 +528,7 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
       <EtfSectorThermometer onNavigateToRotation={() => onNavigateToTab?.('market', 'etfs')} />
 
       {/* Ticker Search & Quick Add Bar */}
-      <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-5 rounded-2xl shadow-sm flex flex-col gap-4">
+      <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border p-5 rounded-2xl shadow-sm flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           {/* Add form */}
           <form
@@ -539,7 +539,7 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
             className="flex items-center gap-2 flex-1 max-w-md"
           >
             <div ref={searchContainerRef} className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Buscar y agregar CEDEAR (ej: TSLA, BABA, MMM, Salud)..."
@@ -551,12 +551,12 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
                 }}
                 onFocus={() => setShowDropdown(true)}
                 onKeyDown={handleKeyDown}
-                className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-900 dark:text-white uppercase placeholder:normal-case placeholder:text-slate-400 dark:placeholder:text-zinc-600 outline-none focus:border-blue-500 transition-colors"
+                className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-secondary border border-slate-200 dark:border-border rounded-xl text-xs font-bold text-slate-900 dark:text-foreground uppercase placeholder:normal-case placeholder:text-slate-400 dark:placeholder:text-zinc-600 outline-none focus:border-blue-500 transition-colors"
               />
 
               {/* Dropdown flotante de sugerencias */}
               {showDropdown && suggestions.length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-[#181920] border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden py-1 max-h-72 overflow-y-auto">
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-secondary border border-slate-200 dark:border-border rounded-xl shadow-2xl z-50 overflow-hidden py-1 max-h-72 overflow-y-auto">
                   {suggestions.map((item, idx) => {
                     const isAdded = watchlist.includes(item.ticker);
                     const isSelected = idx === selectedIndex;
@@ -570,19 +570,19 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
                           setShowDropdown(false);
                         }}
                         className={`w-full px-3 py-2 text-left flex items-center justify-between text-xs transition-colors ${
-                          isSelected ? 'bg-blue-600/15 text-blue-400' : 'hover:bg-slate-100 dark:hover:bg-white/5'
+                          isSelected ? 'bg-blue-600/15 text-foreground' : 'hover:bg-slate-100 dark:hover:bg-secondary/50'
                         } ${isAdded ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                       >
                         <div className="flex items-center gap-2.5">
-                          <span className="font-mono font-bold text-slate-900 dark:text-white">{item.ticker}</span>
-                          <span className="text-[11px] text-slate-500 dark:text-zinc-400">{item.name}</span>
+                          <span className="font-mono font-bold text-slate-900 dark:text-foreground">{item.ticker}</span>
+                          <span className="text-[11px] text-slate-500 dark:text-muted-foreground">{item.name}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-white/5">
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-secondary/50 text-slate-600 dark:text-muted-foreground border border-slate-200 dark:border-border">
                             Ratio {item.ratio}:1
                           </span>
                           {isAdded ? (
-                            <span className="text-[10px] text-emerald-400 font-semibold">En lista</span>
+                            <span className="text-[10px] text-positive font-semibold">En lista</span>
                           ) : (
                             <span className="text-[10px] text-blue-500 font-bold">+ Agregar</span>
                           )}
@@ -595,7 +595,7 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
             </div>
             <button
               type="submit"
-              className="h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-blue-500/25 transition-all shrink-0"
+              className="h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-foreground font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-blue-500/25 transition-all shrink-0"
             >
               <Plus className="w-4 h-4" />
               Agregar
@@ -609,20 +609,20 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
               placeholder="Filtrar en lista..."
               value={searchFilter}
               onChange={e => setSearchFilter(e.target.value)}
-              className="h-10 px-3 bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 outline-none focus:border-blue-500 transition-colors w-40"
+              className="h-10 px-3 bg-slate-50 dark:bg-secondary border border-slate-200 dark:border-border rounded-xl text-xs font-medium text-slate-900 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-zinc-600 outline-none focus:border-blue-500 transition-colors w-40"
             />
           </div>
         </div>
 
         {/* Suggestion Chips */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-white/5">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-border">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-zinc-500 tracking-wider mr-1">Sugeridos:</span>
+            <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-muted-foreground tracking-wider mr-1">Sugeridos:</span>
             {SUGGESTED_TICKERS.filter(t => !watchlist.includes(t)).slice(0, 8).map(ticker => (
               <button
                 key={ticker}
                 onClick={() => handleAddTicker(ticker)}
-                className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-white/5 dark:hover:bg-white/10 dark:text-zinc-300 dark:hover:text-white dark:border-white/10 transition-colors flex items-center gap-1"
+                className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-secondary/50 dark:hover:bg-secondary/50 dark:text-muted-foreground dark:hover:text-foreground dark:border-border transition-colors flex items-center gap-1"
               >
                 +{ticker}
               </button>
@@ -631,35 +631,35 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
         </div>
 
         {/* Filter Pills */}
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-white/5">
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-border">
           <button
             onClick={() => setActiveFilter('rsi_alerts')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${activeFilter === 'rsi_alerts' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${activeFilter === 'rsi_alerts' ? 'bg-blue-600 text-foreground' : 'text-slate-600 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-foreground hover:bg-slate-100 dark:hover:bg-secondary/50'}`}
           >
             Alertas RSI ({quotes.filter(q => q.alert || (q.rsi !== null && (q.rsi >= 65 || q.rsi <= 35))).length})
           </button>
           <button
             onClick={() => setActiveFilter('in_portfolio')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${activeFilter === 'in_portfolio' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${activeFilter === 'in_portfolio' ? 'bg-blue-600 text-foreground' : 'text-slate-600 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-foreground hover:bg-slate-100 dark:hover:bg-secondary/50'}`}
           >
             <Briefcase className="w-3.5 h-3.5" />
             En Cartera ({quotes.filter(q => q.in_portfolio).length})
           </button>
           <button
             onClick={() => setActiveFilter('all')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${activeFilter === 'all' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${activeFilter === 'all' ? 'bg-blue-600 text-foreground' : 'text-slate-600 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-foreground hover:bg-slate-100 dark:hover:bg-secondary/50'}`}
           >
             Todos ({quotes.length})
           </button>
           <button
             onClick={() => setActiveFilter('valuation_signals')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${activeFilter === 'valuation_signals' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${activeFilter === 'valuation_signals' ? 'bg-blue-600 text-foreground' : 'text-slate-600 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-foreground hover:bg-slate-100 dark:hover:bg-secondary/50'}`}
           >
             Valuación & Señales ({quotes.filter(q => q.gf_signal || q.pfcf_signal).length})
           </button>
           <button
             onClick={() => setActiveFilter('earnings')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${activeFilter === 'earnings' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${activeFilter === 'earnings' ? 'bg-blue-600 text-foreground' : 'text-slate-600 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-foreground hover:bg-slate-100 dark:hover:bg-secondary/50'}`}
           >
             Balances Próximos ({quotes.filter(q => q.earnings_badge).length})
           </button>
@@ -667,9 +667,9 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
       </div>
 
       {errorMsg && (
-        <div className="p-4 rounded-2xl border border-rose-200 bg-rose-50 text-xs text-rose-700 dark:border-red-500/30 dark:bg-red-500/5 dark:text-red-400 flex items-center justify-between shadow-sm">
+        <div className="p-4 rounded-2xl border border-rose-200 bg-rose-50 text-xs text-rose-700 dark:border-red-500/30 dark:bg-red-500/5 dark:text-negative flex items-center justify-between shadow-sm">
           <span>{errorMsg}</span>
-          <button onClick={() => setErrorMsg(null)} className="text-rose-500 hover:text-rose-800 dark:text-zinc-400 dark:hover:text-white">
+          <button onClick={() => setErrorMsg(null)} className="text-rose-500 hover:text-rose-800 dark:text-muted-foreground dark:hover:text-foreground">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -677,14 +677,14 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
 
       {/* Main Content Area: Grid vs Table */}
       {loading && quotes.length === 0 ? (
-        <div className="glass-panel h-80 rounded-2xl flex flex-col items-center justify-center gap-3 text-zinc-400">
+        <div className="bg-card border border-border h-80 rounded-2xl flex flex-col items-center justify-center gap-3 text-muted-foreground">
           <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
           <span className="text-sm font-medium">Descargando cotizaciones de mercado en tiempo real...</span>
         </div>
       ) : filteredQuotes.length === 0 ? (
-        <div className="glass-panel p-12 rounded-2xl text-center flex flex-col items-center gap-3">
+        <div className="bg-card border border-border p-12 rounded-2xl text-center flex flex-col items-center gap-3">
           <AlertCircle className="w-8 h-8 text-zinc-600" />
-          <p className="text-xs text-zinc-400">No se encontraron activos para los filtros seleccionados.</p>
+          <p className="text-xs text-muted-foreground">No se encontraron activos para los filtros seleccionados.</p>
         </div>
       ) : viewMode === 'grid' ? (
         /* GRID VIEW */
@@ -693,21 +693,21 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
             const isOverbought = quote.rsi !== null && quote.rsi >= 65;
             const isOversold = quote.rsi !== null && quote.rsi <= 35;
             const rsiColor = isOverbought 
-              ? 'text-rose-700 bg-rose-50 border-rose-200 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/30' 
-              : (isOversold ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/30' : 'text-slate-600 bg-slate-100 border-slate-200 dark:text-zinc-300 dark:bg-white/5 dark:border-white/10');
+              ? 'text-rose-700 bg-rose-50 border-rose-200 dark:text-negative dark:bg-red-500/10 dark:border-red-500/30' 
+              : (isOversold ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-positive dark:bg-emerald-500/10 dark:border-emerald-500/30' : 'text-slate-600 bg-slate-100 border-slate-200 dark:text-muted-foreground dark:bg-secondary/50 dark:border-border');
 
             return (
               <div
                 key={quote.symbol}
-                className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-5 rounded-2xl flex flex-col justify-between gap-3 shadow-sm hover:border-slate-300 dark:hover:border-white/20 transition-all group"
+                className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border p-5 rounded-2xl flex flex-col justify-between gap-3 shadow-sm hover:border-slate-300 dark:hover:border-border transition-all group"
               >
                 {/* Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => openTicker360(quote.symbol, quote)}
-                      className="text-lg font-black tracking-tight text-slate-900 dark:text-white hover:text-blue-400 hover:underline transition-colors text-left cursor-pointer"
+                      onClick={() => openTickerDrawer(quote.symbol, quote)}
+                      className="text-lg font-black tracking-tight text-slate-900 dark:text-foreground hover:text-foreground hover:underline transition-colors text-left cursor-pointer"
                       title={`Ver Ficha 360° de ${quote.symbol}`}
                     >
                       {quote.symbol}
@@ -717,11 +717,11 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
                         Cartera
                       </span>
                     )}
-                    <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">Ratio {quote.ratio}:1</span>
+                    <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">Ratio {quote.ratio}:1</span>
                   </div>
                   <button
                     onClick={() => handleRemoveTicker(quote.symbol)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:text-zinc-500 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-lg transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:text-muted-foreground dark:hover:text-negative dark:hover:bg-red-500/10 rounded-lg transition-all"
                     title="Eliminar de la lista"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -729,29 +729,29 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
                 </div>
 
                 {/* Prices: Local ARS, CEDEAR USD, ADR USD */}
-                <div className="flex flex-col gap-1.5 my-1 p-2.5 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-100 dark:border-white/5">
+                <div className="flex flex-col gap-1.5 my-1 p-2.5 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-100 dark:border-border">
                   <div className="flex items-baseline justify-between">
-                    <span className="text-xs text-slate-500 dark:text-zinc-400 font-medium">Local (ARS):</span>
-                    <span className="font-mono text-sm font-bold text-slate-900 dark:text-white tabular-nums">
+                    <span className="text-xs text-slate-500 dark:text-muted-foreground font-medium">Local (ARS):</span>
+                    <span className="font-mono text-sm font-bold text-slate-900 dark:text-foreground tabular-nums">
                       {quote.local !== null ? `A$ ${quote.local.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : '—'}
                     </span>
                   </div>
                   <div className="flex items-baseline justify-between">
-                    <span className="text-xs text-slate-500 dark:text-zinc-400 font-medium">CEDEAR (USD):</span>
-                    <span className="font-mono text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                    <span className="text-xs text-slate-500 dark:text-muted-foreground font-medium">CEDEAR (USD):</span>
+                    <span className="font-mono text-sm font-black text-emerald-600 dark:text-positive tabular-nums">
                       {quote.cedear_usd !== null ? `U$ ${quote.cedear_usd.toFixed(2)}` : '—'}
                     </span>
                   </div>
                   <div className="flex items-baseline justify-between">
-                    <span className="text-[11px] text-slate-400 dark:text-zinc-500 font-medium">ADR Subyacente:</span>
-                    <span className="font-mono text-xs font-semibold text-slate-600 dark:text-zinc-400 tabular-nums">
+                    <span className="text-[11px] text-slate-400 dark:text-muted-foreground font-medium">ADR Subyacente:</span>
+                    <span className="font-mono text-xs font-semibold text-slate-600 dark:text-muted-foreground tabular-nums">
                       {quote.adr !== null ? `U$ ${quote.adr.toFixed(2)}` : '—'}
                     </span>
                   </div>
                 </div>
 
                 {/* Indicator Badges */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-white/5">
+                <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-border">
                   {/* RSI */}
                   <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border tabular-nums ${rsiColor}`}>
                     RSI {quote.rsi !== null ? quote.rsi.toFixed(1) : '—'}
@@ -780,14 +780,14 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
                       title={quote.pfcf_signal.tooltip}
                       className={`cursor-help text-[10px] px-2 py-0.5 rounded font-semibold border transition-colors ${
                         quote.pfcf_signal.state_key === 'optimo' || quote.pfcf_signal.state_key === 'compra_optima'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/25'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-positive/10 dark:text-positive dark:border-emerald-500/25'
                           : (quote.pfcf_signal.state_key === 'no_comprar' || quote.pfcf_signal.state_key === 'sobrevaluado'
-                            ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/25'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-negative/10 dark:text-negative dark:border-red-500/25'
                             : (quote.pfcf_signal.state_key === 'sub_optimo'
                               ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/25'
                               : (quote.pfcf_signal.state_key === 'hold'
                                 ? 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/25'
-                                : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700')))
+                                : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-zinc-800 dark:text-muted-foreground dark:border-zinc-700')))
                       }`}
                     >
                       {quote.pfcf_signal.badge_text}
@@ -800,14 +800,14 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
         </div>
       ) : (
         /* TABLE VIEW */
-        <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-4 sm:p-5 rounded-2xl shadow-sm">
-          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
+        <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border p-4 sm:p-5 rounded-2xl shadow-sm">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-border">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
+              <thead className="bg-slate-50 dark:bg-secondary/50 border-b border-slate-200 dark:border-border">
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map(header => (
-                      <th key={header.id} className="px-2.5 py-2 font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 select-none">
+                      <th key={header.id} className="px-2.5 py-2 font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground select-none">
                         {flexRender(header.column.columnDef.header, header.getContext())}
                       </th>
                     ))}

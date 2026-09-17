@@ -9,7 +9,7 @@ import {
   VisualMapComponent
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { useChartTheme } from '../hooks/useChartTheme';
+import { useChartTheme } from '@/hooks/useChartTheme';
 
 echarts.use([
   HeatmapChart,
@@ -429,12 +429,12 @@ export const PerformanceView: React.FC = () => {
   const columns = useMemo(() => [
     columnHelper.accessor('ticker', {
       header: 'ACTIVO',
-      cell: info => <span className="font-extrabold text-slate-900 dark:text-white text-xs tracking-wide">{info.getValue()}</span>,
+      cell: info => <span className="font-extrabold text-slate-900 dark:text-foreground text-xs tracking-wide">{info.getValue()}</span>,
     }),
     columnHelper.accessor('portfolio', {
       header: 'CARTERA',
       cell: info => (
-        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20 font-bold">
+        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-foreground dark:border-blue-500/20 font-bold">
           {info.getValue()}
         </span>
       ),
@@ -444,7 +444,7 @@ export const PerformanceView: React.FC = () => {
       cell: info => {
         const val = info.getValue();
         return (
-          <span className="font-mono text-xs text-slate-700 dark:text-zinc-300 tabular-nums">
+          <span className="font-mono text-xs text-slate-700 dark:text-muted-foreground tabular-nums">
             {typeof val === 'number' ? `U$ ${val.toFixed(2)}` : '—'}
           </span>
         );
@@ -456,7 +456,7 @@ export const PerformanceView: React.FC = () => {
         const val = info.getValue();
         if (typeof val !== 'number') return <span className="text-slate-400 dark:text-zinc-600 font-mono text-xs">—</span>;
         return (
-          <span className={`font-mono text-xs font-bold tabular-nums ${val >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-red-400'}`}>
+          <span className={`font-mono text-xs font-bold tabular-nums ${val >= 0 ? 'text-emerald-600 dark:text-positive' : 'text-rose-600 dark:text-negative'}`}>
             {val > 0 ? '+' : ''}{val.toFixed(2)}%
           </span>
         );
@@ -468,7 +468,7 @@ export const PerformanceView: React.FC = () => {
         const val = info.getValue();
         if (typeof val !== 'number') return <span className="text-slate-400 dark:text-zinc-600 font-mono text-xs">—</span>;
         return (
-          <span className={`font-mono text-xs font-bold tabular-nums ${val >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-red-400'}`}>
+          <span className={`font-mono text-xs font-bold tabular-nums ${val >= 0 ? 'text-emerald-600 dark:text-positive' : 'text-rose-600 dark:text-negative'}`}>
             {val > 0 ? '+' : ''}{val.toFixed(2)}%
           </span>
         );
@@ -480,7 +480,7 @@ export const PerformanceView: React.FC = () => {
         const val = info.getValue();
         if (typeof val !== 'number') return <span className="text-slate-400 dark:text-zinc-600 font-mono text-xs">—</span>;
         return (
-          <span className={`font-mono text-xs font-bold tabular-nums ${val >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-red-400'}`}>
+          <span className={`font-mono text-xs font-bold tabular-nums ${val >= 0 ? 'text-emerald-600 dark:text-positive' : 'text-rose-600 dark:text-negative'}`}>
             {val > 0 ? '+' : ''}{val.toFixed(2)}%
           </span>
         );
@@ -492,7 +492,7 @@ export const PerformanceView: React.FC = () => {
         const val = info.getValue();
         if (typeof val !== 'number') return <span className="text-slate-400 dark:text-zinc-600 font-mono text-xs">—</span>;
         return (
-          <span className={`font-mono text-xs font-bold tabular-nums ${val >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-red-400'}`}>
+          <span className={`font-mono text-xs font-bold tabular-nums ${val >= 0 ? 'text-emerald-600 dark:text-positive' : 'text-rose-600 dark:text-negative'}`}>
             {val > 0 ? '+' : ''}{val.toFixed(2)}%
           </span>
         );
@@ -504,7 +504,7 @@ export const PerformanceView: React.FC = () => {
         const val = info.getValue();
         if (typeof val !== 'number') return <span className="text-slate-400 dark:text-zinc-600 font-mono text-xs">—</span>;
         
-        let colorClass = 'text-zinc-300 bg-white/5 border-white/10';
+        let colorClass = 'text-muted-foreground bg-secondary/50 border-border';
         let labelDesc = 'Neutro (~1.0)';
         if (val < 0.8) {
           colorClass = 'text-sky-400 bg-sky-500/10 border-sky-500/30';
@@ -526,18 +526,18 @@ export const PerformanceView: React.FC = () => {
     }),
     columnHelper.accessor('sma50_dist', {
       header: 'SMA 50',
-      cell: info => <span className="font-mono text-[11px] text-slate-600 dark:text-zinc-400 tabular-nums">{info.getValue()}</span>,
+      cell: info => <span className="font-mono text-[11px] text-slate-600 dark:text-muted-foreground tabular-nums">{info.getValue()}</span>,
     }),
     columnHelper.accessor('sma200_dist', {
       header: 'SMA 200',
-      cell: info => <span className="font-mono text-[11px] text-slate-600 dark:text-zinc-400 tabular-nums">{info.getValue()}</span>,
+      cell: info => <span className="font-mono text-[11px] text-slate-600 dark:text-muted-foreground tabular-nums">{info.getValue()}</span>,
     }),
     columnHelper.accessor('rsi', {
       header: 'RSI (14)',
       cell: info => {
         const val = info.getValue();
         if (typeof val !== 'number') return <span className="text-slate-400 dark:text-zinc-600 font-mono text-xs">—</span>;
-        const color = val > 65 ? 'text-rose-600 dark:text-red-400' : (val < 35 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-zinc-300');
+        const color = val > 65 ? 'text-rose-600 dark:text-negative' : (val < 35 ? 'text-emerald-600 dark:text-positive' : 'text-slate-700 dark:text-muted-foreground');
         return <span className={`font-mono text-xs font-bold tabular-nums ${color}`}>{val.toFixed(1)}</span>;
       },
     }),
@@ -557,13 +557,13 @@ export const PerformanceView: React.FC = () => {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-foreground flex items-center gap-3">
             Rendimiento Multiactivo vs Benchmark
-            <span className="text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30">
+            <span className="text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-foreground dark:border-blue-500/30">
               TradingView Feed
             </span>
           </h1>
-          <p className="text-sm text-slate-600 dark:text-zinc-400 mt-1">
+          <p className="text-sm text-slate-600 dark:text-muted-foreground mt-1">
             Métricas de rendimiento histórico ponderado, medias móviles simples (SMA50/200) y Alpha vs. SPY.
           </p>
         </div>
@@ -571,7 +571,7 @@ export const PerformanceView: React.FC = () => {
         <button
           onClick={fetchPerformanceData}
           disabled={refreshing}
-          className="h-9 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-white/5 dark:hover:bg-white/10 dark:text-zinc-300 font-bold text-xs flex items-center gap-2 border border-slate-200 dark:border-white/10 transition-all shadow-sm"
+          className="h-9 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-secondary/50 dark:hover:bg-secondary/50 dark:text-muted-foreground font-bold text-xs flex items-center gap-2 border border-slate-200 dark:border-border transition-all shadow-sm"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
           Actualizar Métricas
@@ -579,23 +579,23 @@ export const PerformanceView: React.FC = () => {
       </div>
 
       {loading && !data ? (
-        <div className="glass-panel h-80 rounded-2xl flex flex-col items-center justify-center gap-3 text-slate-500 dark:text-zinc-400">
+        <div className="bg-card border border-border h-80 rounded-2xl flex flex-col items-center justify-center gap-3 text-slate-500 dark:text-muted-foreground">
           <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
           <span className="text-sm font-medium">Escaneando métricas de rendimiento multiactivo...</span>
         </div>
       ) : data ? (
         <>
           {/* Heatmap Matrix Chart */}
-          <div className="glass-panel p-5 rounded-2xl flex flex-col gap-3 border border-white/10">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3">
+          <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-3 border border-border">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
               <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                <BarChart3 className="w-4 h-4 text-positive" />
+                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
                   Matriz Comparativa de Rendimiento & Alpha vs. SPY (%)
                 </h3>
               </div>
-              <span className="text-[11px] text-zinc-400">
-                Gradiente térmico por <strong className="text-emerald-400">Alpha diferencial</strong> (Verde: superó a SPY / Grafito: a la par / Rojo: por debajo).
+              <span className="text-[11px] text-muted-foreground">
+                Gradiente térmico por <strong className="text-positive">Alpha diferencial</strong> (Verde: superó a SPY / Grafito: a la par / Rojo: por debajo).
               </span>
             </div>
             <ReactECharts echarts={echarts} option={chartOption} style={{ height: `${chartHeight}px` }} />
@@ -604,46 +604,46 @@ export const PerformanceView: React.FC = () => {
           {/* Portfolio Aggregated Performance Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {data.portfolio_summaries.map(pf => (
-              <div key={pf.name} className="glass-panel p-5 rounded-2xl flex flex-col justify-between gap-3 border border-slate-200 dark:border-white/10">
+              <div key={pf.name} className="bg-card border border-border p-5 rounded-2xl flex flex-col justify-between gap-3 border border-slate-200 dark:border-border">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-black text-slate-900 dark:text-white">{pf.name} (Ponderado)</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 font-bold uppercase">
+                  <span className="text-sm font-black text-slate-900 dark:text-foreground">{pf.name} (Ponderado)</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-foreground font-bold uppercase">
                     Portfolio
                   </span>
                 </div>
 
-                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-100 dark:border-white/5">
+                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-100 dark:border-border">
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold">3M</span>
-                    <span className={`text-xs font-bold font-mono ${pf.perf_3m >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-red-400'}`}>
+                    <span className="text-[10px] text-slate-400 dark:text-muted-foreground font-bold">3M</span>
+                    <span className={`text-xs font-bold font-mono ${pf.perf_3m >= 0 ? 'text-emerald-600 dark:text-positive' : 'text-rose-600 dark:text-negative'}`}>
                       {pf.perf_3m > 0 ? '+' : ''}{pf.perf_3m}%
                     </span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold">6M</span>
-                    <span className={`text-xs font-bold font-mono ${pf.perf_6m >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-red-400'}`}>
+                    <span className="text-[10px] text-slate-400 dark:text-muted-foreground font-bold">6M</span>
+                    <span className={`text-xs font-bold font-mono ${pf.perf_6m >= 0 ? 'text-emerald-600 dark:text-positive' : 'text-rose-600 dark:text-negative'}`}>
                       {pf.perf_6m > 0 ? '+' : ''}{pf.perf_6m}%
                     </span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold">YTD</span>
-                    <span className={`text-xs font-bold font-mono ${pf.perf_ytd >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-red-400'}`}>
+                    <span className="text-[10px] text-slate-400 dark:text-muted-foreground font-bold">YTD</span>
+                    <span className={`text-xs font-bold font-mono ${pf.perf_ytd >= 0 ? 'text-emerald-600 dark:text-positive' : 'text-rose-600 dark:text-negative'}`}>
                       {pf.perf_ytd > 0 ? '+' : ''}{pf.perf_ytd}%
                     </span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold">1A</span>
-                    <span className={`text-xs font-bold font-mono ${pf.perf_1y >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-red-400'}`}>
+                    <span className="text-[10px] text-slate-400 dark:text-muted-foreground font-bold">1A</span>
+                    <span className={`text-xs font-bold font-mono ${pf.perf_1y >= 0 ? 'text-emerald-600 dark:text-positive' : 'text-rose-600 dark:text-negative'}`}>
                       {pf.perf_1y > 0 ? '+' : ''}{pf.perf_1y}%
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-zinc-400 font-mono pt-1">
+                <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-muted-foreground font-mono pt-1">
                   <span>SMA 50: {pf.sma50_dist}</span>
                   {typeof pf.beta === 'number' && (
-                    <span className="font-bold text-zinc-300">
-                      Beta: <span className={pf.beta > 1.2 ? 'text-amber-400' : (pf.beta < 0.8 ? 'text-sky-400' : 'text-zinc-200')}>{pf.beta.toFixed(2)}</span>
+                    <span className="font-bold text-muted-foreground">
+                      Beta: <span className={pf.beta > 1.2 ? 'text-amber-400' : (pf.beta < 0.8 ? 'text-sky-400' : 'text-foreground')}>{pf.beta.toFixed(2)}</span>
                     </span>
                   )}
                   <span>SMA 200: {pf.sma200_dist}</span>
@@ -653,13 +653,13 @@ export const PerformanceView: React.FC = () => {
           </div>
 
           {/* Asset Breakdown Table */}
-          <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4 border border-slate-200 dark:border-white/10 shadow-sm">
+          <div className="bg-card border border-border p-6 rounded-2xl flex flex-col gap-4 border border-slate-200 dark:border-border shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                <h2 className="text-lg font-black uppercase tracking-wider text-slate-900 dark:text-foreground">
                   Detalle de Activos y Medias Móviles
                 </h2>
-                <p className="text-xs text-slate-600 dark:text-zinc-400 mt-0.5">
+                <p className="text-xs text-slate-600 dark:text-muted-foreground mt-0.5">
                   Tabla de rendimiento multitemporal con distancia a medias móviles SMA 50 y SMA 200.
                 </p>
               </div>
@@ -667,20 +667,20 @@ export const PerformanceView: React.FC = () => {
               {/* Controls */}
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500" />
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Buscar activo..."
                     value={searchFilter}
                     onChange={e => setSearchFilter(e.target.value)}
-                    className="h-9 pl-9 pr-3 bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 outline-none focus:border-blue-500 transition-colors w-40"
+                    className="h-9 pl-9 pr-3 bg-slate-50 dark:bg-secondary border border-slate-200 dark:border-border rounded-xl text-xs font-bold text-slate-900 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-zinc-600 outline-none focus:border-blue-500 transition-colors w-40"
                   />
                 </div>
 
-                <div className="flex items-center bg-slate-100 dark:bg-black/40 p-1 rounded-xl border border-slate-200 dark:border-white/10 text-xs font-bold">
+                <div className="flex items-center bg-slate-100 dark:bg-secondary p-1 rounded-xl border border-slate-200 dark:border-border text-xs font-bold">
                   <button
                     onClick={() => setPortfolioFilter('all')}
-                    className={`px-3 py-1.5 rounded-lg transition-colors ${portfolioFilter === 'all' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/5'}`}
+                    className={`px-3 py-1.5 rounded-lg transition-colors ${portfolioFilter === 'all' ? 'bg-blue-600 text-foreground shadow-sm' : 'text-slate-600 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-foreground hover:bg-slate-200/60 dark:hover:bg-secondary/50'}`}
                   >
                     Todos
                   </button>
@@ -688,7 +688,7 @@ export const PerformanceView: React.FC = () => {
                     <button
                       key={pf.name}
                       onClick={() => setPortfolioFilter(pf.name)}
-                      className={`px-3 py-1.5 rounded-lg transition-colors ${portfolioFilter === pf.name ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/5'}`}
+                      className={`px-3 py-1.5 rounded-lg transition-colors ${portfolioFilter === pf.name ? 'bg-blue-600 text-foreground shadow-sm' : 'text-slate-600 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-foreground hover:bg-slate-200/60 dark:hover:bg-secondary/50'}`}
                     >
                       {pf.name}
                     </button>
@@ -698,13 +698,13 @@ export const PerformanceView: React.FC = () => {
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-border">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
+                <thead className="bg-slate-50 dark:bg-secondary/50 border-b border-slate-200 dark:border-border">
                   {table.getHeaderGroups().map(headerGroup => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map(header => (
-                        <th key={header.id} className="p-2.5 font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                        <th key={header.id} className="p-2.5 font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
                           {flexRender(header.column.columnDef.header, header.getContext())}
                         </th>
                       ))}

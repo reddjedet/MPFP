@@ -8,7 +8,7 @@ import {
   useReactTable, 
   SortingState 
 } from '@tanstack/react-table';
-import { useTicker360 } from '../../context/Ticker360Context';
+import { useAppStore } from '@/store/useAppStore';
 
 interface PortfolioAssetRow {
   ticker: string;
@@ -186,7 +186,7 @@ const KNOWN_ETFS = new Set([
 export const PortfolioTable: React.FC<PortfolioTableProps> = ({ data, pfType, onRefresh }) => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
-  const { openTicker360 } = useTicker360();
+  const { openTickerDrawer: openTicker360 } = useAppStore();
   
   const columnHelper = createColumnHelper<PortfolioAssetRow>();
   const columns = useMemo(() => [

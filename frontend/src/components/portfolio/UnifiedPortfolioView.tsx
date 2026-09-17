@@ -44,7 +44,7 @@ import { RenamePortfolioModal } from './RenamePortfolioModal';
 import { PortfolioTrashModal } from './PortfolioTrashModal';
 import { HoldingsDrawer } from '../rotation/HoldingsDrawer';
 import { PurchaseCalculator, CalculatorItem } from '../rotation/PurchaseCalculator';
-import { useTicker360 } from '../../context/Ticker360Context';
+import { useAppStore } from '@/store/useAppStore';
 import { useChartTheme } from '../../hooks/useChartTheme';
 
 export interface UnifiedPortfolioViewProps {
@@ -136,7 +136,7 @@ export const UnifiedPortfolioView: React.FC<UnifiedPortfolioViewProps> = ({
   onNavigateToTab
 }) => {
   const chartTheme = useChartTheme();
-  const { openTicker360 } = useTicker360();
+  const { openTickerDrawer: openTicker360 } = useAppStore();
 
   // Cartera seleccionada
   const [selectedPf, setSelectedPf] = useState<string>(() => {

@@ -16,14 +16,14 @@ import {
   ShieldCheck,
   Edit3
 } from 'lucide-react';
-import { useTicker360 } from '../../context/Ticker360Context';
+import { useAppStore } from '@/store/useAppStore';
 
 interface Ticker360DrawerProps {
   onNavigateToTab?: (area: 'portfolios' | 'market' | 'lab', subTab: string) => void;
 }
 
 export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTab }) => {
-  const { isOpen, ticker, initialData, closeTicker360 } = useTicker360();
+  const { isTicker360Open: isOpen, selectedTicker: ticker, ticker360InitialData: initialData, closeTickerDrawer: closeTicker360 } = useAppStore();
 
   const [loading, setLoading] = useState<boolean>(false);
   const [data, setData] = useState<any>(null);
@@ -203,14 +203,14 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
 
       {/* Drawer Lateral */}
       <aside 
-        className="relative z-10 w-full sm:w-[440px] bg-[#16161d] border-l border-white/10 h-full flex flex-col shadow-2xl text-zinc-200 overflow-hidden animate-in slide-in-from-right duration-300"
+        className="relative z-10 w-full sm:w-[440px] bg-[#16161d] border-l border-border h-full flex flex-col shadow-2xl text-foreground overflow-hidden animate-in slide-in-from-right duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* CABECERA */}
-        <header className="p-5 border-b border-white/10 bg-[#121319] flex items-start justify-between gap-3">
+        <header className="p-5 border-b border-border bg-[#121319] flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-2xl font-black text-white tracking-wide font-mono">
+              <span className="text-2xl font-black text-foreground tracking-wide font-mono">
                 {ticker}
               </span>
               {data?.is_etf && (
@@ -219,21 +219,21 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
                 </span>
               )}
               {data?.ratio && (
-                <span className="text-[11px] px-2 py-0.5 rounded bg-white/5 text-zinc-400 font-mono border border-white/10">
+                <span className="text-[11px] px-2 py-0.5 rounded bg-secondary/50 text-muted-foreground font-mono border border-border">
                   Ratio {String(data.ratio).includes(':') ? data.ratio : `${data.ratio}:1`}
                 </span>
               )}
             </div>
-            <h3 className="text-xs font-medium text-zinc-400 truncate max-w-[280px]">
+            <h3 className="text-xs font-medium text-muted-foreground truncate max-w-[280px]">
               {data?.company_name || data?.name || 'CEDEAR Negociable en BYMA'}
             </h3>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {loading && <RefreshCw className="w-4 h-4 text-zinc-500 animate-spin" />}
+            {loading && <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" />}
             <button
               onClick={closeTicker360}
-              className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
               title="Cerrar (Esc)"
             >
               <X className="w-5 h-5" />
@@ -246,36 +246,36 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
           
           {/* COTIZACIONES */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3.5 rounded-xl bg-[#1a1b23] border border-white/5 flex flex-col gap-1">
-              <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
+            <div className="p-3.5 rounded-xl bg-[#1a1b23] border border-border flex flex-col gap-1">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                 Precio Local (ARS)
               </span>
-              <div className="text-base font-black text-white font-mono tabular-nums">
+              <div className="text-base font-black text-foreground font-mono tabular-nums">
                 {currentPrice !== null 
                   ? `$ ${currentPrice.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
                   : '—'}
               </div>
-              <span className="text-[10px] text-zinc-500">1 CEDEAR (BYMA)</span>
+              <span className="text-[10px] text-muted-foreground">1 CEDEAR (BYMA)</span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[#1a1b23] border border-white/5 flex flex-col gap-1">
-              <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
+            <div className="p-3.5 rounded-xl bg-[#1a1b23] border border-border flex flex-col gap-1">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                 Acción ADR (USD)
               </span>
-              <div className="text-base font-black text-emerald-400 font-mono tabular-nums">
+              <div className="text-base font-black text-positive font-mono tabular-nums">
                 {currentAdr !== null 
                   ? `U$ ${currentAdr.toFixed(2)}` 
                   : '—'}
               </div>
-              <span className="text-[10px] text-zinc-500">Subyacente EE.UU.</span>
+              <span className="text-[10px] text-muted-foreground">Subyacente EE.UU.</span>
             </div>
           </div>
 
           {/* TERMÓMETRO TÉCNICO: RSI WILDER 14 */}
-          <div className="p-4 rounded-xl bg-[#1a1b23] border border-white/5 flex flex-col gap-3">
+          <div className="p-4 rounded-xl bg-[#1a1b23] border border-border flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Termómetro Técnico (RSI 14)
                 </span>
               </div>
@@ -290,14 +290,14 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
                   RSI {rsiVal.toFixed(1)} — {isOversold ? 'Sobreventa' : isOverbought ? 'Sobrecompra' : 'Neutral'}
                 </span>
               ) : (
-                <span className="text-xs text-zinc-500 font-mono">Sin datos</span>
+                <span className="text-xs text-muted-foreground font-mono">Sin datos</span>
               )}
             </div>
 
             {/* Barra Visual Graduada */}
             {rsiVal !== null && (
               <div className="space-y-1.5 pt-1">
-                <div className="relative h-3 w-full bg-zinc-800 rounded-full overflow-hidden flex border border-white/5">
+                <div className="relative h-3 w-full bg-zinc-800 rounded-full overflow-hidden flex border border-border">
                   <div className="w-[30%] bg-emerald-500/30 border-r border-black/30" title="Zona Sobreventa (0 - 30)" />
                   <div className="w-[40%] bg-sky-500/25 border-r border-black/30" title="Zona Neutral (30 - 70)" />
                   <div className="w-[30%] bg-rose-500/35" title="Zona Sobrecompra (70 - 100)" />
@@ -310,10 +310,10 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
                   />
                 </div>
 
-                <div className="flex justify-between text-[9px] font-mono text-zinc-500 px-0.5">
-                  <span className="text-emerald-400/80">0 (Oportunidad)</span>
-                  <span className="text-zinc-400">30</span>
-                  <span className="text-zinc-400">70</span>
+                <div className="flex justify-between text-[9px] font-mono text-muted-foreground px-0.5">
+                  <span className="text-positive/80">0 (Oportunidad)</span>
+                  <span className="text-muted-foreground">30</span>
+                  <span className="text-muted-foreground">70</span>
                   <span className="text-rose-400/80">100 (Extremo)</span>
                 </div>
               </div>
@@ -321,9 +321,9 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
           </div>
 
           {/* EVENTOS INMINENTES (BALANCES) */}
-          <div className="p-4 rounded-xl bg-[#1a1b23] border border-white/5 flex flex-col gap-2.5">
+          <div className="p-4 rounded-xl bg-[#1a1b23] border border-border flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-orange-400" />
                 Calendario de Reportes
               </span>
@@ -337,19 +337,19 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
             {earningsDetail ? (
               <div className="space-y-1.5 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-400">Próximo Reporte:</span>
-                  <span className="font-bold text-white font-mono">
+                  <span className="text-muted-foreground">Próximo Reporte:</span>
+                  <span className="font-bold text-foreground font-mono">
                     {earningsDetail.confirmed_date !== '—' 
                       ? `${earningsDetail.confirmed_date} (Confirmada)`
                       : `Mes de ${earningsDetail.target_month_name || '—'}`}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-400">Tiempo restante:</span>
+                  <span className="text-muted-foreground">Tiempo restante:</span>
                   <span className={`font-bold font-mono ${
                     earningsDetail.delta_days !== null && earningsDetail.delta_days < 14
                       ? 'text-orange-400' 
-                      : 'text-zinc-300'
+                      : 'text-muted-foreground'
                   }`}>
                     {earningsDetail.delta_days !== null 
                       ? (earningsDetail.delta_days === 0 ? '🚨 ¡Reporta hoy!' : `${earningsDetail.delta_days} días restantes`)
@@ -357,7 +357,7 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
                   </span>
                 </div>
                 {earningsDetail.typical_window && earningsDetail.typical_window !== '—' && (
-                  <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>Ventana típica:</span>
                     <span>{earningsDetail.typical_window}</span>
                   </div>
@@ -365,19 +365,19 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
               </div>
             ) : earningsBadge ? (
               <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Estado:</span>
+                <span className="text-muted-foreground">Estado:</span>
                 <span className="font-bold text-orange-400">{earningsBadge.badge_text || 'Pronto reporte'}</span>
               </div>
             ) : (
-              <p className="text-xs text-zinc-500">Sin balance confirmado en las próximas semanas.</p>
+              <p className="text-xs text-muted-foreground">Sin balance confirmado en las próximas semanas.</p>
             )}
           </div>
 
           {/* VALUACIÓN FUNDAMENTAL (GURUFOCUS & P/FCF) */}
-          <div className="p-4 rounded-xl bg-[#1a1b23] border border-white/5 flex flex-col gap-3">
+          <div className="p-4 rounded-xl bg-[#1a1b23] border border-border flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-foreground" />
                 Valuación Fundamental
               </span>
               {data?.gf_signal && (
@@ -388,19 +388,19 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-2.5 rounded-lg bg-black/30 border border-white/5">
-                <span className="text-[10px] text-zinc-500 uppercase font-bold block">Fair Value (GF)</span>
-                <span className="text-sm font-black font-mono text-white">
+              <div className="p-2.5 rounded-lg bg-black/30 border border-border">
+                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Fair Value (GF)</span>
+                <span className="text-sm font-black font-mono text-foreground">
                   {gfVal !== null ? `U$ ${gfVal.toFixed(2)}` : 'No asignado'}
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-black/30 border border-white/5">
-                <span className="text-[10px] text-zinc-500 uppercase font-bold block">Margen Seguridad</span>
+              <div className="p-2.5 rounded-lg bg-black/30 border border-border">
+                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Margen Seguridad</span>
                 <span className={`text-sm font-black font-mono ${
                   discountPct !== null && discountPct !== undefined
-                    ? (discountPct >= 20 ? 'text-emerald-400' : discountPct < 0 ? 'text-rose-400' : 'text-zinc-300')
-                    : 'text-zinc-500'
+                    ? (discountPct >= 20 ? 'text-positive' : discountPct < 0 ? 'text-rose-400' : 'text-muted-foreground')
+                    : 'text-muted-foreground'
                 }`}>
                   {discountPct !== null && discountPct !== undefined 
                     ? `${discountPct > 0 ? '+' : ''}${discountPct.toFixed(1)}%` 
@@ -411,16 +411,16 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
 
             {/* P/FCF Normalizado */}
             {data?.pfcf_signal && (
-              <div className="flex items-center justify-between pt-1 border-t border-white/5 text-xs">
-                <span className="text-zinc-400">Múltiplo P/FCF Normalizado:</span>
+              <div className="flex items-center justify-between pt-1 border-t border-border text-xs">
+                <span className="text-muted-foreground">Múltiplo P/FCF Normalizado:</span>
                 <div className="flex items-center gap-1.5">
-                  {data.pfcf && <span className="font-mono font-bold text-white">{data.pfcf}x</span>}
+                  {data.pfcf && <span className="font-mono font-bold text-foreground">{data.pfcf}x</span>}
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
                     data.pfcf_signal.state_key === 'optimo' || data.pfcf_signal.state_key === 'compra_optima'
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
                       : data.pfcf_signal.state_key === 'no_comprar' || data.pfcf_signal.state_key === 'sobrevaluado'
                         ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                        : 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                        : 'bg-zinc-800 text-muted-foreground border-zinc-700'
                   }`}>
                     {data.pfcf_signal.badge_text}
                   </span>
@@ -430,10 +430,10 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
           </div>
 
           {/* POSICIÓN EN MI CARTERA */}
-          <div className="p-4 rounded-xl bg-[#1a1b23] border border-white/5 flex flex-col gap-3">
+          <div className="p-4 rounded-xl bg-[#1a1b23] border border-border flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
-                <Wallet className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Wallet className="w-3.5 h-3.5 text-positive" />
                 Mi Cartera ({activePortfolio.toUpperCase()})
               </span>
               {ppcReturn?.is_take_profit && (
@@ -444,28 +444,28 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-2.5 rounded-lg bg-black/30 border border-white/5">
-                <span className="text-[10px] text-zinc-500 uppercase font-bold block">Tenencia Real</span>
-                <span className="text-sm font-black font-mono text-white">
-                  {nominalsInPf} <span className="text-xs font-normal text-zinc-400">VN</span>
+              <div className="p-2.5 rounded-lg bg-black/30 border border-border">
+                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Tenencia Real</span>
+                <span className="text-sm font-black font-mono text-foreground">
+                  {nominalsInPf} <span className="text-xs font-normal text-muted-foreground">VN</span>
                 </span>
                 {posValArs > 0 && (
-                  <span className="text-[10px] text-zinc-400 font-mono block">
+                  <span className="text-[10px] text-muted-foreground font-mono block">
                     $ {posValArs.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
                   </span>
                 )}
               </div>
 
-              <div className="p-2.5 rounded-lg bg-black/30 border border-white/5">
-                <span className="text-[10px] text-zinc-500 uppercase font-bold block">PPC & PnL</span>
+              <div className="p-2.5 rounded-lg bg-black/30 border border-border">
+                <span className="text-[10px] text-muted-foreground uppercase font-bold block">PPC & PnL</span>
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-sm font-black font-mono text-white">
+                  <span className="text-sm font-black font-mono text-foreground">
                     {ppcVal !== null ? `$ ${ppcVal.toLocaleString('es-AR')}` : 'Sin PPC'}
                   </span>
                 </div>
                 {ppcReturn && (
                   <span className={`text-[10px] font-mono font-bold block ${
-                    ppcReturn.return_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    ppcReturn.return_pct >= 0 ? 'text-positive' : 'text-rose-400'
                   }`}>
                     {ppcReturn.return_pct >= 0 ? '+' : ''}{ppcReturn.return_pct.toFixed(1)}% ({ppcReturn.badge_text})
                   </span>
@@ -478,31 +478,31 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
           {showCalculator && (
             <div className="p-4 rounded-xl bg-[#14151b] border border-emerald-500/30 flex flex-col gap-3 animate-in fade-in duration-200">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-positive flex items-center gap-1.5">
                   <Calculator className="w-3.5 h-3.5" />
                   Calculadora Rápida de Compra
                 </span>
                 <button 
                   onClick={() => setShowCalculator(false)}
-                  className="text-zinc-500 hover:text-white text-xs"
+                  className="text-muted-foreground hover:text-foreground text-xs"
                 >
                   Ocultar
                 </button>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Monto a Invertir en ARS
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs font-mono">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-mono">$</span>
                   <input
                     type="number"
                     step="1000"
                     placeholder="Ej: 250000"
                     value={calcAmount}
                     onChange={e => setCalcAmount(e.target.value)}
-                    className="w-full h-9 pl-7 pr-3 bg-black/50 border border-white/10 rounded-lg text-xs font-mono font-bold text-white outline-none focus:border-emerald-500"
+                    className="w-full h-9 pl-7 pr-3 bg-secondary border border-border rounded-lg text-xs font-mono font-bold text-foreground outline-none focus:border-emerald-500"
                   />
                 </div>
 
@@ -512,7 +512,7 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
                     <button
                       key={val}
                       onClick={() => setCalcAmount(String(val))}
-                      className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] font-mono text-zinc-400 hover:text-white transition-colors"
+                      className="px-2 py-1 rounded bg-secondary/50 hover:bg-secondary/50 text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors"
                     >
                       ${val >= 1000000 ? `${val / 1000000}M` : `${val / 1000}k`}
                     </button>
@@ -523,16 +523,16 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
                 {quickCalc.nominals > 0 && (
                   <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-1 mt-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-zinc-300">Puedes comprar:</span>
-                      <span className="font-black text-emerald-400 font-mono text-sm">
+                      <span className="text-muted-foreground">Puedes comprar:</span>
+                      <span className="font-black text-positive font-mono text-sm">
                         {quickCalc.nominals} nominales
                       </span>
                     </div>
-                    <div className="flex justify-between text-[11px] text-zinc-400 font-mono">
+                    <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
                       <span>Costo total:</span>
                       <span>$ {quickCalc.totalCost.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
                     </div>
-                    <div className="flex justify-between text-[11px] text-zinc-500 font-mono">
+                    <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
                       <span>Vuelto en caja:</span>
                       <span>$ {quickCalc.leftover.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
                     </div>
@@ -546,13 +546,13 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
           {showEdit && (
             <div className="p-4 rounded-xl bg-[#14151b] border border-blue-500/30 flex flex-col gap-3 animate-in fade-in duration-200">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
                   <Edit3 className="w-3.5 h-3.5" />
                   Editar PPC & Fair Value
                 </span>
                 <button 
                   onClick={() => setShowEdit(false)}
-                  className="text-zinc-500 hover:text-white text-xs"
+                  className="text-muted-foreground hover:text-foreground text-xs"
                 >
                   Cerrar
                 </button>
@@ -560,39 +560,39 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-zinc-400 uppercase">PPC (A$)</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase">PPC (A$)</label>
                   <input
                     type="number"
                     step="any"
                     placeholder="Ej: 14200"
                     value={editPpc}
                     onChange={e => setEditPpc(e.target.value)}
-                    className="w-full h-8 px-2 bg-black/50 border border-white/10 rounded text-xs font-mono text-white outline-none focus:border-blue-500"
+                    className="w-full h-8 px-2 bg-secondary border border-border rounded text-xs font-mono text-foreground outline-none focus:border-blue-500"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Fair Value (U$)</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Fair Value (U$)</label>
                   <input
                     type="number"
                     step="any"
                     placeholder="Ej: 220"
                     value={editGf}
                     onChange={e => setEditGf(e.target.value)}
-                    className="w-full h-8 px-2 bg-black/50 border border-white/10 rounded text-xs font-mono text-white outline-none focus:border-blue-500"
+                    className="w-full h-8 px-2 bg-secondary border border-border rounded text-xs font-mono text-foreground outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-1">
                 {editSaved && (
-                  <span className="text-xs text-emerald-400 flex items-center gap-1 font-bold">
+                  <span className="text-xs text-positive flex items-center gap-1 font-bold">
                     <Check className="w-3.5 h-3.5" /> Guardado
                   </span>
                 )}
                 <button
                   onClick={handleSaveMetrics}
                   disabled={savingEdit}
-                  className="px-3 py-1.5 rounded-[3px] bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-bold text-foreground transition-colors flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {savingEdit ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                   Guardar
@@ -604,11 +604,11 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
         </div>
 
         {/* BOTONES DE ACCIÓN INMEDIATA */}
-        <footer className="p-4 border-t border-white/10 bg-[#121319] flex flex-col gap-2">
+        <footer className="p-4 border-t border-border bg-[#121319] flex flex-col gap-2">
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setShowCalculator(prev => !prev)}
-              className="h-10 px-3 rounded-[3px] bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+              className="h-10 px-3 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
             >
               <Calculator className="w-3.5 h-3.5" />
               <span>{showCalculator ? 'Cerrar Calc' : 'Calcular Compra'}</span>
@@ -616,16 +616,16 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
 
             <button
               onClick={() => setShowEdit(prev => !prev)}
-              className="h-10 px-3 rounded-[3px] bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+              className="h-10 px-3 rounded-lg bg-secondary/50 hover:bg-secondary/50 text-muted-foreground border border-border text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
             >
-              <Edit3 className="w-3.5 h-3.5 text-zinc-400" />
+              <Edit3 className="w-3.5 h-3.5 text-muted-foreground" />
               <span>Editar Métricas</span>
             </button>
           </div>
 
           <button
             onClick={handleGoToValuation}
-            className="w-full h-10 px-4 rounded-[3px] bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-blue-600/20 cursor-pointer"
+            className="w-full h-10 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-foreground text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-blue-600/20 cursor-pointer"
           >
             <ShieldCheck className="w-4 h-4" />
             <span>Abrir en Valuación Fundamental</span>

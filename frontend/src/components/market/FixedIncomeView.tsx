@@ -242,14 +242,14 @@ export const FixedIncomeView: React.FC = () => {
       return [
         columnHelper.accessor('ticker', {
           header: 'TÍTULO',
-          cell: info => <span className="font-extrabold text-white text-xs tracking-wide">{info.getValue()}</span>,
+          cell: info => <span className="font-extrabold text-foreground text-xs tracking-wide">{info.getValue()}</span>,
         }),
         columnHelper.accessor('tipo', {
           header: 'INSTRUMENTO',
           cell: info => {
             const val = info.getValue();
             return (
-              <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-zinc-300 border border-white/10 font-bold">
+              <span className="text-[10px] px-2 py-0.5 rounded bg-secondary/50 text-muted-foreground border border-border font-bold">
                 {val || 'LECAP'}
               </span>
             );
@@ -261,7 +261,7 @@ export const FixedIncomeView: React.FC = () => {
             const val = info.getValue();
             if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
             return (
-              <span className="font-mono text-xs text-white font-bold tabular-nums">
+              <span className="font-mono text-xs text-foreground font-bold tabular-nums">
                 A$ {val.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             );
@@ -273,7 +273,7 @@ export const FixedIncomeView: React.FC = () => {
             const val = info.getValue();
             if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
             return (
-              <span className="font-mono text-xs font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded tabular-nums inline-block">
+              <span className="font-mono text-xs font-black text-positive bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded tabular-nums inline-block">
                 {val.toFixed(2)}%
               </span>
             );
@@ -285,7 +285,7 @@ export const FixedIncomeView: React.FC = () => {
             const val = info.getValue();
             if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
             return (
-              <span className="font-mono text-xs font-bold text-emerald-400 tabular-nums">
+              <span className="font-mono text-xs font-bold text-positive tabular-nums">
                 {val.toFixed(2)}%
               </span>
             );
@@ -297,7 +297,7 @@ export const FixedIncomeView: React.FC = () => {
             const val = info.getValue();
             if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
             return (
-              <span className="font-mono text-xs text-zinc-300 tabular-nums">
+              <span className="font-mono text-xs text-muted-foreground tabular-nums">
                 {val.toFixed(2)}%
               </span>
             );
@@ -308,7 +308,7 @@ export const FixedIncomeView: React.FC = () => {
           cell: info => {
             const val = info.getValue();
             if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
-            return <span className="font-mono text-xs text-zinc-300 tabular-nums">{val.toFixed(2)} a</span>;
+            return <span className="font-mono text-xs text-muted-foreground tabular-nums">{val.toFixed(2)} a</span>;
           },
         }),
         columnHelper.accessor('spread_curva_bps', {
@@ -317,8 +317,8 @@ export const FixedIncomeView: React.FC = () => {
             const val = info.getValue();
             if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
             const color = val >= 0 
-              ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' 
-              : 'text-red-400 bg-red-500/10 border-red-500/30';
+              ? 'text-positive bg-emerald-500/10 border-emerald-500/30' 
+              : 'text-negative bg-red-500/10 border-red-500/30';
             return (
               <span className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border tabular-nums ${color}`}>
                 {val > 0 ? '+' : ''}{val} bps
@@ -331,7 +331,7 @@ export const FixedIncomeView: React.FC = () => {
           cell: info => {
             const val = info.getValue();
             if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
-            return <span className="font-mono text-xs text-zinc-400 tabular-nums">A$ {val.toFixed(2)}</span>;
+            return <span className="font-mono text-xs text-muted-foreground tabular-nums">A$ {val.toFixed(2)}</span>;
           },
         }),
         columnHelper.accessor('dias', {
@@ -339,7 +339,7 @@ export const FixedIncomeView: React.FC = () => {
           cell: info => {
             const val = info.getValue();
             if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
-            return <span className="font-mono text-xs text-zinc-400 tabular-nums">{val}d</span>;
+            return <span className="font-mono text-xs text-muted-foreground tabular-nums">{val}d</span>;
           },
         }),
       ];
@@ -349,7 +349,7 @@ export const FixedIncomeView: React.FC = () => {
     return [
       columnHelper.accessor('ticker', {
         header: 'TÍTULO',
-        cell: info => <span className="font-extrabold text-white text-xs tracking-wide">{info.getValue()}</span>,
+        cell: info => <span className="font-extrabold text-foreground text-xs tracking-wide">{info.getValue()}</span>,
       }),
       columnHelper.accessor(row => row.ley || row.tipo, {
         id: 'ley_tipo',
@@ -361,7 +361,7 @@ export const FixedIncomeView: React.FC = () => {
           const badgeClass = isNY 
             ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' 
             : isLocal 
-              ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+              ? 'bg-blue-500/10 text-foreground border-blue-500/30'
               : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30';
           return (
             <span className={`text-[10px] px-2 py-0.5 rounded border font-bold ${badgeClass}`}>
@@ -376,7 +376,7 @@ export const FixedIncomeView: React.FC = () => {
           const val = info.getValue();
           if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
           return (
-            <span className="font-mono text-xs text-white font-bold tabular-nums">
+            <span className="font-mono text-xs text-foreground font-bold tabular-nums">
               U$ {val.toFixed(2)}
             </span>
           );
@@ -389,7 +389,7 @@ export const FixedIncomeView: React.FC = () => {
           const val = info.getValue();
           if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
           return (
-            <span className="font-mono text-xs font-black text-emerald-400 tabular-nums">
+            <span className="font-mono text-xs font-black text-positive tabular-nums">
               {val.toFixed(2)}%
             </span>
           );
@@ -400,7 +400,7 @@ export const FixedIncomeView: React.FC = () => {
         cell: info => {
           const val = info.getValue();
           if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
-          return <span className="font-mono text-xs text-zinc-300 tabular-nums">{val.toFixed(1)}%</span>;
+          return <span className="font-mono text-xs text-muted-foreground tabular-nums">{val.toFixed(1)}%</span>;
         },
       }),
       columnHelper.accessor('md', {
@@ -408,7 +408,7 @@ export const FixedIncomeView: React.FC = () => {
         cell: info => {
           const val = info.getValue();
           if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
-          return <span className="font-mono text-xs text-zinc-300 tabular-nums">{val.toFixed(2)} años</span>;
+          return <span className="font-mono text-xs text-muted-foreground tabular-nums">{val.toFixed(2)} años</span>;
         },
       }),
       columnHelper.accessor('spread_curva_bps', {
@@ -417,8 +417,8 @@ export const FixedIncomeView: React.FC = () => {
           const val = info.getValue();
           if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
           const color = val >= 0 
-            ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' 
-            : 'text-red-400 bg-red-500/10 border-red-500/30';
+            ? 'text-positive bg-emerald-500/10 border-emerald-500/30' 
+            : 'text-negative bg-red-500/10 border-red-500/30';
           return (
             <span className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border tabular-nums ${color}`}>
               {val > 0 ? '+' : ''}{val} bps
@@ -431,7 +431,7 @@ export const FixedIncomeView: React.FC = () => {
         cell: info => {
           const val = info.getValue();
           if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
-          return <span className="font-mono text-xs text-zinc-400 tabular-nums">{val}</span>;
+          return <span className="font-mono text-xs text-muted-foreground tabular-nums">{val}</span>;
         },
       }),
     ];
@@ -451,25 +451,25 @@ export const FixedIncomeView: React.FC = () => {
       {/* Top Header & Category Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
+          <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-3">
             Curvas de Renta Fija Soberana
-            <span className="text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/30">
+            <span className="text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-blue-500/10 text-foreground border border-blue-500/30">
               MAE / BYMA Live
             </span>
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Análisis de rendimiento, Modified Duration y spreads de compresión vs. curva benchmark.
           </p>
         </div>
 
         {/* Category Selector Tabs */}
-        <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/10">
+        <div className="flex items-center gap-2 bg-secondary p-1.5 rounded-2xl border border-border">
           <button
             onClick={() => setCategory('lecap')}
             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
               category === 'lecap'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 scale-[1.02]'
-                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                ? 'bg-blue-600 text-foreground shadow-md scale-[1.02]'
+                : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
             }`}
           >
             LECAPs & BONCAPs
@@ -478,8 +478,8 @@ export const FixedIncomeView: React.FC = () => {
             onClick={() => setCategory('soberanos')}
             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
               category === 'soberanos'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 scale-[1.02]'
-                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                ? 'bg-blue-600 text-foreground shadow-md scale-[1.02]'
+                : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
             }`}
           >
             Soberanos USD
@@ -488,8 +488,8 @@ export const FixedIncomeView: React.FC = () => {
             onClick={() => setCategory('bopreal')}
             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
               category === 'bopreal'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 scale-[1.02]'
-                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                ? 'bg-blue-600 text-foreground shadow-md scale-[1.02]'
+                : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
             }`}
           >
             BOPREAL
@@ -498,15 +498,15 @@ export const FixedIncomeView: React.FC = () => {
       </div>
 
       {/* Sub-Filters Bar */}
-      <div className="bg-[#181920]/80 border border-white/10 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4 backdrop-blur-md">
+      <div className="bg-secondary/80 border border-border p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4 backdrop-blur-md">
         <div className="flex flex-wrap items-center gap-3">
           {category === 'lecap' && (
-            <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-white/10 text-xs font-bold">
+            <div className="flex items-center gap-1.5 bg-secondary p-1 rounded-xl border border-border text-xs font-bold">
               {['Todos', 'LECAP', 'BONCAP', 'BONTE'].map(t => (
                 <button
                   key={t}
                   onClick={() => setTipoInst(t)}
-                  className={`px-3 py-1.5 rounded-lg transition-colors ${tipoInst === t ? 'bg-blue-600 text-white shadow-sm' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
+                  className={`px-3 py-1.5 rounded-lg transition-colors ${tipoInst === t ? 'bg-blue-600 text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}
                 >
                   {t}
                 </button>
@@ -515,12 +515,12 @@ export const FixedIncomeView: React.FC = () => {
           )}
 
           {category === 'soberanos' && (
-            <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-white/10 text-xs font-bold">
+            <div className="flex items-center gap-1.5 bg-secondary p-1 rounded-xl border border-border text-xs font-bold">
               {['Ambas', 'Ley NY', 'Ley Local'].map(l => (
                 <button
                   key={l}
                   onClick={() => setLey(l)}
-                  className={`px-3 py-1.5 rounded-lg transition-colors ${ley === l ? 'bg-blue-600 text-white shadow-sm' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
+                  className={`px-3 py-1.5 rounded-lg transition-colors ${ley === l ? 'bg-blue-600 text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}
                 >
                   {l}
                 </button>
@@ -529,13 +529,13 @@ export const FixedIncomeView: React.FC = () => {
           )}
 
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               placeholder="Buscar título..."
               value={searchFilter}
               onChange={e => setSearchFilter(e.target.value)}
-              className="h-9 pl-9 pr-3 bg-black/40 border border-white/10 rounded-xl text-xs font-bold text-white placeholder:text-zinc-600 outline-none focus:border-blue-500 transition-colors w-40"
+              className="h-9 pl-9 pr-3 bg-secondary border border-border rounded-xl text-xs font-bold text-foreground placeholder:text-zinc-600 outline-none focus:border-blue-500 transition-colors w-40"
             />
           </div>
         </div>
@@ -543,7 +543,7 @@ export const FixedIncomeView: React.FC = () => {
         <button
           onClick={fetchCurveData}
           disabled={refreshing}
-          className="h-9 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 font-bold text-xs flex items-center gap-2 border border-white/10 transition-all shadow-sm"
+          className="h-9 px-4 rounded-xl bg-secondary/50 hover:bg-secondary/50 text-muted-foreground font-bold text-xs flex items-center gap-2 border border-border transition-all shadow-sm"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
           Actualizar Curva
@@ -551,7 +551,7 @@ export const FixedIncomeView: React.FC = () => {
       </div>
 
       {loading && !data ? (
-        <div className="bg-[#181920]/80 border border-white/10 h-80 rounded-2xl flex flex-col items-center justify-center gap-3 text-zinc-400 backdrop-blur-md">
+        <div className="bg-secondary/80 border border-border h-80 rounded-2xl flex flex-col items-center justify-center gap-3 text-muted-foreground backdrop-blur-md">
           <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
           <span className="text-sm font-medium">Descargando cotizaciones y flujos de fondos desde MAE/BYMA...</span>
         </div>
@@ -561,31 +561,31 @@ export const FixedIncomeView: React.FC = () => {
           {data.highlights && Object.keys(data.highlights).length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {data.highlights.best_tir && (
-                <div className="bg-[#181920]/80 border border-white/10 p-4 rounded-2xl flex flex-col justify-between backdrop-blur-md">
-                  <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Mayor Rendimiento</span>
+                <div className="bg-secondary/80 border border-border p-4 rounded-2xl flex flex-col justify-between backdrop-blur-md">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Mayor Rendimiento</span>
                   <div className="flex items-baseline gap-2 mt-1">
-                    <span className="text-xl font-black text-emerald-400 tabular-nums">{data.highlights.best_tir.val}</span>
-                    <span className="text-xs text-white font-bold">{data.highlights.best_tir.ticker}</span>
+                    <span className="text-xl font-black text-positive tabular-nums">{data.highlights.best_tir.val}</span>
+                    <span className="text-xs text-foreground font-bold">{data.highlights.best_tir.ticker}</span>
                   </div>
                 </div>
               )}
 
               {data.highlights.lowest_parity && (
-                <div className="bg-[#181920]/80 border border-white/10 p-4 rounded-2xl flex flex-col justify-between backdrop-blur-md">
-                  <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Menor Paridad (Margen)</span>
+                <div className="bg-secondary/80 border border-border p-4 rounded-2xl flex flex-col justify-between backdrop-blur-md">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Menor Paridad (Margen)</span>
                   <div className="flex items-baseline gap-2 mt-1">
-                    <span className="text-xl font-black text-blue-400 tabular-nums">{data.highlights.lowest_parity.val}</span>
-                    <span className="text-xs text-white font-bold">{data.highlights.lowest_parity.ticker}</span>
+                    <span className="text-xl font-black text-foreground tabular-nums">{data.highlights.lowest_parity.val}</span>
+                    <span className="text-xs text-foreground font-bold">{data.highlights.lowest_parity.ticker}</span>
                   </div>
                 </div>
               )}
 
               {data.highlights.most_liquid && (
-                <div className="bg-[#181920]/80 border border-white/10 p-4 rounded-2xl flex flex-col justify-between backdrop-blur-md">
-                  <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Mayor Liquidez MAE</span>
+                <div className="bg-secondary/80 border border-border p-4 rounded-2xl flex flex-col justify-between backdrop-blur-md">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Mayor Liquidez MAE</span>
                   <div className="flex items-baseline gap-2 mt-1">
-                    <span className="text-xl font-black text-white tabular-nums">{data.highlights.most_liquid.val}</span>
-                    <span className="text-xs text-zinc-400 font-bold">{data.highlights.most_liquid.ticker}</span>
+                    <span className="text-xl font-black text-foreground tabular-nums">{data.highlights.most_liquid.val}</span>
+                    <span className="text-xs text-muted-foreground font-bold">{data.highlights.most_liquid.ticker}</span>
                   </div>
                 </div>
               )}
@@ -593,17 +593,17 @@ export const FixedIncomeView: React.FC = () => {
           )}
 
           {/* Scatter Yield Curve Chart */}
-          <div className="bg-[#181920]/80 border border-white/10 p-5 rounded-2xl flex flex-col gap-3 backdrop-blur-md">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-3">
+          <div className="bg-secondary/80 border border-border p-5 rounded-2xl flex flex-col gap-3 backdrop-blur-md">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
               <div>
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
                   Curva de Rendimiento vs. Modified Duration (Benchmark Spline)
                 </h3>
-                <p className="text-[11px] text-zinc-400 mt-0.5">
+                <p className="text-[11px] text-muted-foreground mt-0.5">
                   Posición de cada título respecto a la curva teórica del mercado.
                 </p>
               </div>
-              <div className="flex items-center gap-4 text-[11px] font-medium text-zinc-400">
+              <div className="flex items-center gap-4 text-[11px] font-medium text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#49d090] shadow-[0_0_8px_rgba(73,208,144,0.4)]" />
                   <span>Tasa con Premio (Mayor rendimiento)</span>
@@ -622,29 +622,29 @@ export const FixedIncomeView: React.FC = () => {
             {data.scatter_points && data.scatter_points.length > 0 ? (
               <ReactECharts echarts={echarts} option={chartOption} style={{ height: '320px' }} />
             ) : (
-              <div className="h-48 flex items-center justify-center text-xs text-zinc-500">
+              <div className="h-48 flex items-center justify-center text-xs text-muted-foreground">
                 No hay suficientes puntos negociados para trazar la curva en esta categoría.
               </div>
             )}
           </div>
 
           {/* TanStack Table */}
-          <div className="bg-[#181920]/80 border border-white/10 p-5 rounded-2xl flex flex-col gap-4 shadow-sm backdrop-blur-md">
+          <div className="bg-secondary/80 border border-border p-5 rounded-2xl flex flex-col gap-4 shadow-sm backdrop-blur-md">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-base font-black uppercase tracking-wider text-white">
+                <h2 className="text-base font-black uppercase tracking-wider text-foreground">
                   Títulos y Fichas Técnicas
                 </h2>
-                <p className="text-xs text-zinc-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Instrumentos filtrados con rendimientos, Modified Duration y spreads relativos.
                 </p>
               </div>
             </div>
 
             {filteredRows.length > 0 ? (
-              <div className="overflow-x-auto rounded-xl border border-white/10">
+              <div className="overflow-x-auto rounded-xl border border-border">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-white/[0.03] border-b border-white/10">
+                  <thead className="bg-secondary/50 border-b border-border">
                     {table.getHeaderGroups().map(headerGroup => (
                       <tr key={headerGroup.id}>
                         {headerGroup.headers.map(header => {
@@ -655,8 +655,8 @@ export const FixedIncomeView: React.FC = () => {
                               key={header.id} 
                               onClick={header.column.getToggleSortingHandler()}
                               className={`px-2.5 py-2 font-bold uppercase tracking-wider text-[11px] select-none ${
-                                canSort ? 'cursor-pointer hover:text-white transition-colors' : ''
-                              } ${isSorted ? 'text-blue-400' : 'text-zinc-400'}`}
+                                canSort ? 'cursor-pointer hover:text-foreground transition-colors' : ''
+                              } ${isSorted ? 'text-foreground' : 'text-muted-foreground'}`}
                             >
                               <div className="flex items-center gap-1">
                                 {flexRender(header.column.columnDef.header, header.getContext())}
@@ -671,7 +671,7 @@ export const FixedIncomeView: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {table.getRowModel().rows.map(row => (
-                      <tr key={row.id} className="hover:bg-white/[0.03] transition-colors">
+                      <tr key={row.id} className="hover:bg-secondary/50 transition-colors">
                         {row.getVisibleCells().map(cell => (
                           <td key={cell.id} className="px-3 py-2">
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -683,7 +683,7 @@ export const FixedIncomeView: React.FC = () => {
                 </table>
               </div>
             ) : (
-              <div className="p-8 text-center text-xs text-zinc-500">
+              <div className="p-8 text-center text-xs text-muted-foreground">
                 No se encontraron activos para los filtros seleccionados.
               </div>
             )}

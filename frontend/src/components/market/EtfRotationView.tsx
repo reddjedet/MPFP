@@ -19,8 +19,8 @@ import {
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react';
-import { useChartTheme } from '../hooks/useChartTheme';
-import { useTicker360 } from '../context/Ticker360Context';
+import { useChartTheme } from '@/hooks/useChartTheme';
+import { useAppStore } from '@/store/useAppStore';
 
 echarts.use([
   BarChart,
@@ -92,7 +92,7 @@ const ETF_COLORS: Record<string, string> = {
 
 export const EtfRotationView: React.FC = () => {
   const chartTheme = useChartTheme();
-  const { openTicker360 } = useTicker360();
+  const { openTickerDrawer: openTicker360 } = useAppStore();
 
   const [data, setData] = useState<EtfRotationData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -648,8 +648,8 @@ export const EtfRotationView: React.FC = () => {
 
   if (loading && !data) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3 text-zinc-400">
-        <Compass className="w-8 h-8 text-emerald-400 animate-spin" />
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3 text-muted-foreground">
+        <Compass className="w-8 h-8 text-positive animate-spin" />
         <span className="text-xs font-mono">Cargando seguimiento de ETFs vs SPY...</span>
       </div>
     );
@@ -661,10 +661,10 @@ export const EtfRotationView: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* 1. Barra Superior Limpia */}
-      <div className="bg-[#181920] border border-white/10 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+      <div className="bg-secondary border border-border rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-2.5">
-          <Compass className="w-5 h-5 text-emerald-400" />
-          <h1 className="text-sm font-bold text-white tracking-tight">
+          <Compass className="w-5 h-5 text-positive" />
+          <h1 className="text-sm font-bold text-foreground tracking-tight">
             Seguimiento Semanal de ETFs vs SPY
           </h1>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 font-bold border border-blue-500/30">
@@ -674,12 +674,12 @@ export const EtfRotationView: React.FC = () => {
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
           {/* Toggle universo */}
-          <div className="flex items-center bg-black/40 border border-white/10 p-0.5 rounded-lg text-xs font-medium">
+          <div className="flex items-center bg-secondary border border-border p-0.5 rounded-lg text-xs font-medium">
             <button
               type="button"
               onClick={() => setUniverseFilter('all')}
               className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
-                universeFilter === 'all' ? 'bg-emerald-600 text-white font-bold' : 'text-zinc-400 hover:text-white'
+                universeFilter === 'all' ? 'bg-emerald-600 text-foreground font-bold' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Todos ({data?.items.length ?? 0})
@@ -688,7 +688,7 @@ export const EtfRotationView: React.FC = () => {
               type="button"
               onClick={() => setUniverseFilter('sectors')}
               className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
-                universeFilter === 'sectors' ? 'bg-emerald-600 text-white font-bold' : 'text-zinc-400 hover:text-white'
+                universeFilter === 'sectors' ? 'bg-emerald-600 text-foreground font-bold' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               11 Sectores S&P
@@ -699,10 +699,10 @@ export const EtfRotationView: React.FC = () => {
             type="button"
             onClick={() => fetchData(true)}
             disabled={refreshing}
-            className="h-8 px-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="h-8 px-3 rounded-lg bg-secondary/50 hover:bg-secondary/50 border border-border text-muted-foreground hover:text-foreground font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
             title="Recargar datos"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-emerald-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-positive' : ''}`} />
             <span>Actualizar</span>
           </button>
         </div>
@@ -711,41 +711,41 @@ export const EtfRotationView: React.FC = () => {
       {/* 2. Menú Superior: EXACTAMENTE las 2 tarjetas de la imagen del usuario */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Tarjeta 1: AMPLITUD DE MERCADO */}
-        <div className="bg-[#181920] border border-white/10 rounded-xl p-4 flex flex-col justify-between shadow-sm">
-          <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
-            <span className="font-bold uppercase tracking-wider text-[11px] text-zinc-300">
+        <div className="bg-secondary border border-border rounded-xl p-4 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+            <span className="font-bold uppercase tracking-wider text-[11px] text-muted-foreground">
               AMPLITUD DE MERCADO
             </span>
-            <Activity className="w-4 h-4 text-emerald-400" />
+            <Activity className="w-4 h-4 text-positive" />
           </div>
 
           <div className="my-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black font-mono text-white">
+            <span className="text-2xl font-black font-mono text-foreground">
               {data?.breadth_w ? `${Math.round(data.breadth_w)}%` : '0%'}
             </span>
-            <span className="text-xs text-zinc-400 font-medium">
+            <span className="text-xs text-muted-foreground font-medium">
               superan a SPY (1W)
             </span>
           </div>
 
           <div className="space-y-1.5 pt-1">
-            <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-secondary/50 rounded-full h-2 overflow-hidden">
               <div 
                 className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${data?.breadth_w ?? 0}%` }}
               />
             </div>
-            <div className="flex justify-between text-[10px] font-mono text-zinc-400">
-              <span>Amplitud 1M: <strong className="text-zinc-200">{data?.breadth_1m ? `${Math.round(data.breadth_1m)}%` : '0%'}</strong></span>
-              <span className="text-zinc-300 font-semibold">{data?.breadth_w && data.breadth_w >= 50 ? 'Saludable' : 'Selectiva'}</span>
+            <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
+              <span>Amplitud 1M: <strong className="text-foreground">{data?.breadth_1m ? `${Math.round(data.breadth_1m)}%` : '0%'}</strong></span>
+              <span className="text-muted-foreground font-semibold">{data?.breadth_w && data.breadth_w >= 50 ? 'Saludable' : 'Selectiva'}</span>
             </div>
           </div>
         </div>
 
         {/* Tarjeta 2: EXTREMOS TÁCTICOS (1W) */}
-        <div className="bg-[#181920] border border-white/10 rounded-xl p-4 flex flex-col justify-between shadow-sm">
-          <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
-            <span className="font-bold uppercase tracking-wider text-[11px] text-zinc-300">
+        <div className="bg-secondary border border-border rounded-xl p-4 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+            <span className="font-bold uppercase tracking-wider text-[11px] text-muted-foreground">
               EXTREMOS TÁCTICOS (1W)
             </span>
             <Sparkles className="w-4 h-4 text-amber-400" />
@@ -753,17 +753,17 @@ export const EtfRotationView: React.FC = () => {
 
           <div className="space-y-1.5 my-1.5 font-mono text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-zinc-300 text-xs truncate max-w-[240px]">
+              <span className="text-muted-foreground text-xs truncate max-w-[240px]">
                 🥇 {topLeader ? `${topLeader.ticker} (${topLeader.name})` : '—'}
               </span>
-              <span className="font-bold text-emerald-400">
+              <span className="font-bold text-positive">
                 {topLeader?.diff_vs_spy_w !== null && topLeader?.diff_vs_spy_w !== undefined
                   ? `${topLeader.diff_vs_spy_w > 0 ? '+' : ''}${topLeader.diff_vs_spy_w.toFixed(1)}%`
                   : '—'}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-zinc-300 text-xs truncate max-w-[240px]">
+              <span className="text-muted-foreground text-xs truncate max-w-[240px]">
                 🔻 {topLaggard ? `${topLaggard.ticker} (${topLaggard.name})` : '—'}
               </span>
               <span className="font-bold text-rose-400">
@@ -774,9 +774,9 @@ export const EtfRotationView: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-2 border-t border-white/5 text-[11px] text-zinc-400 flex justify-between font-mono">
+          <div className="pt-2 border-t border-border text-[11px] text-muted-foreground flex justify-between font-mono">
             <span>Spread Líder/Rezagado:</span>
-            <strong className="text-white font-bold">
+            <strong className="text-foreground font-bold">
               {data?.spread_extremos ? `${data.spread_extremos.toFixed(1)}%` : '—'}
             </strong>
           </div>
@@ -786,14 +786,14 @@ export const EtfRotationView: React.FC = () => {
       {/* 3. Dos Gráficos: Evolución Semanal vs SPY y Ranking de Diferencial */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Gráfico 1: Evolución Semanal (Week to Date / 5 Ruedas) */}
-        <div className="bg-[#181920] border border-white/10 rounded-xl p-4 flex flex-col shadow-sm">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5">
+        <div className="bg-secondary border border-border rounded-xl p-4 flex flex-col shadow-sm">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-amber-400" />
                 Evolución Semanal (Week to Date) vs SPY
               </h2>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 Trayectoria de 5 ruedas con <strong className="text-amber-400">SPY</strong> como benchmark rector
               </p>
             </div>
@@ -811,14 +811,14 @@ export const EtfRotationView: React.FC = () => {
         </div>
 
         {/* Gráfico 2: Ranking Diferencial vs SPY (1W) */}
-        <div className="bg-[#181920] border border-white/10 rounded-xl p-4 flex flex-col shadow-sm">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5">
+        <div className="bg-secondary border border-border rounded-xl p-4 flex flex-col shadow-sm">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                <Activity className="w-4 h-4 text-emerald-400" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                <Activity className="w-4 h-4 text-positive" />
                 Diferencial Semanal vs SPY (1W)
               </h2>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 Sobre-rendimiento (+) o rezago (-) respecto a SPY en la semana
               </p>
             </div>
@@ -837,26 +837,26 @@ export const EtfRotationView: React.FC = () => {
       </div>
 
       {/* 4. Tabla Cuantitativa: Foco 100% en Comparar con el Benchmark */}
-      <div className="bg-[#181920] border border-white/10 rounded-xl overflow-hidden shadow-sm">
-        <div className="p-3.5 border-b border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div className="bg-secondary border border-border rounded-xl overflow-hidden shadow-sm">
+        <div className="p-3.5 border-b border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
-              <Compass className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+              <Compass className="w-4 h-4 text-positive" />
               Comparativa de ETFs vs SPY ({filteredMajorIndices.length + filteredSectorItems.length} activos)
             </h2>
-            <p className="text-[11px] text-zinc-400 mt-0.5">
+            <p className="text-[11px] text-muted-foreground mt-0.5">
               Tríada de Índices Principales (SPY, QQQ, DIA) agrupada y rotación sectorial vs Benchmark
             </p>
           </div>
 
           <div className="relative w-full sm:w-60">
-            <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchFilter}
               onChange={e => setSearchFilter(e.target.value)}
               placeholder="Buscar ticker o sector..."
-              className="w-full h-8 pl-8 pr-3 rounded-lg bg-black/40 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50 transition-colors font-mono"
+              className="w-full h-8 pl-8 pr-3 rounded-lg bg-secondary border border-border text-xs text-foreground placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50 transition-colors font-mono"
             />
           </div>
         </div>
@@ -864,11 +864,11 @@ export const EtfRotationView: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-white/10 text-[10px] font-bold text-zinc-400 uppercase tracking-wider bg-white/[0.02]">
+              <tr className="border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-white/[0.02]">
                 <th className="px-3 py-2.5">Ticker</th>
                 <th className="px-3 py-2.5">Sector / Nombre</th>
                 <th className="px-3 py-2.5 text-right">Precio Spot</th>
-                <th className="px-3 py-2.5 text-right font-black text-white bg-white/[0.04] border-x border-white/10">
+                <th className="px-3 py-2.5 text-right font-black text-foreground bg-white/[0.04] border-x border-border">
                   DIFERENCIAL VS SPY (1W)
                 </th>
                 <th className="px-3 py-2.5 text-right">Retorno ETF (1W)</th>
@@ -903,11 +903,11 @@ export const EtfRotationView: React.FC = () => {
                   <tr 
                     key={item.ticker} 
                     className={`transition-colors select-none ${
-                      isSpy ? 'bg-amber-500/[0.04] hover:bg-amber-500/[0.08]' : 'hover:bg-white/[0.03]'
+                      isSpy ? 'bg-amber-500/[0.04] hover:bg-amber-500/[0.08]' : 'hover:bg-secondary/50'
                     }`}
                   >
                     {/* Ticker */}
-                    <td className="px-3 py-2 font-bold text-white">
+                    <td className="px-3 py-2 font-bold text-foreground">
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
@@ -916,8 +916,8 @@ export const EtfRotationView: React.FC = () => {
                             isSpy 
                               ? 'text-amber-400 hover:text-amber-300' 
                               : item.ticker === 'IWM' 
-                              ? 'text-purple-400 hover:text-purple-300' 
-                              : 'text-white hover:text-emerald-400'
+                              ? 'text-foreground hover:text-purple-300' 
+                              : 'text-foreground hover:text-positive'
                           }`}
                           title={`Ver ficha 360 de ${item.ticker}`}
                         >
@@ -944,24 +944,24 @@ export const EtfRotationView: React.FC = () => {
                     </td>
 
                     {/* Nombre */}
-                    <td className="px-3 py-2 font-sans font-medium text-zinc-200">
+                    <td className="px-3 py-2 font-sans font-medium text-foreground">
                       {item.name}
                     </td>
 
                     {/* Precio Spot */}
-                    <td className="px-3 py-2 text-right text-zinc-300">
+                    <td className="px-3 py-2 text-right text-muted-foreground">
                       ${item.close.toFixed(2)}
                     </td>
 
                     {/* HERO: DIFERENCIAL VS SPY */}
-                    <td className={`px-3 py-2 text-right font-black text-sm border-x border-white/10 ${
+                    <td className={`px-3 py-2 text-right font-black text-sm border-x border-border ${
                       isSpy
                         ? 'text-amber-400 bg-amber-400/10'
                         : isPositive 
-                        ? 'text-emerald-400 bg-emerald-950/20' 
+                        ? 'text-positive bg-emerald-950/20' 
                         : isNegative 
                         ? 'text-rose-400 bg-rose-950/20' 
-                        : 'text-zinc-400 bg-white/[0.02]'
+                        : 'text-muted-foreground bg-white/[0.02]'
                     }`}>
                       {isSpy 
                         ? '0.0% (Base)'
@@ -975,7 +975,7 @@ export const EtfRotationView: React.FC = () => {
                       isSpy 
                         ? 'text-amber-300'
                         : (item.perf_w ?? 0) >= 0 
-                        ? 'text-emerald-400/80' 
+                        ? 'text-positive/80' 
                         : 'text-rose-400/80'
                     }`}>
                       {item.perf_w !== null ? `${item.perf_w > 0 ? '+' : ''}${item.perf_w.toFixed(1)}%` : '—'}
@@ -984,7 +984,7 @@ export const EtfRotationView: React.FC = () => {
                     {/* RSI */}
                     <td className="px-3 py-2 text-center">
                       <span className={
-                        item.rsi && item.rsi >= 70 ? 'text-amber-400 font-bold' : item.rsi && item.rsi <= 30 ? 'text-blue-400 font-bold' : 'text-zinc-400'
+                        item.rsi && item.rsi >= 70 ? 'text-amber-400 font-bold' : item.rsi && item.rsi <= 30 ? 'text-foreground font-bold' : 'text-muted-foreground'
                       }>
                         {item.rsi ? Math.round(item.rsi) : '—'}
                       </span>
@@ -994,10 +994,10 @@ export const EtfRotationView: React.FC = () => {
                     <td className="px-3 py-2 text-center font-sans font-medium">
                       <span className={
                         item.trend_sma50 === 'BULLISH'
-                          ? 'text-emerald-400/90'
+                          ? 'text-positive/90'
                           : item.trend_sma50 === 'BEARISH'
                           ? 'text-rose-400/90'
-                          : 'text-zinc-500'
+                          : 'text-muted-foreground'
                       }>
                         {item.trend_sma50 === 'BULLISH' ? '▲ Alcista' : item.trend_sma50 === 'BEARISH' ? '▼ Bajista' : '—'}
                       </span>
@@ -1008,13 +1008,13 @@ export const EtfRotationView: React.FC = () => {
 
               {/* SECCIÓN 2: SECTORES Y ACTIVOS DE MERCADO */}
               {filteredSectorItems.length > 0 && (
-                <tr className="bg-white/[0.03] border-y border-white/10 text-zinc-300 select-none">
+                <tr className="bg-secondary/50 border-y border-border text-muted-foreground select-none">
                   <td colSpan={7} className="px-3 py-1.5 font-bold uppercase tracking-wider text-[10px]">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         📊 {universeFilter === 'sectors' ? '11 Sectores Oficiales del S&P 500' : 'Sectores y ETFs Temáticos'} ({filteredSectorItems.length} activos)
                       </span>
-                      <span className="text-[9px] text-zinc-500 font-mono font-normal">
+                      <span className="text-[9px] text-muted-foreground font-mono font-normal">
                         Fuerza Relativa Sectorial
                       </span>
                     </div>
@@ -1030,11 +1030,11 @@ export const EtfRotationView: React.FC = () => {
                 return (
                   <tr key={item.ticker} className="hover:bg-white/[0.02] transition-colors select-none">
                     {/* Ticker */}
-                    <td className="px-3 py-2 font-bold text-white">
+                    <td className="px-3 py-2 font-bold text-foreground">
                       <button
                         type="button"
                         onClick={() => openTicker360(item.ticker)}
-                        className="hover:text-emerald-400 transition-colors cursor-pointer"
+                        className="hover:text-positive transition-colors cursor-pointer"
                         title={`Ver ficha 360 de ${item.ticker}`}
                       >
                         {item.ticker}
@@ -1042,22 +1042,22 @@ export const EtfRotationView: React.FC = () => {
                     </td>
 
                     {/* Nombre */}
-                    <td className="px-3 py-2 font-sans font-medium text-zinc-200">
+                    <td className="px-3 py-2 font-sans font-medium text-foreground">
                       {item.name}
                     </td>
 
                     {/* Precio Spot */}
-                    <td className="px-3 py-2 text-right text-zinc-300">
+                    <td className="px-3 py-2 text-right text-muted-foreground">
                       ${item.close.toFixed(2)}
                     </td>
 
                     {/* HERO: DIFERENCIAL VS SPY */}
-                    <td className={`px-3 py-2 text-right font-black text-sm border-x border-white/10 ${
+                    <td className={`px-3 py-2 text-right font-black text-sm border-x border-border ${
                       isPositive 
-                        ? 'text-emerald-400 bg-emerald-950/20' 
+                        ? 'text-positive bg-emerald-950/20' 
                         : isNegative 
                         ? 'text-rose-400 bg-rose-950/20' 
-                        : 'text-zinc-400 bg-white/[0.02]'
+                        : 'text-muted-foreground bg-white/[0.02]'
                     }`}>
                       {item.diff_vs_spy_w !== null && item.diff_vs_spy_w !== undefined
                         ? `${item.diff_vs_spy_w > 0 ? '+' : ''}${item.diff_vs_spy_w.toFixed(1)}%`
@@ -1066,7 +1066,7 @@ export const EtfRotationView: React.FC = () => {
 
                     {/* Retorno 1W ETF */}
                     <td className={`px-3 py-2 text-right ${
-                      (item.perf_w ?? 0) >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80'
+                      (item.perf_w ?? 0) >= 0 ? 'text-positive/80' : 'text-rose-400/80'
                     }`}>
                       {item.perf_w !== null ? `${item.perf_w > 0 ? '+' : ''}${item.perf_w.toFixed(1)}%` : '—'}
                     </td>
@@ -1074,7 +1074,7 @@ export const EtfRotationView: React.FC = () => {
                     {/* RSI */}
                     <td className="px-3 py-2 text-center">
                       <span className={
-                        item.rsi && item.rsi >= 70 ? 'text-amber-400 font-bold' : item.rsi && item.rsi <= 30 ? 'text-blue-400 font-bold' : 'text-zinc-400'
+                        item.rsi && item.rsi >= 70 ? 'text-amber-400 font-bold' : item.rsi && item.rsi <= 30 ? 'text-foreground font-bold' : 'text-muted-foreground'
                       }>
                         {item.rsi ? Math.round(item.rsi) : '—'}
                       </span>
@@ -1084,10 +1084,10 @@ export const EtfRotationView: React.FC = () => {
                     <td className="px-3 py-2 text-center font-sans font-medium">
                       <span className={
                         item.trend_sma50 === 'BULLISH'
-                          ? 'text-emerald-400/90'
+                          ? 'text-positive/90'
                           : item.trend_sma50 === 'BEARISH'
                           ? 'text-rose-400/90'
-                          : 'text-zinc-500'
+                          : 'text-muted-foreground'
                       }>
                         {item.trend_sma50 === 'BULLISH' ? '▲ Alcista' : item.trend_sma50 === 'BEARISH' ? '▼ Bajista' : '—'}
                       </span>

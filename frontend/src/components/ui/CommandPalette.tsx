@@ -18,8 +18,8 @@ import {
   Compass,
   FileText
 } from 'lucide-react';
-import { WorkspaceArea } from '../LauncherHub';
-import { useTicker360 } from '../../context/Ticker360Context';
+import { WorkspaceArea } from '@/store/useAppStore';
+import { useAppStore } from '@/store/useAppStore';
 
 export interface CommandItem {
   id: string;
@@ -33,12 +33,11 @@ export interface CommandItem {
   keywords?: string[];
 }
 
-interface CommandPaletteProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onNavigate: (area: WorkspaceArea, subTab: string) => void;
-  onGoHome: () => void;
-}
+export const CommandPalette: React.FC = () => {
+  const { isCommandPaletteOpen: isOpen, toggleCommandPalette, setArea, goHome: onGoHome, openTickerDrawer: openTicker360 } = useAppStore();
+  const onClose = () => toggleCommandPalette();
+  const onNavigate = (area: WorkspaceArea, subTab: string) => setArea(area, subTab);
+
 
 const COMMON_BONDS = [
   { ticker: 'S30S6', name: 'LECAP Vencimiento 30 Sep 2026', type: 'LECAP' },
@@ -52,14 +51,6 @@ const COMMON_BONDS = [
   { ticker: 'TX26', name: 'Bono CER 2026 T2X6', type: 'BONCER' },
   { ticker: 'TX28', name: 'Bono CER 2028', type: 'BONCER' },
 ];
-
-export const CommandPalette: React.FC<CommandPaletteProps> = ({
-  isOpen,
-  onClose,
-  onNavigate,
-  onGoHome,
-}) => {
-  const { openTicker360 } = useTicker360();
   const [query, setQuery] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [catalog, setCatalog] = useState<any[]>([]);
@@ -146,7 +137,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       icon: TrendingUp,
       badge: 'Mercado',
       badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-      action: () => { onNavigate('market', 'cedears'); onClose(); },
+      action: () => { onNavigate('renta_variable', 'cedears'); onClose(); },
       keywords: ['cedears', 'cotizaciones', 'precios', 'adr', 'byma', 'rsi']
     },
     {
@@ -157,7 +148,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       icon: Compass,
       badge: 'Mercado',
       badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-      action: () => { onNavigate('market', 'etfs'); onClose(); },
+      action: () => { onNavigate('renta_variable', 'etfs'); onClose(); },
       keywords: ['etf', 'etfs', 'rotacion', 'spy', 'sectores', 'cuadrantes', 'alpha', 'rrg']
     },
     {
@@ -168,7 +159,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       icon: Landmark,
       badge: 'Mercado',
       badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-      action: () => { onNavigate('market', 'renta-fija'); onClose(); },
+      action: () => { onNavigate('renta_fija', 'renta-fija'); onClose(); },
       keywords: ['renta fija', 'bonos', 'lecaps', 'boncer', 'curva', 'tir', 'duration']
     },
     {
@@ -179,7 +170,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       icon: Calendar,
       badge: 'Mercado',
       badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-      action: () => { onNavigate('market', 'earnings'); onClose(); },
+      action: () => { onNavigate('renta_variable', 'earnings'); onClose(); },
       keywords: ['balances', 'earnings', 'reportes', 'fechas', 'trimestres']
     },
     {
@@ -190,7 +181,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       icon: Globe,
       badge: 'Mercado',
       badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-      action: () => { onNavigate('market', 'indices'); onClose(); },
+      action: () => { onNavigate('renta_variable', 'indices'); onClose(); },
       keywords: ['indices', 'merval', 'argt', 'sp500', 'ciclos', 'elecciones']
     },
     {
@@ -201,7 +192,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       icon: FlaskConical,
       badge: 'Laboratorio',
       badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-      action: () => { onNavigate('lab', 'markowitz'); onClose(); },
+      action: () => { onNavigate('markowitz', 'markowitz'); onClose(); },
       keywords: ['markowitz', 'frontera', 'optimizacion', 'sharpe', 'riesgo', 'varianza']
     },
     {
@@ -212,7 +203,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       icon: Calculator,
       badge: 'Laboratorio',
       badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-      action: () => { onNavigate('lab', 'valuation'); onClose(); },
+      action: () => { onNavigate('markowitz', 'valuation'); onClose(); },
       keywords: ['valuacion', 'fundamental', 'dcf', 'fcf', 'fair value', 'multiplos']
     },
     {
@@ -223,7 +214,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       icon: BarChart3,
       badge: 'Laboratorio',
       badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-      action: () => { onNavigate('lab', 'performance'); onClose(); },
+      action: () => { onNavigate('markowitz', 'performance'); onClose(); },
       keywords: ['performance', 'retornos', 'rendimiento', 'sma50', 'sma200']
     },
     {
@@ -233,7 +224,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       category: 'navigation',
       icon: Home,
       badge: 'General',
-      badgeClass: 'bg-zinc-800 text-zinc-300 border-zinc-700',
+      badgeClass: 'bg-zinc-800 text-muted-foreground border-zinc-700',
       action: () => { onGoHome(); onClose(); },
       keywords: ['inicio', 'home', 'launcher', 'menu']
     }
@@ -260,7 +251,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         category: 'cedear' as const,
         icon: TrendingUp,
         badge: `Ratio ${c.ratio}`,
-        badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+        badgeClass: 'bg-positive/10 text-emerald-300 border-emerald-500/30',
         action: () => {
           openTicker360(c.ticker);
           onClose();
@@ -302,7 +293,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             badge: item.is_etf ? 'ETF' : (item.ratio ? `Ratio ${item.ratio}:1` : undefined),
             badgeClass: item.is_etf 
               ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' 
-              : 'bg-zinc-800 text-zinc-300 border-zinc-700',
+              : 'bg-zinc-800 text-muted-foreground border-zinc-700',
             action: () => {
               openTicker360(item.ticker, item);
               onClose();
@@ -329,7 +320,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           badge: b.type,
           badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
           action: () => {
-            onNavigate('market', 'renta-fija');
+            onNavigate('renta_fija', 'renta-fija');
             onClose();
           }
         });
@@ -377,12 +368,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
       {/* Modal Dialog Flotante Eigengrau */}
       <div 
-        className="relative z-10 w-full max-w-2xl bg-[#16161d] border border-white/10 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-150"
+        className="relative z-10 w-full max-w-2xl bg-[#16161d] border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
         {/* Input Bar */}
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/10 bg-[#121319]">
-          <Search className="w-5 h-5 text-zinc-400 shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border bg-[#121319]">
+          <Search className="w-5 h-5 text-muted-foreground shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -393,17 +384,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             }}
             onKeyDown={handleKeyDown}
             placeholder="Buscar por ticker (AAPL), empresa, bono (S30S6) o comando..."
-            className="w-full bg-transparent text-sm text-white placeholder-zinc-500 outline-none font-medium"
+            className="w-full bg-transparent text-sm text-foreground placeholder-zinc-500 outline-none font-medium"
           />
           {query && (
             <button 
               onClick={() => { setQuery(''); inputRef.current?.focus(); }}
-              className="p-1 text-zinc-400 hover:text-white rounded hover:bg-white/5 transition-colors"
+              className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-secondary/50 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           )}
-          <kbd className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-zinc-400 select-none">
+          <kbd className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-secondary border border-border text-muted-foreground select-none">
             ESC
           </kbd>
         </div>
@@ -414,7 +405,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar max-h-[460px]"
         >
           {filteredItems.length === 0 ? (
-            <div className="py-12 text-center text-zinc-500 text-xs">
+            <div className="py-12 text-center text-muted-foreground text-xs">
               No se encontraron activos ni comandos para &ldquo;{query}&rdquo;
             </div>
           ) : (
@@ -430,17 +421,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
                     isSelected 
-                      ? 'bg-blue-600/20 text-white border-l-2 border-blue-500 shadow-sm' 
-                      : 'text-zinc-300 hover:bg-white/5 hover:text-white border-l-2 border-transparent'
+                      ? 'bg-blue-600/20 text-foreground border-l-2 border-blue-500 shadow-sm' 
+                      : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground border-l-2 border-transparent'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={`p-2 rounded-md shrink-0 ${
                       item.category === 'cedear'
-                        ? 'bg-emerald-500/10 text-emerald-400'
+                        ? 'bg-emerald-500/10 text-positive'
                         : item.category === 'fixed_income'
                           ? 'bg-amber-500/10 text-amber-400'
-                          : 'bg-blue-500/10 text-blue-400'
+                          : 'bg-blue-500/10 text-foreground'
                     }`}>
                       <Icon className="w-4 h-4" />
                     </div>
@@ -451,13 +442,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                           {item.title}
                         </span>
                         {item.badge && (
-                          <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${item.badgeClass || 'bg-zinc-800 text-zinc-300 border-zinc-700'}`}>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${item.badgeClass || 'bg-zinc-800 text-muted-foreground border-zinc-700'}`}>
                             {item.badge}
                           </span>
                         )}
                       </div>
                       {item.subtitle && (
-                        <span className="text-[11px] text-zinc-400 truncate">
+                        <span className="text-[11px] text-muted-foreground truncate">
                           {item.subtitle}
                         </span>
                       )}
@@ -466,9 +457,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
                   <div className="flex items-center gap-2 shrink-0">
                     {isSelected && (
-                      <span className="text-[10px] text-zinc-400 flex items-center gap-1 font-mono">
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-mono">
                         <span>Seleccionar</span>
-                        <kbd className="px-1 py-0.5 rounded bg-black/40 border border-white/10 text-[9px]">↵</kbd>
+                        <kbd className="px-1 py-0.5 rounded bg-secondary border border-border text-[9px]">↵</kbd>
                       </span>
                     )}
                     <ChevronRight className="w-4 h-4 text-zinc-600" />
@@ -480,22 +471,22 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         </div>
 
         {/* Footer Informativo */}
-        <div className="px-4 py-2 border-t border-white/5 bg-[#121319] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+        <div className="px-4 py-2 border-t border-border bg-[#121319] flex items-center justify-between text-[11px] text-muted-foreground font-mono">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
-              <kbd className="px-1 rounded bg-black/40 border border-white/10 text-[10px]">↑</kbd>
-              <kbd className="px-1 rounded bg-black/40 border border-white/10 text-[10px]">↓</kbd>
-              <span className="text-[10px] text-zinc-400">Navegar</span>
+              <kbd className="px-1 rounded bg-secondary border border-border text-[10px]">↑</kbd>
+              <kbd className="px-1 rounded bg-secondary border border-border text-[10px]">↓</kbd>
+              <span className="text-[10px] text-muted-foreground">Navegar</span>
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 rounded bg-black/40 border border-white/10 text-[10px]">↵</kbd>
-              <span className="text-[10px] text-zinc-400">Abrir</span>
+              <kbd className="px-1 rounded bg-secondary border border-border text-[10px]">↵</kbd>
+              <span className="text-[10px] text-muted-foreground">Abrir</span>
             </span>
           </div>
 
           <div className="flex items-center gap-1.5">
-            <Command className="w-3 h-3 text-zinc-500" />
-            <span className="text-[10px] text-zinc-400">Spotlight Global MPFP</span>
+            <Command className="w-3 h-3 text-muted-foreground" />
+            <span className="text-[10px] text-muted-foreground">Spotlight Global MPFP</span>
           </div>
         </div>
       </div>
