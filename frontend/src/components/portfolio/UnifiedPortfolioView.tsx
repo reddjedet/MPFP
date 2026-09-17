@@ -244,13 +244,17 @@ export const UnifiedPortfolioView: React.FC = () => {
                 
                 <div className="flex items-center gap-2 min-w-max">
                   <span className="text-[10px] text-zinc-500 font-bold uppercase">Ancla</span>
-                  <input 
-                    type="text" 
-                    placeholder="AAPL"
+                  <select 
                     id="anchorInput"
-                    defaultValue={rebalanceData?.anchor_ticker || rebalanceData?.bottleneck_ticker || ''}
-                    className="w-16 bg-zinc-950 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono uppercase focus:ring-1 focus:ring-blue-500 outline-none"
-                  />
+                    defaultValue={rebalanceData?.bottleneck_ticker || rebalanceData?.anchor_ticker || ''}
+                    className="w-24 bg-zinc-950 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono uppercase focus:ring-1 focus:ring-blue-500 outline-none cursor-pointer"
+                  >
+                    {rebalanceData?.items?.map((item: any) => (
+                      <option key={item.ticker} value={item.ticker}>
+                        {item.ticker}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="flex items-center gap-2 min-w-max">
