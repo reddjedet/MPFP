@@ -184,7 +184,9 @@ const KNOWN_ETFS = new Set([
 ]);
 
 export const PortfolioTable: React.FC<PortfolioTableProps> = ({ data, pfType, onRefresh }) => {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'price', desc: true }
+  ]);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const { openTickerDrawer: openTicker360 } = useAppStore();
   
@@ -379,18 +381,25 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({ data, pfType, on
                 {headerGroup.headers.map(header => (
                   <th 
                     key={header.id}
-                    className="px-2.5 py-2 text-[10px] font-bold text-zinc-400 tracking-wider uppercase cursor-pointer hover:text-white transition-colors select-none"
+                    className={`px-2.5 py-2 text-[10px] font-bold text-zinc-400 tracking-wider uppercase transition-colors select-none ${header.column.getCanSort() ? 'cursor-pointer hover:text-white hover:bg-white/5' : ''}`}
                     onClick={header.column.getToggleSortingHandler()}
+                    title={header.column.getCanSort() ? "Clic para ordenar" : ""}
                   >
                     <div className="flex items-center gap-1.5">
                       {flexRender(
                         header.column.columnDef.header,
                         header.getContext()
                       )}
-                      {{
-                        asc: <span className="text-blue-500">↑</span>,
-                        desc: <span className="text-blue-500">↓</span>,
-                      }[header.column.getIsSorted() as string] ?? null}
+                      {header.column.getCanSort() && (
+                        <span className="text-[10px] opacity-50 flex flex-col -space-y-1">
+                          {{
+                            asc: <span className="text-blue-500 opacity-100 font-black">↑</span>,
+                            desc: <span className="text-blue-500 opacity-100 font-black">↓</span>,
+                          }[header.column.getIsSorted() as string] ?? (
+                            <span className="text-zinc-600">↕</span>
+                          )}
+                        </span>
+                      )}
                     </div>
                   </th>
                 ))}
