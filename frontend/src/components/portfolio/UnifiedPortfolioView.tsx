@@ -217,7 +217,7 @@ export const UnifiedPortfolioView: React.FC = () => {
           </div>
 
           {/* PnL Histórico */}
-          <div className="p-3.5 rounded-xl bg-zinc-900 border border-white/5 flex flex-col gap-0.5">
+          <div className="p-3.5 rounded-xl bg-zinc-900 border border-white/5 flex flex-col gap-0.5 group relative cursor-help">
             <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Rendimiento LAT</span>
             <span className={`text-base font-black font-mono tabular-nums ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               {totalPnl >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%
@@ -225,6 +225,26 @@ export const UnifiedPortfolioView: React.FC = () => {
             <span className={`text-[10px] font-mono ${totalPnl >= 0 ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
               {totalPnl >= 0 ? '+' : ''}${totalPnl.toLocaleString('es-AR', {maximumFractionDigits:0})}
             </span>
+
+            {/* Tooltip Hover */}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-3 bg-zinc-800 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+              <p className="text-xs text-white font-bold mb-1">Rendimiento Latente</p>
+              <p className="text-[10px] text-zinc-400 mb-2 leading-relaxed">
+                Ganancia o pérdida virtual acumulada. Se calcula cruzando tus cantidades con los Precios Promedio de Compra (PPC) informados vs la cotización actual.
+              </p>
+              <div className="flex flex-col gap-1 pt-2 border-t border-white/5 mt-1">
+                <div className="flex justify-between items-center text-[10px]">
+                  <span className="text-zinc-500 uppercase font-bold">Costo Informado:</span>
+                  <span className="font-mono text-zinc-300">${totalCost.toLocaleString('es-AR', {maximumFractionDigits:0})}</span>
+                </div>
+                {rebalanceData?.fixed_income_summary?.has_fixed_income && (
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-zinc-500 uppercase font-bold">TNA Ponderada (Renta Fija):</span>
+                    <span className="font-mono text-emerald-400 font-bold">{rebalanceData.fixed_income_summary.weighted_tna_compra?.toFixed(1)}%</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
         </div>
