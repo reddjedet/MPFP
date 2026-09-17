@@ -5,7 +5,10 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 
+import { PortfolioTable } from './PortfolioTable';
+
 export const UnifiedPortfolioView: React.FC = () => {
+
   const [selectedPf, setSelectedPf] = useState<string>(() => {
     try {
       return localStorage.getItem('finapp_active_portfolio') || 'min_drawdown_15';
@@ -215,6 +218,20 @@ export const UnifiedPortfolioView: React.FC = () => {
             <span className="text-[10px] text-zinc-500 font-mono">Desvío vs Modelo Teórico</span>
           </div>
         </div>
+
+        {/* Tabla de Activos del Portfolio */}
+        {rebalanceData && (
+          <div className="pb-8">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300 mb-4">
+              Tenencias Actuales
+            </h3>
+            <PortfolioTable 
+              data={rebalanceData} 
+              pfType={selectedPf} 
+              onRefresh={() => fetchAllData(selectedPf)} 
+            />
+          </div>
+        )}
 
       </div>
     </div>
