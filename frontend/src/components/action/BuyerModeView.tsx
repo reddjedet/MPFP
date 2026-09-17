@@ -1,26 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, ArrowRight, ArrowDownRight, ArrowUpRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 
-const MOCK_PORTFOLIOS = ['Cartera 1', 'Cartera 2', 'Cartera 3'];
-
-const UNDERPERFORMING_SECTORS = [
-  { etf: 'XLV (Salud)', perf: -2.4, spyGap: -3.9, cedears: [
-    { ticker: 'PFE', name: 'Pfizer Inc.', rsi: 32 },
-    { ticker: 'JNJ', name: 'Johnson & Johnson', rsi: 38 },
-    { ticker: 'UNH', name: 'UnitedHealth Group', rsi: 45 }
-  ]},
-  { etf: 'XLE (Energía)', perf: -1.2, spyGap: -2.7, cedears: [
-    { ticker: 'XOM', name: 'Exxon Mobil', rsi: 29 },
-    { ticker: 'CVX', name: 'Chevron', rsi: 35 }
-  ]}
-];
-
 export function BuyerModeView() {
   const { toggleBuyerMode } = useAppStore();
-  const [activePortfolio, setActivePortfolio] = useState(MOCK_PORTFOLIOS[1]);
-  const [expandedSector, setExpandedSector] = useState<string | null>(null);
+  const [portfolios, setPortfolios] = useState<Record<string, any>>({});
+  const [activePortfolio, setActivePortfolio] = useState<string>('');
+  const [quotes, setQuotes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchData = async () => {
+      try {
+        const [pfRes, qRes] = await Promise.all([
+          fetch('/api/portfolios/list_json'),
+          fetch('/api/cedears/quotes_json')
+        ]);
+        if (!isMounted) return;
+        
+        if (pfRes.ok && qRes.ok) {
+          const pfData = await pfRes.json();
+          const qData = await qRes.json();
+          
+          setPortfolios(pfData.portfolios || {});
+          if (pfData.selected_pf) {
+            setActivePortfolio(pfData.selected_pf);
+          } else if (Object.keys(pfData.portfolios || {}).length > 0) {
+            setActivePortfolio(Object.keys(pfData.portfolios)[0]);
+          }
+          
+          setQuotes(qData.quotes || []);
+        }
+      } catch (err) {
+        console.error("Error fetching data", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchData();
+    return () => { isMounted = false; };
+  }, []);
+
+  const pfNames = Object.keys(portfolios);
+  
+  // Calculate excess liquidity sources based on current portfolio's RSI > 60 or simply high weights
+  const liquidSources = (() => {
+    if (!activePortfolio || !portfolios[activePortfolio]) return [];
+    const assets = portfolios[activePortfolio].assets || {};
+    const sources = [];
+    for (const [tk, weight] of Object.entries(assets)) {
+      const q = quotes.find(q => q.symbol === tk);
+      if (q && q.rsi >= 60) {
+        sources.push({ ticker: tk, rsi: q.rsi, weight: Number(weight), price: q.local || q.cedear_usd });
+      }
+    }
+    return sources.sort((a, b) => b.rsi - a.rsi);
+  })();
+
+  // Calculate underperforming assets (RSI <= 40)
+  const buyCandidates = quotes
+    .filter(q => q.rsi !== null && q.rsi <= 40)
+    .sort((a, b) => a.rsi - b.rsi)
+    .slice(0, 10); // top 10 most oversold
 
   return (
     <motion.div 
@@ -36,8 +79,8 @@ export function BuyerModeView() {
             <Zap className="w-6 h-6 text-positive" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Planificador Estratégico</h1>
-            <p className="text-xs text-muted-foreground">Diagnóstico de liquidez y rebalanceo por Mínimo Común Múltiplo.</p>
+            <h1 className="text-xl font-bold text-foreground">Planificador Estratégico (Comprador)</h1>
+            <p className="text-xs text-muted-foreground">Diagnóstico de liquidez y oportunidades de compra en zona de sobreventa.</p>
           </div>
         </div>
         <button 
@@ -55,226 +98,96 @@ export function BuyerModeView() {
           {/* Horizontal Portfolio Selector */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
             <span className="text-xs font-bold text-muted-foreground uppercase mr-2 shrink-0">Evaluando:</span>
-            {MOCK_PORTFOLIOS.map(pf => (
-            <button
-              key={pf}
-              onClick={() => setActivePortfolio(pf)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
-                activePortfolio === pf 
-                  ? 'bg-foreground text-background border-foreground shadow-md' 
-                  : 'bg-card text-muted-foreground border-border hover:bg-secondary'
-              }`}
-            >
-              {pf}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          {/* LEFT COLUMN: LIQUIDITY SOURCES */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-2 border-b border-border pb-2">
-              <ArrowDownRight className="w-5 h-5 text-negative" />
-              <h2 className="text-lg font-bold text-foreground">Fuentes de Liquidez</h2>
-            </div>
-
-            {/* Excess Equities */}
-            <section className="bg-card border border-border rounded-2xl p-5">
-              <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-4">
-                <AlertCircle className="w-4 h-4 text-negative" />
-                Excedentes en Renta Variable
-              </h3>
-              <p className="text-xs text-muted-foreground mb-4">Activos que superan la ponderación objetivo en {activePortfolio}. Sugeridos para reducción.</p>
-              
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-background">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-foreground">MSFT</span>
-                      <span className="text-[10px] bg-negative/10 text-negative px-1.5 py-0.5 rounded">Exceso: 23 Nominales</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Peso actual: 25% (Objetivo: 15%)</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-mono text-sm font-bold text-positive">+$ 415,000</p>
-                    <p className="text-[10px] text-muted-foreground">ARS Potenciales</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Fixed Income Cash Reserves */}
-            <section className="bg-card border border-border rounded-2xl p-5">
-              <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-4">
-                <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
-                Reservas en Renta Fija
-              </h3>
-              <p className="text-xs text-muted-foreground mb-4">Posiciones maduras o en paridad alta listas para ser liquidadas si se requiere capital.</p>
-
-              <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-background">
-                <div>
-                  <p className="font-bold text-foreground">AL30 (Soberano)</p>
-                  <p className="text-xs text-muted-foreground mt-1">Paridad: 60% • 1,500 nominales disponibles</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-mono text-sm font-bold text-positive">+$ 87,000</p>
-                  <p className="text-[10px] text-muted-foreground">ARS Potenciales</p>
-                </div>
-              </div>
-            </section>
+            {loading && <span className="text-sm text-muted-foreground">Cargando...</span>}
+            {!loading && pfNames.length === 0 && <span className="text-sm text-muted-foreground">Sin carteras</span>}
+            {pfNames.map(pf => (
+              <button
+                key={pf}
+                onClick={() => setActivePortfolio(pf)}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
+                  activePortfolio === pf 
+                    ? 'bg-foreground text-background border-foreground shadow-md' 
+                    : 'bg-card text-muted-foreground border-border hover:bg-secondary'
+                }`}
+              >
+                {pf}
+              </button>
+            ))}
           </div>
 
-          {/* RIGHT COLUMN: BUY TARGETS */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-2 border-b border-border pb-2">
-              <ArrowUpRight className="w-5 h-5 text-positive" />
-              <h2 className="text-lg font-bold text-foreground">Destinos Estratégicos</h2>
-            </div>
-
-            {/* Portfolio Completion (MCM) */}
-            <section className="bg-card border border-border rounded-2xl p-5 border-dashed border-foreground/30 h-full">
-              <h3 className="text-sm font-bold text-foreground mb-4">
-                Completar Estructura (MCM)
-              </h3>
-              <p className="text-xs text-muted-foreground mb-4">Nominales faltantes para alcanzar el múltiplo objetivo de la cartera {activePortfolio}.</p>
-              
-              <div className="space-y-3">
-                {[
-                  { ticker: 'AAPL', missing: 12, cost: 210000, momentum: 'Bueno', weight: '22% -> 30%' },
-                  { ticker: 'SPY', missing: 4, cost: 170000, momentum: 'Neutral', weight: '38% -> 40%' }
-                ].map(item => (
-                  <div key={item.ticker} className="flex items-center justify-between p-3 border border-border rounded-lg bg-background">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-foreground">{item.ticker}</span>
-                        <span className="text-[10px] bg-secondary text-foreground px-1.5 py-0.5 rounded">Faltan {item.missing} nom.</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">Gap: {item.weight} • Momentum: <span className="text-positive">{item.momentum}</span></p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-mono text-sm font-bold text-negative">-$ {(item.cost).toLocaleString()}</p>
-                      <p className="text-[10px] text-muted-foreground">Costo ARS</p>
-                    </div>
-                  </div>
-                ))}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* LEFT COLUMN: LIQUIDITY SOURCES */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 border-b border-border pb-2">
+                <ArrowDownRight className="w-5 h-5 text-negative" />
+                <h2 className="text-lg font-bold text-foreground">Fuentes de Liquidez</h2>
               </div>
-            </section>
-          </div>
-        </div>
 
-        {/* TACTICAL EXPLORATION (BOTTOM ROW - FULL WIDTH GRID) */}
-        <div className="flex items-center gap-2 border-b border-border pb-2 mt-4">
-          <Zap className="w-5 h-5 text-positive" />
-          <h2 className="text-lg font-bold text-foreground">Exploración Táctica Libre</h2>
-        </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          {/* Tactical Opportunities */}
-          <section className="bg-card border border-border rounded-2xl p-5">
-            <h3 className="text-sm font-bold text-foreground mb-4">
-              Oportunidades por Descuento
-            </h3>
-            <p className="text-xs text-muted-foreground mb-4">Activos atractivos por momentum y subvaluación (RSI &lt;= 35, Descuento DCF).</p>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-muted-foreground uppercase bg-secondary/50 border-b border-border">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Activo</th>
-                    <th className="px-3 py-2 font-medium text-right">RSI</th>
-                    <th className="px-3 py-2 font-medium text-right">Descuento</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/50">
-                  <tr className="hover:bg-secondary/30 transition-colors">
-                    <td className="px-3 py-2">
-                      <p className="font-bold text-foreground">BABA</p>
-                      <p className="text-[10px] text-muted-foreground">E-commerce</p>
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono font-bold text-positive">18</td>
-                    <td className="px-3 py-2 text-right font-mono text-positive">-24%</td>
-                  </tr>
-                  <tr className="hover:bg-secondary/30 transition-colors">
-                    <td className="px-3 py-2">
-                      <p className="font-bold text-foreground">PFE</p>
-                      <p className="text-[10px] text-muted-foreground">Salud defensivo</p>
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono font-bold text-positive">32</td>
-                    <td className="px-3 py-2 text-right font-mono text-positive">-15%</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* Underperforming Sectors (ETFs) */}
-          <section className="bg-card border border-border rounded-2xl p-5">
-            <h3 className="text-sm font-bold text-foreground mb-4">
-              Sectores Rezagados (Ofertas Macro)
-            </h3>
-            <p className="text-xs text-muted-foreground mb-4">
-              ETFs con mal desempeño semanal frente al SPY. Identifica sectores subvaluados.
-            </p>
-            
-            <div className="space-y-3">
-              {UNDERPERFORMING_SECTORS.map(sector => (
-                <div key={sector.etf} className="border border-border rounded-lg bg-background overflow-hidden">
-                  <div className="flex items-center justify-between p-3">
-                    <div>
-                      <p className="font-bold text-foreground">{sector.etf}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Brecha vs SPY: <span className="text-negative font-mono">{sector.spyGap}%</span></p>
-                    </div>
-                    <button 
-                      onClick={() => setExpandedSector(expandedSector === sector.etf ? null : sector.etf)}
-                      className={`text-xs px-3 py-1.5 rounded transition-colors font-medium border ${
-                        expandedSector === sector.etf 
-                          ? 'bg-foreground text-background border-foreground' 
-                          : 'bg-secondary hover:bg-border text-foreground border-transparent'
-                      }`}
-                    >
-                      {expandedSector === sector.etf ? 'Cerrar Vista' : 'Ver CEDEARs'}
-                    </button>
-                  </div>
-                  
-                  {/* Expanded CEDEARs list */}
-                  <AnimatePresence>
-                    {expandedSector === sector.etf && (
-                      <motion.div 
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden border-t border-border bg-secondary/20"
-                      >
-                        <div className="p-3">
-                          <p className="text-[10px] uppercase text-muted-foreground font-bold mb-2 tracking-wider">
-                            Componentes del sector {sector.etf}
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {sector.cedears.map(c => (
-                              <div key={c.ticker} className="flex justify-between items-center bg-card p-2 rounded border border-border hover:border-foreground/30 cursor-pointer transition-colors">
-                                <div>
-                                  <p className="text-xs font-bold text-foreground">{c.ticker}</p>
-                                  <p className="text-[10px] text-muted-foreground truncate max-w-[100px]">{c.name}</p>
-                                </div>
-                                <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
-                                  c.rsi <= 35 ? 'bg-positive/20 text-positive border border-positive/30' : 'bg-secondary text-muted-foreground border border-border'
-                                }`}>
-                                  RSI: {c.rsi}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
+              <section className="bg-card border border-border rounded-2xl p-5">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-4">
+                  <AlertCircle className="w-4 h-4 text-negative" />
+                  Activos Sobrecomprados (RSI &gt; 60)
+                </h3>
+                <p className="text-xs text-muted-foreground mb-4">Activos en {activePortfolio || 'tu cartera'} que se encuentran en zona alta y podrían ser reducidos para tomar ganancias.</p>
+                
+                <div className="space-y-3">
+                  {liquidSources.length === 0 && <p className="text-sm text-muted-foreground">No hay activos sobrecomprados en esta cartera.</p>}
+                  {liquidSources.map(src => (
+                    <div key={src.ticker} className="flex items-center justify-between p-3 border border-border rounded-lg bg-background">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-foreground">{src.ticker}</span>
+                          <span className="text-[10px] bg-negative/10 text-negative px-1.5 py-0.5 rounded">RSI: {src.rsi.toFixed(1)}</span>
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        <p className="text-xs text-muted-foreground mt-1">Peso actual: {src.weight}%</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono text-sm font-bold text-positive">${src.price?.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2})}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </section>
             </div>
-          </section>
 
+            {/* RIGHT COLUMN: STRATEGIC DESTINATIONS */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 border-b border-border pb-2">
+                <ArrowUpRight className="w-5 h-5 text-positive" />
+                <h2 className="text-lg font-bold text-foreground">Destinos Estratégicos</h2>
+              </div>
+
+              <section className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-1">
+                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  Oportunidades de Compra (RSI &lt;= 40)
+                </h3>
+                <p className="text-xs text-muted-foreground mb-4">Top 10 activos con mayor nivel de sobreventa en todo el catálogo.</p>
+                
+                <div className="space-y-3">
+                  {buyCandidates.length === 0 && <p className="text-sm text-muted-foreground">No hay activos sobrevendidos actualmente.</p>}
+                  {buyCandidates.map(cand => (
+                    <div key={cand.symbol} className="border border-border rounded-xl overflow-hidden">
+                      <div className="p-3 bg-background flex items-center justify-between cursor-pointer hover:bg-secondary/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-foreground">{cand.symbol}</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-positive/10 text-positive">
+                            RSI: {cand.rsi?.toFixed(1)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-sm font-bold text-foreground">${(cand.local || cand.cedear_usd || 0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+                          <button className="text-positive font-bold hover:underline text-xs flex items-center gap-1">
+                            Evaluar <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
           </div>
         </div>
       </div>

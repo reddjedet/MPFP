@@ -1,160 +1,211 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Upload, Trash2, AlertTriangle, Save, Anchor, Download, Minus } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
-const MOCK_PORTFOLIOS = ['Cartera 1', 'Cartera 2', 'Cartera 3'];
-
-// Inner ring (Sectors)
-const SECTOR_DATA = [
-  { name: 'Tecnología', value: 45, color: '#3b82f6' },
-  { name: 'Consumo', value: 30, color: '#10b981' },
-  { name: 'Salud', value: 25, color: '#f59e0b' }
-];
-
-// Outer ring (Tickers)
-const TICKER_DATA = [
-  { name: 'AAPL', value: 25, color: '#60a5fa' },
-  { name: 'MSFT', value: 20, color: '#93c5fd' },
-  { name: 'KO', value: 15, color: '#34d399' },
-  { name: 'MCD', value: 15, color: '#6ee7b7' },
-  { name: 'JNJ', value: 15, color: '#fcd34d' },
-  { name: 'PFE', value: 10, color: '#fde68a' }
-];
-
 export function HoldingsManagerView() {
-  const [selectedPf, setSelectedPf] = useState(MOCK_PORTFOLIOS[0]);
+  const [portfolios, setPortfolios] = useState<Record<string, any>>({});
+  const [quotes, setQuotes] = useState<Record<string, any>>({});
+  const [selectedPf, setSelectedPf] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [anchorAsset, setAnchorAsset] = useState('AAPL');
-  const [anchorScale, setAnchorScale] = useState(1);
 
-  // Mock scaling logic: we assume base nominals for a scale of 1
-  const HOLDINGS = [
-    { ticker: 'AAPL', relWeight: 25, baseNominals: 10, ppc: 150.5, fv: 180.0 },
-    { ticker: 'MSFT', relWeight: 20, baseNominals: 8, ppc: 0, fv: 340.0 }
-  ];
+  // Fetch real data
+  useEffect(() => {
+    let isMounted = true;
+    const fetchData = async () => {
+      try {
+        const [pfRes, qRes] = await Promise.all([
+          fetch('/api/portfolios/list_json'),
+          fetch('/api/cedears/quotes_json')
+        ]);
+        if (!isMounted) return;
+        if (pfRes.ok && qRes.ok) {
+          const pfData = await pfRes.json();
+          const qData = await qRes.json();
+          
+          setPortfolios(pfData.portfolios || {});
+          if (pfData.selected_pf && !selectedPf) {
+            setSelectedPf(pfData.selected_pf);
+          } else if (Object.keys(pfData.portfolios || {}).length > 0 && !selectedPf) {
+            setSelectedPf(Object.keys(pfData.portfolios)[0]);
+          }
+
+          const qMap: Record<string, any> = {};
+          (qData.quotes || []).forEach((q: any) => {
+            qMap[q.symbol] = q;
+          });
+          setQuotes(qMap);
+        }
+      } catch (e) {
+        console.error("Error fetching portfolios", e);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchData();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Compute derived data based on selected portfolio
+  const { holdings, sectorData, tickerData } = useMemo(() => {
+    if (!selectedPf || !portfolios[selectedPf]) {
+      return { holdings: [], sectorData: [], tickerData: [] };
+    }
+
+    const pfAssets = portfolios[selectedPf].assets || {};
+    const pfNominals = portfolios[selectedPf].nominals || {};
+    const pfFv = portfolios[selectedPf].fv || {};
+    const pfPpc = portfolios[selectedPf].ppc || {};
+
+    const rawHoldings = [];
+    let totalValue = 0;
+    const sectorValues: Record<string, number> = {};
+
+    for (const [ticker, weight] of Object.entries(pfAssets)) {
+      const q = quotes[ticker] || {};
+      const price = q.local || q.cedear_usd || 0;
+      const nominals = pfNominals[ticker] || 0;
+      const fv = pfFv[ticker] || q.gf_value || 0;
+      const ppc = pfPpc[ticker] || 0;
+      const sector = q.is_etf ? 'ETF' : 'Acciones'; // simplified sector logic for now
+
+      const val = nominals > 0 ? (nominals * price) : (Number(weight) * 1000); // Fallback
+      totalValue += val;
+
+      rawHoldings.push({
+        ticker,
+        relWeight: Number(weight),
+        baseNominals: nominals,
+        ppc,
+        fv,
+        price,
+        value: val,
+        sector
+      });
+    }
+
+    rawHoldings.forEach(h => {
+      sectorValues[h.sector] = (sectorValues[h.sector] || 0) + h.value;
+    });
+
+    const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'];
+    let cIdx = 0;
+    
+    const sData = Object.entries(sectorValues)
+      .map(([name, val]) => ({ name, value: val, color: COLORS[cIdx++ % COLORS.length] }))
+      .sort((a, b) => b.value - a.value);
+
+    let tIdx = 0;
+    const tData = rawHoldings
+      .map(h => ({ name: h.ticker, value: h.value, color: COLORS[tIdx++ % COLORS.length] }))
+      .sort((a, b) => b.value - a.value);
+
+    return { holdings: rawHoldings.sort((a, b) => b.value - a.value), sectorData: sData, tickerData: tData };
+  }, [selectedPf, portfolios, quotes]);
 
   const handleExportJSON = () => {
-    // In a real app, this would trigger a download of the state JSON
-    alert("Portafolio exportado a portafolio.json con éxito.");
+    if (!selectedPf || !portfolios[selectedPf]) return;
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(portfolios[selectedPf], null, 2));
+    const dlAnchorElem = document.createElement('a');
+    dlAnchorElem.setAttribute("href", dataStr);
+    dlAnchorElem.setAttribute("download", `${selectedPf}.json`);
+    dlAnchorElem.click();
   };
+
+  const pfNames = Object.keys(portfolios);
+
+  if (loading) {
+    return <div className="p-8 text-center text-muted-foreground">Cargando portafolios...</div>;
+  }
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
-      
       {/* HEADER: Portfolios Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-card border border-border p-5 rounded-2xl">
-        
         <div className="flex items-center gap-4 flex-wrap">
           <div>
             <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1 block">
               Portafolio Activo
             </label>
-            <select 
-              value={selectedPf}
-              onChange={(e) => setSelectedPf(e.target.value)}
-              className="appearance-none bg-background border border-border rounded-lg px-4 py-2 text-sm font-medium text-foreground focus:outline-none focus:border-foreground min-w-[200px]"
-            >
-              {MOCK_PORTFOLIOS.map(pf => <option key={pf} value={pf}>{pf}</option>)}
-            </select>
+            <div className="flex items-center gap-2">
+              <select 
+                value={selectedPf}
+                onChange={(e) => setSelectedPf(e.target.value)}
+                className="bg-secondary border border-border text-foreground text-sm rounded-lg focus:ring-foreground focus:border-foreground block w-48 p-2"
+              >
+                {pfNames.map(pf => <option key={pf} value={pf}>{pf}</option>)}
+                {pfNames.length === 0 && <option value="">Sin carteras</option>}
+              </select>
+              <button 
+                title="Crear Portafolio"
+                className="p-2 bg-secondary hover:bg-border rounded-lg transition-colors border border-border"
+              >
+                <Plus className="w-4 h-4 text-foreground" />
+              </button>
+            </div>
           </div>
+        </div>
 
-          <div className="h-8 w-px bg-border hidden sm:block mx-2" />
-
-          <button className="flex items-center gap-2 px-3 py-2 bg-secondary hover:bg-border text-foreground transition-colors rounded-lg text-sm font-medium">
-            <Plus className="w-4 h-4" /> Nuevo
-          </button>
-          
+        <div className="flex items-center gap-3">
           <button 
             onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-2 px-3 py-2 bg-secondary hover:bg-border text-foreground transition-colors rounded-lg text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-border rounded-lg text-sm font-medium transition-colors border border-border"
           >
             <Upload className="w-4 h-4" /> Importar
           </button>
-
           <button 
             onClick={handleExportJSON}
-            className="flex items-center gap-2 px-3 py-2 bg-secondary hover:bg-border text-foreground transition-colors rounded-lg text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-border rounded-lg text-sm font-medium transition-colors border border-border"
           >
             <Download className="w-4 h-4" /> Exportar
           </button>
+          <div className="w-px h-8 bg-border mx-1"></div>
+          <button 
+            onClick={() => setShowDeleteAlert(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-negative/10 hover:bg-negative/20 text-negative rounded-lg text-sm font-medium transition-colors border border-negative/20"
+          >
+            <Trash2 className="w-4 h-4" /> Eliminar
+          </button>
         </div>
-
-        <button 
-          onClick={() => setShowDeleteAlert(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-negative/10 hover:bg-negative/20 text-negative border border-negative/20 transition-colors rounded-lg text-sm font-bold"
-        >
-          <Trash2 className="w-4 h-4" /> Borrar Portafolio
-        </button>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* LEFT COLUMN: Data Entry */}
-        <div className="xl:col-span-2 space-y-6">
-          
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-foreground">Gestión de Tenencias y Pesos</h2>
-            
-            <div className="flex items-center gap-3 bg-secondary/50 px-3 py-1.5 rounded-lg border border-border">
-              <Anchor className="w-4 h-4 text-positive" />
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-muted-foreground">Ancla MCM:</span>
-                <select 
-                  value={anchorAsset}
-                  onChange={(e) => setAnchorAsset(e.target.value)}
-                  className="bg-transparent text-sm font-bold text-foreground focus:outline-none appearance-none"
-                >
-                  <option value="AAPL">AAPL</option>
-                  <option value="SPY">SPY</option>
-                  <option value="KO">KO</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-1 border-l border-border pl-2 ml-1">
-                <button 
-                  onClick={() => setAnchorScale(Math.max(1, anchorScale - 1))}
-                  className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground"
-                >
-                  <Minus className="w-3 h-3" />
-                </button>
-                <span className="text-sm font-mono font-bold w-6 text-center">{anchorScale}x</span>
-                <button 
-                  onClick={() => setAnchorScale(anchorScale + 1)}
-                  className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
+        {/* LEFT COLUMN: Data Table */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-border bg-secondary/30 flex justify-between items-center">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Activos del Portafolio</h3>
+                <p className="text-xs text-muted-foreground mt-1">Configura pesos relativos, nominales y valores de compra.</p>
               </div>
             </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-[10px] text-muted-foreground uppercase tracking-wider bg-secondary/50 border-b border-border">
+                <thead className="text-xs text-muted-foreground uppercase bg-secondary/50 border-b border-border">
                   <tr>
                     <th className="px-4 py-3 font-medium">Ticker</th>
-                    <th className="px-4 py-3 font-medium text-right">Peso Rel. (%)</th>
-                    <th className="px-4 py-3 font-medium text-right">Nom. Objetivo</th>
+                    <th className="px-4 py-3 font-medium text-right">Peso Rel (%)</th>
+                    <th className="px-4 py-3 font-medium text-right">Nominales</th>
                     <th className="px-4 py-3 font-medium text-right">PPC</th>
-                    <th className="px-4 py-3 font-medium text-right">Fair Value (DCF)</th>
+                    <th className="px-4 py-3 font-medium text-right">Fair Value</th>
                     <th className="px-4 py-3 font-medium text-center">Acción</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/50">
-                  {HOLDINGS.map((asset) => (
-                    <tr key={asset.ticker} className="hover:bg-secondary/30 transition-colors">
-                      <td className="px-4 py-3 font-bold text-foreground">{asset.ticker}</td>
+                <tbody className="divide-y divide-border">
+                  {holdings.map((asset: any) => (
+                    <tr key={asset.ticker} className="hover:bg-secondary/30 transition-colors group">
+                      <td className="px-4 py-3 font-bold text-foreground flex items-center gap-2">
+                        {asset.ticker}
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <input type="number" defaultValue={asset.relWeight} className="w-16 text-right bg-background border border-border rounded px-2 py-1 text-xs" />
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <input 
-                          type="number" 
-                          value={asset.baseNominals * anchorScale} 
-                          readOnly
-                          className="w-20 text-right bg-secondary text-foreground font-mono font-bold border border-border rounded px-2 py-1 text-xs outline-none" 
-                        />
+                        <input type="number" defaultValue={asset.baseNominals} className="w-20 text-right bg-background border border-border rounded px-2 py-1 text-xs" />
                       </td>
                       <td className="px-4 py-3 text-right">
                         <input type="number" defaultValue={asset.ppc} className="w-20 text-right bg-background border border-border rounded px-2 py-1 text-xs" />
@@ -165,24 +216,8 @@ export function HoldingsManagerView() {
                       <td className="px-4 py-3 text-center"><button className="text-negative hover:underline text-xs">Quitar</button></td>
                     </tr>
                   ))}
-                  
-                  {/* Add New Row */}
-                  <tr className="bg-secondary/20">
-                    <td className="px-4 py-3"><input type="text" placeholder="Ticker" className="w-16 bg-background border border-border rounded px-2 py-1 text-xs font-bold" /></td>
-                    <td className="px-4 py-3 text-right"><input type="number" placeholder="%" className="w-16 text-right bg-background border border-border rounded px-2 py-1 text-xs" /></td>
-                    <td className="px-4 py-3 text-right"><input type="number" placeholder="Cant." className="w-20 text-right bg-background border border-border rounded px-2 py-1 text-xs" /></td>
-                    <td className="px-4 py-3 text-right"><input type="number" placeholder="US$" className="w-20 text-right bg-background border border-border rounded px-2 py-1 text-xs" /></td>
-                    <td className="px-4 py-3 text-right"><input type="number" placeholder="US$" className="w-20 text-right bg-background border border-border rounded px-2 py-1 text-xs" /></td>
-                    <td className="px-4 py-3 text-center"><button className="text-positive font-bold hover:underline text-xs">Añadir</button></td>
-                  </tr>
                 </tbody>
               </table>
-            </div>
-            <div className="p-4 border-t border-border bg-secondary/30 flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">Total Pesos Relativos: <strong className="text-foreground">45%</strong> (Debe sumar 100%)</span>
-              <button className="flex items-center gap-2 px-4 py-2 bg-foreground text-background font-bold rounded-lg text-sm transition-opacity hover:opacity-90">
-                <Save className="w-4 h-4" /> Guardar Cambios
-              </button>
             </div>
           </div>
         </div>
@@ -199,10 +234,11 @@ export function HoldingsManagerView() {
                   <Tooltip 
                     contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px' }}
                     itemStyle={{ color: 'var(--foreground)' }}
+                    formatter={(val: any) => `$${Number(val).toLocaleString('es-AR', {maximumFractionDigits:0})}`}
                   />
                   {/* Inner Pie: Sectors */}
                   <Pie
-                    data={SECTOR_DATA}
+                    data={sectorData}
                     dataKey="value"
                     cx="50%"
                     cy="50%"
@@ -210,14 +246,14 @@ export function HoldingsManagerView() {
                     stroke="var(--background)"
                     strokeWidth={2}
                   >
-                    {SECTOR_DATA.map((entry, index) => (
+                    {sectorData.map((entry: any, index: number) => (
                       <Cell key={`cell-inner-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
                   
                   {/* Outer Pie: Tickers */}
                   <Pie
-                    data={TICKER_DATA}
+                    data={tickerData}
                     dataKey="value"
                     cx="50%"
                     cy="50%"
@@ -228,7 +264,7 @@ export function HoldingsManagerView() {
                     label={({ name }) => name}
                     labelLine={false}
                   >
-                    {TICKER_DATA.map((entry, index) => (
+                    {tickerData.map((entry: any, index: number) => (
                       <Cell key={`cell-outer-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -251,7 +287,7 @@ export function HoldingsManagerView() {
               <h3 className="text-lg font-bold text-foreground">¿Estás completamente seguro?</h3>
             </div>
             <p className="text-sm text-muted-foreground mb-6">
-              Estás a punto de eliminar el portafolio <strong>{selectedPf}</strong>. Esta acción es irreversible y perderás la configuración de pesos, activos ancla y tenencias asociadas a él.
+              Estás a punto de eliminar el portafolio <strong>{selectedPf}</strong>.
             </p>
             <div className="flex items-center justify-end gap-3">
               <button 
@@ -264,7 +300,7 @@ export function HoldingsManagerView() {
                 onClick={() => setShowDeleteAlert(false)}
                 className="px-4 py-2 bg-negative text-background rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
               >
-                Sí, borrar portafolio
+                Sí, borrar
               </button>
             </div>
           </div>
@@ -276,31 +312,10 @@ export function HoldingsManagerView() {
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-2xl p-6 max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh]">
             <h3 className="text-lg font-bold text-foreground mb-2">Importar Portafolio via JSON</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Pega el contenido JSON de tu portafolio. Debe respetar el siguiente formato estructurado.
-            </p>
-            
-            <div className="bg-secondary/50 rounded-lg p-4 mb-6 font-mono text-xs text-muted-foreground overflow-auto">
-              <pre>{`{
-  "portfolioName": "Mi Cartera Tech",
-  "anchorAsset": "AAPL",
-  "holdings": [
-    {
-      "ticker": "AAPL",
-      "relativeWeight": 40,
-      "nominales": 20,
-      "ppc": 150.00,
-      "fairValue": 185.00
-    }
-  ]
-}`}</pre>
-            </div>
-
             <textarea 
               className="w-full h-32 bg-background border border-border rounded-lg p-4 text-sm font-mono text-foreground focus:outline-none focus:border-foreground mb-6"
               placeholder="Pega el JSON aquí..."
             />
-
             <div className="flex items-center justify-end gap-3 mt-auto">
               <button 
                 onClick={() => setShowImportModal(false)}
@@ -312,13 +327,12 @@ export function HoldingsManagerView() {
                 onClick={() => setShowImportModal(false)}
                 className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-bold hover:opacity-90 transition-opacity flex items-center gap-2"
               >
-                <Upload className="w-4 h-4" /> Importar Datos
+                <Upload className="w-4 h-4" /> Importar
               </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }
