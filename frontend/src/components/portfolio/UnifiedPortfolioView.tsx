@@ -77,20 +77,51 @@ export const UnifiedPortfolioView: React.FC = () => {
   }, [selectedPf, portfolioMetadata, fetchAllData]);
 
   // Derived dashboard metrics
-  const totalPatrimony = rebalanceData?.summary?.total_patrimony_ars || 0;
-  const totalEq = rebalanceData?.summary?.total_equity_ars || 0;
+  const totalEq = rebalanceData?.summary?.total_portfolio_value || 0;
+  const totalFixed = rebalanceData?.fixed_income_summary?.total_market_value || 0;
+  const totalPatrimony = totalEq + totalFixed;
   const eqPct = totalPatrimony > 0 ? (totalEq / totalPatrimony) * 100 : 0;
-  const totalFixed = rebalanceData?.fixed_income_summary?.total_invested_ars || 0;
   const fixedPct = totalPatrimony > 0 ? (totalFixed / totalPatrimony) * 100 : 0;
-  const totalCash = rebalanceData?.summary?.cash_ars || 0;
-  const cashPct = totalPatrimony > 0 ? (totalCash / totalPatrimony) * 100 : 0;
+  const totalCash = 0; // Efectivo no está en la respuesta de la API actualmente
+  const cashPct = 0;
 
-  const totalPnl = rebalanceData?.summary?.total_pnl_ars || 0;
-  const totalCost = rebalanceData?.summary?.total_cost_invested || 0;
+  // Calcular Costo Invertido y PnL de Renta Variable
+  let totalEqCost = 0;
+  let totalEqPnl = 0;
+  let sumTrackingError = 0;
+  let errorCount = 0;
+
+  if (rebalanceData?.result) {
+    rebalanceData.result.forEach((item: any) => {
+      const qty = item.qty || 0;
+      const price = item.price || 0;
+      const currentValue = qty * price;
+      
+      // Error de tracking (Renta variable)
+      if (typeof item.error === 'number') {
+        sumTrackingError += Math.abs(item.error);
+        errorCount++;
+      }
+
+      if (item.ppc && item.ppc > 0) {
+        const invested = qty * item.ppc;
+        totalEqCost += invested;
+        totalEqPnl += (currentValue - invested);
+      } else {
+        totalEqCost += currentValue; // Si no hay PPC, se asume neutro
+      }
+    });
+  }
+
+  const totalFixedCost = rebalanceData?.fixed_income_summary?.total_invested || 0;
+  const totalFixedPnl = rebalanceData?.fixed_income_summary?.total_pnl_ars || 0;
+
+  const totalCost = totalEqCost + totalFixedCost;
+  const totalPnl = totalEqPnl + totalFixedPnl;
   const pnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
-  const trackingError = rebalanceData?.summary?.avg_tracking_error || 0;
+  const trackingError = errorCount > 0 ? (sumTrackingError / errorCount) : 0;
   
-  const rsiSummary = rebalanceData?.summary?.rsi_summary;
+  const rsiSummary = rebalanceData?.summary?.portfolio_rsi || rebalanceData?.summary?.rsi_summary;
 
   return (
     <div className="w-full h-full flex flex-col min-h-0 bg-background text-foreground overflow-y-auto">
