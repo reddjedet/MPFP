@@ -230,60 +230,59 @@ export const UnifiedPortfolioView: React.FC = () => {
         {rebalanceData && (
           <div className="pb-8 space-y-4">
             
-            <div className="flex flex-col md:flex-row gap-4 items-start">
-              <div className="w-full">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300 mb-4">
-                  Matriz de Pesos Objetivos y Anclaje
-                </h3>
-                <PortfolioTable 
-                  data={rebalanceData} 
-                  pfType={selectedPf} 
-                  onRefresh={() => fetchAllData(selectedPf)} 
-                />
-              </div>
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                Matriz de Pesos Objetivos y Anclaje
+              </h3>
 
-              {/* Módulo de Calibración de Compras */}
-              <div className="w-full md:w-[300px] flex-none bg-zinc-900 border border-white/5 rounded-xl p-4 space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                  Calibrar Cantidades (MCM)
-                </h3>
-                <p className="text-[10px] text-zinc-500 leading-tight">
-                  Ajusta el ticker ancla y su cantidad. El sistema recalculará el resto para mantener los pesos objetivo.
-                </p>
-                <div className="space-y-2">
-                  <div>
-                    <label className="text-[10px] uppercase font-bold text-zinc-500 mb-1 block">Ticker Ancla</label>
-                    <input 
-                      type="text" 
-                      placeholder="Ej: AAPL"
-                      id="anchorInput"
-                      defaultValue={rebalanceData?.anchor_ticker || rebalanceData?.bottleneck_ticker || ''}
-                      className="w-full bg-zinc-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono uppercase focus:ring-1 focus:ring-blue-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] uppercase font-bold text-zinc-500 mb-1 block">Cant. Cedears Ancla</label>
-                    <input 
-                      type="number" 
-                      min="1"
-                      id="qtyInput"
-                      defaultValue={rebalanceData?.anchor_qty || rebalanceData?.bottleneck_qty || 1}
-                      className="w-full bg-zinc-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
-                    />
-                  </div>
-                  <button 
-                    onClick={() => {
-                      const a = (document.getElementById('anchorInput') as HTMLInputElement).value;
-                      const q = parseInt((document.getElementById('qtyInput') as HTMLInputElement).value) || 1;
-                      fetchAllData(selectedPf, a, q);
-                    }}
-                    className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 rounded-lg transition-colors"
-                  >
-                    Recalcular Matriz
-                  </button>
+              {/* Módulo de Calibración de Compras (Horizontal) */}
+              <div className="flex items-center gap-3 bg-zinc-900 border border-white/5 rounded-lg px-4 py-2 w-full lg:w-auto overflow-x-auto">
+                <div className="flex items-center gap-2 min-w-max">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                  <span className="text-[10px] font-bold uppercase text-zinc-400">Calibrador MCM:</span>
                 </div>
+                
+                <div className="flex items-center gap-2 min-w-max">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase">Ancla</span>
+                  <input 
+                    type="text" 
+                    placeholder="AAPL"
+                    id="anchorInput"
+                    defaultValue={rebalanceData?.anchor_ticker || rebalanceData?.bottleneck_ticker || ''}
+                    className="w-16 bg-zinc-950 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono uppercase focus:ring-1 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 min-w-max">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase">Cant.</span>
+                  <input 
+                    type="number" 
+                    min="1"
+                    id="qtyInput"
+                    defaultValue={rebalanceData?.anchor_qty || rebalanceData?.bottleneck_qty || 1}
+                    className="w-16 bg-zinc-950 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+
+                <button 
+                  onClick={() => {
+                    const a = (document.getElementById('anchorInput') as HTMLInputElement).value;
+                    const q = parseInt((document.getElementById('qtyInput') as HTMLInputElement).value) || 1;
+                    fetchAllData(selectedPf, a, q);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-3 py-1.5 rounded transition-colors min-w-max"
+                >
+                  RECALCULAR
+                </button>
               </div>
+            </div>
+
+            <div className="w-full">
+              <PortfolioTable 
+                data={rebalanceData} 
+                pfType={selectedPf} 
+                onRefresh={() => fetchAllData(selectedPf)} 
+              />
             </div>
 
           </div>
