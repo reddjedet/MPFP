@@ -161,17 +161,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       keywords: ['etf', 'etfs', 'rotacion', 'spy', 'sectores', 'cuadrantes', 'alpha', 'rrg']
     },
     {
-      id: 'nav-indices',
-      title: 'Índices & Ciclos Electorales',
-      subtitle: 'Histórico Base 100 de Merval, ETF ARGT, EWZ, S&P 500 y mandatos',
-      category: 'navigation',
-      icon: Globe,
-      badge: 'Mercado',
-      badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-      action: () => { onNavigate('market', 'indices'); onClose(); },
-      keywords: ['indices', 'merval', 'argt', 'sp500', 'ciclos', 'elecciones']
-    },
-    {
       id: 'nav-renta-fija',
       title: 'Renta Fija BYMA/MAE',
       subtitle: 'Curvas de rendimiento, TIR, Modified Duration y spreads',
@@ -192,6 +181,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
       action: () => { onNavigate('market', 'earnings'); onClose(); },
       keywords: ['balances', 'earnings', 'reportes', 'fechas', 'trimestres']
+    },
+    {
+      id: 'nav-indices',
+      title: 'Índices & Ciclos Electorales',
+      subtitle: 'Histórico Base 100 de Merval, ETF ARGT, EWZ, S&P 500 y mandatos',
+      category: 'navigation',
+      icon: Globe,
+      badge: 'Mercado',
+      badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+      action: () => { onNavigate('market', 'indices'); onClose(); },
+      keywords: ['indices', 'merval', 'argt', 'sp500', 'ciclos', 'elecciones']
     },
     {
       id: 'nav-markowitz',

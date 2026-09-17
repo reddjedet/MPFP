@@ -88,7 +88,7 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [newTicker, setNewTicker] = useState<string>('');
   const [searchFilter, setSearchFilter] = useState<string>('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'in_portfolio' | 'rsi_alerts' | 'valuation_signals' | 'earnings'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'in_portfolio' | 'rsi_alerts' | 'valuation_signals' | 'earnings'>('rsi_alerts');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -633,10 +633,10 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
         {/* Filter Pills */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-white/5">
           <button
-            onClick={() => setActiveFilter('all')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${activeFilter === 'all' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            onClick={() => setActiveFilter('rsi_alerts')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${activeFilter === 'rsi_alerts' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
           >
-            Todos ({quotes.length})
+            Alertas RSI ({quotes.filter(q => q.alert || (q.rsi !== null && (q.rsi >= 65 || q.rsi <= 35))).length})
           </button>
           <button
             onClick={() => setActiveFilter('in_portfolio')}
@@ -646,10 +646,10 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
             En Cartera ({quotes.filter(q => q.in_portfolio).length})
           </button>
           <button
-            onClick={() => setActiveFilter('rsi_alerts')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${activeFilter === 'rsi_alerts' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            onClick={() => setActiveFilter('all')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${activeFilter === 'all' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
           >
-            Alertas RSI ({quotes.filter(q => q.alert || (q.rsi !== null && (q.rsi >= 65 || q.rsi <= 35))).length})
+            Todos ({quotes.length})
           </button>
           <button
             onClick={() => setActiveFilter('valuation_signals')}

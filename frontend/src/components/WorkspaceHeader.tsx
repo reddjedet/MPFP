@@ -105,9 +105,9 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
       tabs: [
         { id: 'cedears', label: 'Screener CEDEARs', icon: TrendingUp },
         { id: 'etfs', label: 'Rotación ETFs vs SPY', icon: Compass, badge: 'NUEVO' },
-        { id: 'indices', label: 'Índices & Ciclos', icon: Globe },
         { id: 'renta-fija', label: 'Curvas Renta Fija', icon: Landmark },
-        { id: 'earnings', label: 'Matriz de Earnings', icon: Calendar }
+        { id: 'earnings', label: 'Matriz de Earnings', icon: Calendar },
+        { id: 'indices', label: 'Índices & Ciclos', icon: Globe }
       ]
     },
     lab: {
