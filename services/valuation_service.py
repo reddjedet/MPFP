@@ -124,30 +124,6 @@ def get_profile_by_ticker(ticker: str) -> Optional[dict]:
     profile["saved_user_inputs"] = user_inputs
     return profile
 
-def evaluate_valuation(ticker: str, metrics: Dict[str, Any]) -> dict:
-    """
-    Ejecuta el análisis fundamental adaptado según el modelo de negocio y guarda los inputs:
-    - standard_fcf: ROIC vs WACC, Net Debt/EBITDA, SBC/OCF, FCF Múltiplos
-    - banking: CET1 Ratio, RoTCE/ROE, NCO/Cost-to-Serve, EPS & TBV
-    - financial_holding: Look-Through Operating Earnings, Exceso de Caja, Costo del Float
-    - industrial_dual_debt: Deuda Neta Industrial vs Financiera, FCF de Ciclo Medio
-    - energy_upstream: Lifting Cost, Breakeven Brent, Deuda Neta USD, Ingresos Dolarizados
-    - discarded: Trampas de valor con auditoría del fallo estructural
-    """
-    ticker_clean = ticker.upper().strip()
-    if ticker_clean == "BRKB":
-        ticker_clean = "BRK.B"
-        
-    # Guardar automáticamente los inputs ingresados para recordar el fair value y sus variables
-    save_user_valuation_inputs(ticker_clean, metrics)
-    
-    profile = get_profile_by_ticker(ticker_clean) or {}
-    
-    model_type = profile.get("model_type", "standard_fcf")
-    base_multiple = float(profile.get("base_fcf_multiple", 20.0))
-    required_mos = float(profile.get("required_margin_of_safety", 0.25))
-    current_price = float(metrics.get("price", 100.0))
-    is_discarded_by_nature = (model_type == "discarded")
 
 def _evaluate_banking(ticker_clean: str, metrics: Dict[str, Any], profile: dict, current_price: float, base_multiple: float, required_mos: float):
     eps = clamp(float(metrics.get("eps", 10.0)), -1000.0, 100000.0)

@@ -1,6 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Upload, Trash2, AlertTriangle, Save, Anchor, Download, Minus } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import ReactECharts from 'echarts-for-react';
+
+const SECTOR_MAP: Record<string, string> = {
+  'GOOGL': 'Comm Services', 'META': 'Comm Services', 'NFLX': 'Comm Services', 'DIS': 'Comm Services',
+  'MSFT': 'Technology', 'AAPL': 'Technology', 'NVDA': 'Technology', 'ASML': 'Technology', 'TSM': 'Technology', 'AMD': 'Technology',
+  'CAT': 'Industrials', 'UNP': 'Industrials', 'BA': 'Industrials', 'GE': 'Industrials', 'LMT': 'Industrials',
+  'VIST': 'Energy', 'CCJ': 'Energy', 'XOM': 'Energy', 'CVX': 'Energy', 'PBR': 'Energy',
+  'CEG': 'Utilities', 'NEE': 'Utilities', 'DUK': 'Utilities',
+  'COST': 'Consumer Def', 'WMT': 'Consumer Def', 'KO': 'Consumer Def', 'PEP': 'Consumer Def',
+  'JPM': 'Financials', 'V': 'Financials', 'MA': 'Financials', 'BAC': 'Financials',
+  'FCX': 'Materials', 'BHP': 'Materials', 'RIO': 'Materials', 'VALE': 'Materials',
+  'AMZN': 'Consumer Cyc', 'TSLA': 'Consumer Cyc', 'HD': 'Consumer Cyc', 'MCD': 'Consumer Cyc',
+  'LLY': 'Healthcare', 'UNH': 'Healthcare', 'JNJ': 'Healthcare', 'MRK': 'Healthcare',
+  'SPY': 'ETF', 'QQQ': 'ETF', 'DIA': 'ETF', 'IWM': 'ETF'
+};
 
 export function HoldingsManagerView() {
   const [portfolios, setPortfolios] = useState<Record<string, any>>({});
@@ -49,60 +63,151 @@ export function HoldingsManagerView() {
   }, []);
 
   // Compute derived data based on selected portfolio
-  const { holdings, sectorData, tickerData } = useMemo(() => {
+  const chartOption = useMemo(() => {
     if (!selectedPf || !portfolios[selectedPf]) {
-      return { holdings: [], sectorData: [], tickerData: [] };
+      return {};
     }
 
+    const pfAssets = portfolios[selectedPf].assets || {};
+    const pfNominals = portfolios[selectedPf].nominals || {};
+    
+    let totalValue = 0;
+    const rawHoldings: any[] = [];
+    
+    for (const [ticker, weight] of Object.entries(pfAssets)) {
+      const q = quotes[ticker] || {};
+      const price = q.local || q.cedear_usd || 0;
+      const nominals = pfNominals[ticker] || 0;
+      
+      const val = nominals > 0 ? (nominals * price) : (Number(weight) * 1000);
+      totalValue += val;
+      
+      let sector = q.sector || SECTOR_MAP[ticker];
+      if (!sector) {
+        sector = q.is_etf ? 'ETF' : 'Acciones';
+      }
+
+      rawHoldings.push({
+        ticker,
+        value: val,
+        sector
+      });
+    }
+
+    const sectorGroups: Record<string, any> = {};
+    rawHoldings.forEach(h => {
+      if (!sectorGroups[h.sector]) sectorGroups[h.sector] = { total: 0, tickers: [] };
+      sectorGroups[h.sector].total += h.value;
+      sectorGroups[h.sector].tickers.push(h);
+    });
+
+    const sortedSectors = Object.entries(sectorGroups).sort((a, b) => b[1].total - a[1].total);
+    
+    const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b', '#06b6d4', '#f43f5e', '#84cc16', '#14b8a6'];
+    
+    const sectorData: any[] = [];
+    const tickerData: any[] = [];
+    
+    let cIdx = 0;
+    sortedSectors.forEach(([name, data]) => {
+      const color = COLORS[cIdx % COLORS.length];
+      cIdx++;
+      
+      sectorData.push({
+        name,
+        value: data.total,
+        itemStyle: { color }
+      });
+      
+      data.tickers.sort((a: any, b: any) => b.value - a.value).forEach((t: any) => {
+        tickerData.push({
+          name: t.ticker,
+          value: t.value,
+          itemStyle: { color }
+        });
+      });
+    });
+
+    return {
+      tooltip: {
+        trigger: 'item',
+        formatter: (params: any) => {
+          const pct = ((params.value / totalValue) * 100).toFixed(2);
+          return `${params.name}<br/>$${params.value.toLocaleString('es-AR', {maximumFractionDigits: 0})} (${pct}%)`;
+        },
+        backgroundColor: '#18181b',
+        borderColor: '#27272a',
+        textStyle: { color: '#fafafa' },
+        borderRadius: 8
+      },
+      series: [
+        {
+          name: 'Sector',
+          type: 'pie',
+          radius: [0, '45%'],
+          label: {
+            position: 'inner',
+            formatter: (params: any) => {
+              const pct = Math.round((params.value / totalValue) * 100);
+              return pct > 3 ? `${pct}%` : '';
+            },
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: 'bold'
+          },
+          labelLine: { show: false },
+          itemStyle: {
+            borderColor: '#09090b',
+            borderWidth: 2
+          },
+          data: sectorData
+        },
+        {
+          name: 'Ticker',
+          type: 'pie',
+          radius: ['55%', '75%'],
+          label: {
+            formatter: (params: any) => {
+              const pct = ((params.value / totalValue) * 100).toFixed(1);
+              return `${params.name} (${pct}%)`;
+            },
+            color: '#a1a1aa',
+            fontSize: 11
+          },
+          itemStyle: {
+            borderColor: '#09090b',
+            borderWidth: 2
+          },
+          data: tickerData
+        }
+      ]
+    };
+  }, [selectedPf, portfolios, quotes]);
+
+  // Compute table data separately
+  const { holdings } = useMemo(() => {
+    if (!selectedPf || !portfolios[selectedPf]) return { holdings: [] };
     const pfAssets = portfolios[selectedPf].assets || {};
     const pfNominals = portfolios[selectedPf].nominals || {};
     const pfFv = portfolios[selectedPf].fv || {};
     const pfPpc = portfolios[selectedPf].ppc || {};
 
     const rawHoldings = [];
-    let totalValue = 0;
-    const sectorValues: Record<string, number> = {};
-
     for (const [ticker, weight] of Object.entries(pfAssets)) {
       const q = quotes[ticker] || {};
       const price = q.local || q.cedear_usd || 0;
       const nominals = pfNominals[ticker] || 0;
-      const fv = pfFv[ticker] || q.gf_value || 0;
-      const ppc = pfPpc[ticker] || 0;
-      const sector = q.is_etf ? 'ETF' : 'Acciones'; // simplified sector logic for now
-
-      const val = nominals > 0 ? (nominals * price) : (Number(weight) * 1000); // Fallback
-      totalValue += val;
-
+      const val = nominals > 0 ? (nominals * price) : (Number(weight) * 1000);
       rawHoldings.push({
         ticker,
         relWeight: Number(weight),
         baseNominals: nominals,
-        ppc,
-        fv,
-        price,
-        value: val,
-        sector
+        ppc: pfPpc[ticker] || 0,
+        fv: pfFv[ticker] || q.gf_value || 0,
+        value: val
       });
     }
-
-    rawHoldings.forEach(h => {
-      sectorValues[h.sector] = (sectorValues[h.sector] || 0) + h.value;
-    });
-
-    const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'];
-    let cIdx = 0;
-    
-    const sData = Object.entries(sectorValues)
-      .map(([name, val]) => ({ name, value: val, color: COLORS[cIdx++ % COLORS.length] }))
-      .sort((a, b) => b.value - a.value);
-
-    let tIdx = 0;
-    const tData = rawHoldings
-      .map(h => ({ name: h.ticker, value: h.value, color: COLORS[tIdx++ % COLORS.length] }))
-      .sort((a, b) => b.value - a.value);
-
-    return { holdings: rawHoldings.sort((a, b) => b.value - a.value), sectorData: sData, tickerData: tData };
+    return { holdings: rawHoldings.sort((a, b) => b.value - a.value) };
   }, [selectedPf, portfolios, quotes]);
 
   const handleExportJSON = () => {
@@ -119,6 +224,8 @@ export function HoldingsManagerView() {
   if (loading) {
     return <div className="p-8 text-center text-muted-foreground">Cargando portafolios...</div>;
   }
+
+  const inputClasses = "w-full min-w-[70px] max-w-[90px] text-right bg-secondary/50 border border-border/50 rounded-md px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
@@ -171,10 +278,10 @@ export function HoldingsManagerView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         
         {/* LEFT COLUMN: Data Table */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="xl:col-span-2 space-y-6">
           <div className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col">
             <div className="p-4 border-b border-border bg-secondary/30 flex justify-between items-center">
               <div>
@@ -197,23 +304,39 @@ export function HoldingsManagerView() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {holdings.map((asset: any) => (
-                    <tr key={asset.ticker} className="hover:bg-secondary/30 transition-colors group">
-                      <td className="px-4 py-3 font-bold text-foreground flex items-center gap-2">
-                        {asset.ticker}
+                    <tr key={asset.ticker} className="hover:bg-secondary/30 transition-colors group border-b border-border/50 last:border-0">
+                      <td className="px-4 py-2 align-middle">
+                        <div className="flex items-center h-full min-h-[40px]">
+                          <span className="font-bold text-foreground">{asset.ticker}</span>
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <input type="number" defaultValue={asset.relWeight} className="w-16 text-right bg-background border border-border rounded px-2 py-1 text-xs" />
+                      <td className="px-4 py-2 align-middle">
+                        <div className="flex items-center justify-end h-full min-h-[40px]">
+                          <input type="number" defaultValue={asset.relWeight} className={inputClasses} />
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <input type="number" defaultValue={asset.baseNominals} className="w-20 text-right bg-background border border-border rounded px-2 py-1 text-xs" />
+                      <td className="px-4 py-2 align-middle">
+                        <div className="flex items-center justify-end h-full min-h-[40px]">
+                          <input type="number" defaultValue={asset.baseNominals} className={inputClasses} />
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <input type="number" defaultValue={asset.ppc} className="w-20 text-right bg-background border border-border rounded px-2 py-1 text-xs" />
+                      <td className="px-4 py-2 align-middle">
+                        <div className="flex items-center justify-end h-full min-h-[40px]">
+                          <input type="number" defaultValue={asset.ppc} className={inputClasses} />
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <input type="number" defaultValue={asset.fv} className="w-20 text-right bg-background border border-border rounded px-2 py-1 text-xs" />
+                      <td className="px-4 py-2 align-middle">
+                        <div className="flex items-center justify-end h-full min-h-[40px]">
+                          <input type="number" defaultValue={asset.fv} className={inputClasses} />
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-center"><button className="text-negative hover:underline text-xs">Quitar</button></td>
+                      <td className="px-4 py-2 align-middle">
+                        <div className="flex items-center justify-center h-full min-h-[40px]">
+                          <button className="p-1.5 text-muted-foreground hover:text-negative hover:bg-negative/10 rounded transition-colors inline-flex">
+                             <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -228,48 +351,8 @@ export function HoldingsManagerView() {
             <h3 className="text-sm font-bold text-foreground mb-2">Composición del Portafolio</h3>
             <p className="text-xs text-muted-foreground mb-4">Gráfico concéntrico: Anillo interno (Sectores), Anillo externo (Tickers).</p>
             
-            <div className="flex-1 w-full relative">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px' }}
-                    itemStyle={{ color: 'var(--foreground)' }}
-                    formatter={(val: any) => `$${Number(val).toLocaleString('es-AR', {maximumFractionDigits:0})}`}
-                  />
-                  {/* Inner Pie: Sectors */}
-                  <Pie
-                    data={sectorData}
-                    dataKey="value"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius="45%"
-                    stroke="var(--background)"
-                    strokeWidth={2}
-                  >
-                    {sectorData.map((entry: any, index: number) => (
-                      <Cell key={`cell-inner-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  
-                  {/* Outer Pie: Tickers */}
-                  <Pie
-                    data={tickerData}
-                    dataKey="value"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius="55%"
-                    outerRadius="70%"
-                    stroke="var(--background)"
-                    strokeWidth={2}
-                    label={({ name }) => name}
-                    labelLine={false}
-                  >
-                    {tickerData.map((entry: any, index: number) => (
-                      <Cell key={`cell-outer-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="flex-1 w-full relative -mx-4">
+              <ReactECharts option={chartOption} style={{ height: '100%', width: '100%' }} opts={{ renderer: 'svg' }} />
             </div>
           </div>
         </div>
