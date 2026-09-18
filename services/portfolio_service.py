@@ -1006,16 +1006,10 @@ def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
         projected_profit_pct = round((projected_profit_ars / invested_capital * 100.0), 2) if invested_capital > 0 else 0.0
 
         # TNA / TEA de compra calculada a partir del PPC y el Valor Final a Finish
+        # MATEMÁTICAMENTE IMPOSIBLE sin conocer la fecha de compra exacta.
+        # Usar los días remanentes al vencimiento (dias) genera una TNA irreal y astronómica (ej. 158%).
         tna_compra = None
         tea_compra = None
-        if ppc_base_100 and ppc_base_100 > 0 and vf_base_100 and vf_base_100 > 0:
-            rendimiento_directo = (vf_base_100 - ppc_base_100) / ppc_base_100
-            if dias and dias > 0:
-                tna_compra = round(rendimiento_directo * (365.0 / dias) * 100.0, 2)
-                try:
-                    tea_compra = round((((vf_base_100 / ppc_base_100) ** (365.0 / dias)) - 1.0) * 100.0, 2)
-                except Exception:
-                    tea_compra = None
 
         # Días transcurridos y porcentaje de ciclo cumplido
         dias_transcurridos = None
