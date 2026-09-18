@@ -6,6 +6,8 @@ import {
 import { useAppStore } from '@/store/useAppStore';
 
 import { PortfolioTable } from './PortfolioTable';
+import { PortfolioFixedIncomeTable } from './PortfolioFixedIncomeTable';
+import { FixedIncomePortfolioCard } from './FixedIncomePortfolioCard';
 
 export const UnifiedPortfolioView: React.FC = () => {
 
@@ -341,6 +343,23 @@ export const UnifiedPortfolioView: React.FC = () => {
                 onRefresh={() => fetchAllData(selectedPf)} 
               />
             </div>
+
+            {rebalanceData?.fixed_income_summary?.has_fixed_income && (
+              <div className="w-full mt-6">
+                 <div className="mb-4">
+                    <FixedIncomePortfolioCard 
+                       items={rebalanceData.fixed_income_summary.items} 
+                       pfType={selectedPf} 
+                       onRefresh={() => fetchAllData(selectedPf)} 
+                    />
+                 </div>
+                 <PortfolioFixedIncomeTable 
+                    summary={rebalanceData.fixed_income_summary} 
+                    pfType={selectedPf} 
+                    onRefresh={() => fetchAllData(selectedPf)} 
+                 />
+              </div>
+            )}
 
           </div>
         )}

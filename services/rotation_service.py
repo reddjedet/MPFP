@@ -325,24 +325,36 @@ def analyze_rotation(target_pf_key: str = "min_drawdown_15") -> Dict[str, Any]:
     """
     user_data = load_user_holdings(target_pf_key)
     holdings = user_data.get("holdings", {})
+    fixed_income = user_data.get("fixed_income_holdings", {})
     cash_ars = user_data.get("cash_ars", 0.0)
     
     portfolios = load_portfolios()
     target_pf = portfolios.get(target_pf_key, portfolios.get("min_drawdown_15", {}))
     target_weights = target_pf.get("assets", {}) if isinstance(target_pf, dict) else {}
     
-    # Normalizar pesos del target
+    # Normalizar pesos del target incluyendo renta fija
+    alloc = target_pf.get("asset_allocation", {})
+    eq_w = alloc.get("equity_weight", 100.0)
+    
     total_tw = sum(target_weights.values()) if target_weights else 0
-    norm_target_weights = {t: (w * 100.0 / total_tw) for t, w in target_weights.items()} if total_tw > 0 else {}
+    norm_target_weights = {}
+    if total_tw > 0:
+        for t, w in target_weights.items():
+            norm_target_weights[t] = (w / total_tw) * eq_w
+            
+    fi_assets = target_pf.get("fixed_income_assets", {})
+    for t, data in fi_assets.items():
+        norm_target_weights[t] = data.get("target_weight_portfolio", 0.0)
     
-    # Universo total de tickers (Tenencia Real + Cartera Objetivo)
-    all_tickers = sorted(list(set(list(holdings.keys()) + list(norm_target_weights.keys()))))
+    # Universo total de tickers de renta variable (Tenencia Real + Cartera Objetivo)
+    equity_tickers = sorted(list(set(list(holdings.keys()) + list(target_weights.keys()))))
+    all_tickers = sorted(list(set(equity_tickers + list(fixed_income.keys()))))
     
-    # Cargar cotizaciones y señales (paralelo en producción, directo si está mockeado en tests)
+    # Cargar cotizaciones y señales (solo renta variable para Yahoo, renta fija usa ppc o mock)
     if hasattr(get_ticker_data, "mock_calls"):
-        fetched = {tk: get_ticker_data(tk) for tk in all_tickers}
+        fetched = {tk: get_ticker_data(tk) for tk in equity_tickers}
     else:
-        fetched = get_multiple_tickers_data(all_tickers)
+        fetched = get_multiple_tickers_data(equity_tickers)
     market_data = {}
     gf_map = load_fair_values()
     pfcf_map = load_pfcf_values()
@@ -364,6 +376,17 @@ def analyze_rotation(target_pf_key: str = "min_drawdown_15") -> Dict[str, Any]:
     total_real_equity = cash_ars
     total_real_stock_value = 0.0
     total_cost_invested = 0.0
+    total_fi_value = 0.0
+
+    for tk, fi in fixed_income.items():
+        noms = fi.get("nominals", 0)
+        # Renta fija usa el PPC como valor de mercado si no hay otro endpoint
+        price = fi.get("ppc") or 0.0 
+        val = noms * price
+        total_fi_value += val
+        total_real_equity += val
+        total_cost_invested += noms * (fi.get("ppc") or price)
+        market_data[tk] = {"local": price, "adr": None, "ratio": 1.0, "rsi": None}
     
     for tk, h in holdings.items():
         price = market_data.get(tk, {}).get("local", 0.0) or 0.0
@@ -396,7 +419,8 @@ def analyze_rotation(target_pf_key: str = "min_drawdown_15") -> Dict[str, Any]:
         ratio = m.get("ratio", CEDEAR_RATIOS.get(tk, 1.0))
         rsi = m.get("rsi")
         
-        h = holdings.get(tk, {})
+        is_fi = tk in fixed_income
+        h = fixed_income.get(tk) if is_fi else holdings.get(tk, {})
         real_noms = h.get("nominals", 0)
         ppc = h.get("ppc")
         
