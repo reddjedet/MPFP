@@ -136,7 +136,7 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
           if (cMd === null) return false;
           // Mismo tramo de duration (± 0.5 años para soberanos/bonceres, ± 45 días para lecaps)
           const mdDiff = Math.abs(cMd - heldMd);
-          const maxAllowedDiff = cat === 'lecap' ? 0.25 : 0.6;
+          const maxAllowedDiff = cat === 'lecap' ? 0.08 : 0.5;
           return mdDiff <= maxAllowedDiff;
         });
 
@@ -320,7 +320,7 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
                         <span className="font-mono text-emerald-400">{opp.betterTicker} ({opp.betterTir.toFixed(1)}%)</span>
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Mismo tramo de duration (~{opp.heldMd.toFixed(1)} años) con ganancia de spread de{' '}
+                        Mismo tramo de duration (~{opp.curveCategory === 'lecap' ? Math.round(opp.heldMd * 365) + ' días' : opp.heldMd.toFixed(1) + ' años'}) con ganancia de spread de{' '}
                         <strong className="text-amber-300 font-mono">+{opp.diffBps} bps</strong> de rendimiento.
                       </p>
                     </div>
