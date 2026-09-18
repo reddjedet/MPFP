@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, TrendingUp, Clock, Coins, Edit2, Check, X, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { RefreshCcw, Coins, TrendingUp, ShieldCheck, Clock, Calendar } from "lucide-react";
 
 export interface FixedIncomeItem {
   ticker: string;
@@ -208,7 +208,7 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
-            <thead>
+                        <thead>
               {/* TIER 1: MACRO-GRUPOS DE UTILIDAD */}
               <tr className="border-b border-border bg-secondary text-[10px] uppercase font-mono font-bold tracking-wider">
                 <th colSpan={2} className="px-2.5 py-2 border-r border-border text-muted-foreground">
@@ -220,45 +220,35 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
                 <th colSpan={4} className="px-2.5 py-2 border-r border-border text-muted-foreground text-center">
                   3. CÓMO VA (SPOT)
                 </th>
-                <th colSpan={2} className="px-2.5 py-2 border-r border-border text-muted-foreground text-center">
+                <th colSpan={2} className="px-2.5 py-2 text-muted-foreground text-center">
                   4. CÓMO TERMINARÁ (FINISH)
-                </th>
-                <th className="px-2 py-2 text-center text-muted-foreground">
-                  Acción
                 </th>
               </tr>
 
               {/* TIER 2: COLUMNAS CLARAS Y DIRECTAS */}
               <tr className="border-b border-border bg-white/[0.02] text-muted-foreground uppercase font-semibold text-[10px] tracking-wider font-mono">
-                {/* 1. Instrumento & Plazo */}
-                <th className="px-2.5 py-2">Instrumento</th>
-                <th className="px-2.5 py-2 text-center border-r border-border">Vto. & Ciclo</th>
+                {/* 1. QUÉ COMPRÉ */}
+                <th className="px-2.5 py-2 text-left">Instrumento</th>
+                <th className="px-2.5 py-2 text-center border-r border-border">Vencimiento</th>
 
-
-
-                {/* 2. Mi Inversión */}
+                {/* 2. CÓMO ERA (AL COMPRAR) */}
                 <th className="px-2.5 py-2 text-right">Nominales</th>
                 <th className="px-2.5 py-2 text-right">PPC ($)</th>
-                <th className="px-2.5 py-2 text-right">Invertido ($)</th>
-                <th className="px-2.5 py-2 text-center border-r border-border">TNA Compra</th>
+                <th className="px-2.5 py-2 text-right border-r border-border">Costo Invertido</th>
 
-                {/* 3. Mercado Spot */}
-                <th className="px-2.5 py-2 text-right">SPOT ($)</th>
+                {/* 3. CÓMO VA (SPOT) */}
+                <th className="px-2.5 py-2 text-right">Spot ($)</th>
                 <th className="px-2.5 py-2 text-right">Val. Mercado</th>
-                <th className="px-2.5 py-2 text-right">Ganancia Acumulada</th>
-                <th className="px-2.5 py-2 text-center border-r border-border">Tasa Mercado</th>
+                <th className="px-2.5 py-2 text-right">PnL Acum.</th>
+                <th className="px-2.5 py-2 text-center border-r border-border" title="Tasa Interna de Retorno del mercado actual (TEM / TNA)">TIR Mercado</th>
 
-                {/* 4. Al Vencimiento */}
+                {/* 4. CÓMO TERMINARÁ (FINISH) */}
                 <th className="px-2.5 py-2 text-right">Cobro Finish</th>
-                <th className="px-2.5 py-2 text-right border-r border-border">Ganancia Vto.</th>
-
-                {/* Acción */}
-                <th className="px-2 py-2 text-center">Editar</th>
+                <th className="px-2.5 py-2 text-right">Ganancia Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 font-mono text-xs">
               {summary.items.map((item) => {
-                const isEditing = editingTicker === item.ticker;
 
                 return (
                   <tr key={item.ticker} className="hover:bg-white/[0.02] transition-colors border-b border-white/5">
@@ -299,42 +289,21 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
 
 
 
-                    {/* 3. Mi Inversión: Nominales */}
+                    {/* 2. Mi Inversión: Nominales */}
                     <td className="px-2.5 py-2 text-right font-bold text-white font-mono">
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          min="0"
-                          value={editNominals}
-                          onChange={(e) => setEditNominals(parseInt(e.target.value) || 0)}
-                          className="w-20 bg-black/50 border border-blue-500/50 rounded px-1.5 py-0.5 text-right text-xs text-white outline-none"
-                        />
-                      ) : (
-                        item.nominals.toLocaleString('es-AR')
-                      )}
+                      {item.nominals.toLocaleString('es-AR')}
                     </td>
 
                     {/* Precio Compra (PPC) */}
                     <td className="px-2.5 py-2 text-right font-mono">
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={editPpc}
-                          placeholder="PPC"
-                          onChange={(e) => setEditPpc(e.target.value)}
-                          className="w-16 bg-black/50 border border-blue-500/50 rounded px-1.5 py-0.5 text-right text-xs text-white outline-none"
-                        />
-                      ) : (
-                        <div>
-                          <span className="text-foreground font-semibold">${item.ppc_base_100.toFixed(2)}</span>
-                          <div className="text-[9px] text-muted-foreground">(${item.ppc_unit.toFixed(4)} u)</div>
-                        </div>
-                      )}
+                      <div>
+                        <span className="text-foreground font-semibold">${item.ppc_base_100.toFixed(2)}</span>
+                        <div className="text-[9px] text-muted-foreground">(${item.ppc_unit.toFixed(4)} u)</div>
+                      </div>
                     </td>
 
                     {/* Invertido ($) */}
-                    <td className="px-2.5 py-2 text-right font-bold text-foreground font-mono">
+                    <td className="px-2.5 py-2 text-right font-bold text-foreground font-mono border-r border-border">
                       ${item.invested_capital.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
 
@@ -390,7 +359,7 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
                     </td>
 
                     {/* Ganancia a Vto */}
-                    <td className="px-2.5 py-2 text-right font-mono border-r border-border">
+                    <td className="px-2.5 py-2 text-right font-mono">
                       <div className="text-emerald-400 font-bold text-xs">
                         +${item.projected_profit_ars.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
@@ -399,37 +368,7 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
                       </span>
                     </td>
 
-                    {/* Acción */}
-                    <td className="px-2 py-2 text-center font-mono">
-                      {isEditing ? (
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => handleSave(item.ticker)}
-                            disabled={saving}
-                            className="p-1.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 cursor-pointer"
-                            title="Guardar cambios"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={cancelEdit}
-                            disabled={saving}
-                            className="p-1.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 cursor-pointer"
-                            title="Cancelar"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => startEdit(item)}
-                          className="p-1.5 text-muted-foreground hover:text-white rounded hover:bg-white/5 transition-colors cursor-pointer"
-                          title="Editar nominales y precio de compra"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </td>
+                    
                   </tr>
                 );
               })}
