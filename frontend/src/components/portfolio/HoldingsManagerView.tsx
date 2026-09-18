@@ -133,6 +133,7 @@ export function HoldingsManagerView() {
       tooltip: {
         trigger: 'item',
         formatter: (params: any) => {
+          // Si es el anillo de Tickers, mostramos el ticker y su %. Si es el sector, mostramos su nombre y %.
           const percent = ((params.value / totalValue) * 100).toFixed(1);
           return `${params.name}<br/>${percent}%`;
         },
@@ -150,10 +151,10 @@ export function HoldingsManagerView() {
             position: 'inner',
             formatter: (params: any) => {
               const pct = Math.round((params.value / totalValue) * 100);
-              return pct > 4 ? `${params.name}\n${pct}%` : '';
+              return pct > 4 ? `${pct}%` : '';
             },
             color: '#fff',
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 'bold'
           },
           labelLine: { show: false },
@@ -169,8 +170,8 @@ export function HoldingsManagerView() {
           radius: ['40%', '55%'],
           label: {
             formatter: (params: any) => {
-              // Only show ticker name, move percent to hover
-              return params.name;
+              const pct = ((params.value / totalValue) * 100).toFixed(2);
+              return `${params.name} (${pct}%)`;
             },
             color: '#e4e4e7',
             fontSize: 11
