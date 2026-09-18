@@ -78,10 +78,9 @@ export function HoldingsManagerView() {
     
     for (const [ticker, weight] of Object.entries(pfAssets)) {
       const q = quotes[ticker] || {};
-      const price = q.local || q.cedear_usd || 0;
-      const nominals = pfNominals[ticker] || 0;
       
-      const val = nominals > 0 ? (nominals * price) : (Number(weight) * 1000);
+      // Use relative weight directly for the chart instead of hardcoded money
+      const val = Number(weight);
       totalValue += val;
       
       let sector = q.sector || SECTOR_MAP[ticker];
@@ -134,8 +133,8 @@ export function HoldingsManagerView() {
       tooltip: {
         trigger: 'item',
         formatter: (params: any) => {
-          const pct = ((params.value / totalValue) * 100).toFixed(2);
-          return `${params.name}<br/>$${params.value.toLocaleString('es-AR', {maximumFractionDigits: 0})} (${pct}%)`;
+          const percent = ((params.value / totalValue) * 100).toFixed(1);
+          return `${params.name}<br/>${percent}%`;
         },
         backgroundColor: '#18181b',
         borderColor: '#27272a',
@@ -170,8 +169,8 @@ export function HoldingsManagerView() {
           radius: ['40%', '55%'],
           label: {
             formatter: (params: any) => {
-              const pct = ((params.value / totalValue) * 100).toFixed(1);
-              return `${params.name} (${pct}%)`;
+              // Only show ticker name, move percent to hover
+              return params.name;
             },
             color: '#e4e4e7',
             fontSize: 11
