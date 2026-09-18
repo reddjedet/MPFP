@@ -119,20 +119,7 @@ export function RootLayout() {
 
       <TickerTape />
 
-      <div className="fixed bottom-12 right-6 z-40 flex flex-col gap-3">
-        <button 
-          onClick={toggleBuyerMode}
-          className="flex items-center gap-2 px-4 py-3 bg-positive text-background shadow-lg shadow-positive/20 hover:opacity-90 rounded-full font-bold text-sm transition-all hover:scale-105 active:scale-95"
-        >
-          Me siento comprador
-        </button>
-        <button 
-          onClick={toggleSellerMode}
-          className="flex items-center gap-2 px-4 py-3 bg-negative text-background shadow-lg shadow-negative/20 hover:opacity-90 rounded-full font-bold text-sm transition-all hover:scale-105 active:scale-95"
-        >
-          Me siento vendedor
-        </button>
-      </div>
+
 
       <CommandPalette />
       <Ticker360Drawer />

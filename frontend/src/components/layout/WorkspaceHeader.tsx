@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Home, Wallet, TrendingUp, FlaskConical, ArrowLeftRight, Landmark, Calendar, Calculator, BarChart3, Globe, Compass, Search, LayoutGrid, Activity, Target
+  Home, Wallet, TrendingUp, FlaskConical, ArrowLeftRight, Landmark, Calendar, Calculator, BarChart3, Globe, Compass, Search, LayoutGrid, Activity, Target, ChevronDown, ShoppingCart, Store, Zap
 } from 'lucide-react';
 import { WorkspaceArea, useAppStore } from '@/store/useAppStore';
 
@@ -16,6 +16,20 @@ interface WorkspaceHeaderProps {
 export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
   currentArea, currentSubTab, onSelectArea, onSelectSubTab, onGoHome, onOpenCommandPalette
 }) => {
+  const { toggleBuyerMode, toggleSellerMode } = useAppStore();
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const actionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (actionsRef.current && !actionsRef.current.contains(event.target as Node)) {
+        setIsActionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const macroAreas = [
     { id: 'portfolios', name: 'Portafolios', defaultSubTab: 'dashboard', icon: Wallet },
     { id: 'renta_variable', name: 'Renta Variable', defaultSubTab: 'screener', icon: LayoutGrid },
@@ -73,8 +87,41 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
             <span className="hidden sm:inline">Inicio</span>
           </button>
           <div className="h-5 w-px bg-border" />
-          <div className="px-2 py-1 rounded bg-foreground text-background flex items-center justify-center font-black text-xs shadow-md tracking-tighter">
-            MPFP
+          <div className="flex items-center gap-1">
+            <div className="px-2 py-1 rounded bg-foreground text-background flex items-center justify-center font-black text-xs shadow-md tracking-tighter">
+              MPFP
+            </div>
+            
+            <div className="relative" ref={actionsRef}>
+              <button 
+                onClick={() => setIsActionsOpen(!isActionsOpen)}
+                className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+                title="Acciones Rápidas"
+              >
+                <Zap className="w-4 h-4" />
+              </button>
+              
+              {isActionsOpen && (
+                <div className="absolute top-full left-0 mt-1 w-48 bg-background border border-border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="p-1.5 flex flex-col">
+                    <button 
+                      onClick={() => { toggleBuyerMode(); setIsActionsOpen(false); }}
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors w-full text-left"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      Me siento comprador
+                    </button>
+                    <button 
+                      onClick={() => { toggleSellerMode(); setIsActionsOpen(false); }}
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/10 rounded-lg transition-colors w-full text-left mt-0.5"
+                    >
+                      <Store className="w-4 h-4" />
+                      Me siento vendedor
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
