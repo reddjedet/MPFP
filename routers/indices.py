@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Query, HTTPException
-from typing import Optional
 import logging
 
 from services.market_indices_service import (
@@ -7,7 +6,6 @@ from services.market_indices_service import (
     get_indices_history,
     get_presidential_cycles
 )
-from services.security_service import sanitize_ticker
 
 logger = logging.getLogger(__name__)
 

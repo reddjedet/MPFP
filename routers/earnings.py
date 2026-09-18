@@ -5,7 +5,6 @@ from typing import Optional
 from services.earnings_service import (
     get_all_earnings_summary, 
     save_confirmed_earnings_date,
-    load_earnings_calendar,
     MESES_ES,
     MESES_CORTOS
 )

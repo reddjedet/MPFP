@@ -1,10 +1,8 @@
 import logging
 logger = logging.getLogger(__name__)
-import os
 from datetime import datetime, date
-from typing import Dict, List, Any, Optional
+from typing import List, Optional
 from pathlib import Path
-import pandas as pd
 from services.atomic_persistence import AtomicJsonDatabase
 from services.security_service import sanitize_ticker
 
@@ -160,7 +158,6 @@ def calculate_earnings_status(
             }
         except Exception as e:
             logger.warning(f"Error ignorado en earnings: {e}")
-            pass
 
     # 2. Caso: Estimación estándar por ciclo trimestral
     if not report_months:

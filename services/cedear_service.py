@@ -143,6 +143,5 @@ def get_multiple_tickers_data(symbols: list[str]) -> dict[str, dict]:
                 results[sym] = data
         except Exception as e:
             logger.warning(f"Fallo en pool multiple CEDEARs: {e}")
-            pass
                 
     return results

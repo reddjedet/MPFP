@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from typing import Dict
 from services.valuation_service import (
     get_sectors_and_tickers, 
     get_profile_by_ticker, 

@@ -1,6 +1,4 @@
-import html
 import json
-import os
 from typing import Optional, Any, Dict
 from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import JSONResponse
@@ -20,8 +18,7 @@ from services.portfolio_service import (
     load_portfolios_trash,
     restore_portfolio_from_trash,
     delete_permanently_from_trash,
-    MAX_TRASH_CAPACITY,
-    DB_PATH
+    MAX_TRASH_CAPACITY
 )
 from services.security_service import (
     sanitize_ticker,
@@ -34,21 +31,18 @@ from services.fair_value_service import (
     get_fair_value,
     load_fair_values,
     save_fair_value,
-    save_bulk_fair_values,
     evaluate_fair_value_signal
 )
 from services.ppc_service import (
     load_ppc_values,
     get_ppc_value,
     save_ppc_value,
-    save_bulk_ppc_values,
     evaluate_ppc_return
 )
 from services.pfcf_service import (
     load_pfcf_values,
     get_pfcf_value,
     save_pfcf_value,
-    save_bulk_pfcf_values,
     evaluate_fcf_rsi_state
 )
 

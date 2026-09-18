@@ -7,13 +7,12 @@ y superposición de mandatos presidenciales e hitos electorales.
 
 import json
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from services.cache_service import smart_cache
-from services.security_service import sanitize_ticker
 
 DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "historical_indices.json"
 

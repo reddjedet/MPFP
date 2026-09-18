@@ -1,8 +1,7 @@
 import math
 from pathlib import Path
-from typing import Any, Optional, Dict, List, Tuple
+from typing import Any, Optional
 from services.atomic_persistence import AtomicJsonDatabase
-import pandas as pd
 
 from datetime import datetime
 
@@ -437,7 +436,6 @@ SECTOR_MAP: dict[str, dict[str, str]] = {
     "MU": {"id": "semis", "name": "Semiconductores"},
     "NVDA": {"id": "semis", "name": "Semiconductores"},
     "QCOM": {"id": "semis", "name": "Semiconductores"},
-    "SMH": {"id": "semis", "name": "Semiconductores"},
     "SNDK": {"id": "semis", "name": "Semiconductores"},
     "TSM": {"id": "semis", "name": "Semiconductores"},
     "TXN": {"id": "semis", "name": "Semiconductores"},
@@ -574,7 +572,6 @@ SECTOR_MAP: dict[str, dict[str, str]] = {
     "USB": {"id": "financials", "name": "Finanzas & Fintech"},
     "WBK": {"id": "financials", "name": "Finanzas & Fintech"},
     "WFC": {"id": "financials", "name": "Finanzas & Fintech"},
-    "XLY": {"id": "financials", "name": "Finanzas & Fintech"},
 
     # Industria, Maquinaria & Aeroespacial
     "ASR": {"id": "industrials", "name": "Industria & Maquinaria"},
@@ -663,7 +660,6 @@ SECTOR_MAP: dict[str, dict[str, str]] = {
     "SCCO": {"id": "materials", "name": "Minería & Materiales"},
     "SUZ": {"id": "materials", "name": "Minería & Materiales"},
     "TSU": {"id": "materials", "name": "Minería & Materiales"},
-    "URA": {"id": "materials", "name": "Minería & Materiales"},
     "VALE": {"id": "materials", "name": "Minería & Materiales"},
 
     # ETFs Indexados & Globales

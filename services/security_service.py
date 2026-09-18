@@ -1,5 +1,5 @@
 import re
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict
 
 TICKER_REGEX = re.compile(r"^[A-Z0-9.]{1,10}$")
 PORTFOLIO_NAME_REGEX = re.compile(r"^[a-z0-9_]{1,30}$")

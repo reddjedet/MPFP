@@ -2,11 +2,7 @@ from __future__ import annotations
 import logging
 logger = logging.getLogger(__name__)
 
-import sys
-import os
-import re
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 import pandas as pd
 
@@ -460,7 +456,6 @@ def fit_yield_curve(df: pd.DataFrame, x_col: str = "md", y_col: str = "tea") -> 
                 df.loc[idx, "posicion_curva"] = "arriba" if spread_bps >= 0 else "abajo"
         except Exception as e:
             logger.warning(f"Error ignorado: {e}")
-            pass
 
     return df
 

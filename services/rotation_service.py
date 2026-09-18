@@ -1,7 +1,6 @@
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 import logging
-import pandas as pd
 
 from services.atomic_persistence import AtomicJsonDatabase
 from services.security_service import sanitize_ticker
