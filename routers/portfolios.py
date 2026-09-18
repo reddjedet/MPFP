@@ -84,8 +84,6 @@ def get_portfolios_list_json():
     })
 
 @router.get("/rebalance_json/{pf_type}", response_class=JSONResponse)
-@router.post("/rebalance/{pf_type}", response_class=JSONResponse)
-@router.get("/rebalance/{pf_type}", response_class=JSONResponse)
 def get_rebalance_data_json(pf_type: str, anchor: str = None, qty: int = None):
     pf_clean = sanitize_portfolio_name(pf_type)
     if not pf_clean:
@@ -245,7 +243,6 @@ def update_portfolio_settings_json(pf_type: str, body: PortfolioSettingsRequest)
         "qty": pf_data.get("qty")
     })
 
-@router.post("/create", response_class=JSONResponse)
 @router.post("/create_json", response_class=JSONResponse)
 async def create_custom_portfolio(
     request: Request,
@@ -289,7 +286,6 @@ async def create_custom_portfolio(
     save_portfolios(portfolios_data)
     return JSONResponse({"success": True, "name": name_clean, "portfolio": portfolios_data[name_clean]})
 
-@router.delete("/delete/{pf_type}", response_class=JSONResponse)
 @router.delete("/delete_json/{pf_type}", response_class=JSONResponse)
 def delete_custom_portfolio(pf_type: str):
     pf_clean = sanitize_portfolio_name(pf_type)
@@ -365,7 +361,6 @@ def rename_custom_portfolio(body: RenamePortfolioRequest):
 
     return JSONResponse({"success": True, "old_name": old_clean, "new_name": new_clean})
 
-@router.post("/import", response_class=JSONResponse)
 @router.post("/import_json", response_class=JSONResponse)
 async def import_custom_portfolios(file: UploadFile = File(...)):
     try:
@@ -422,7 +417,6 @@ async def import_custom_portfolios(file: UploadFile = File(...)):
     except Exception as e:
         return JSONResponse({"success": False, "error": f"Error al procesar el archivo: {str(e)}"})
 
-@router.get("/export/{pf_type}", response_class=JSONResponse)
 @router.get("/export_json/{pf_type}", response_class=JSONResponse)
 def export_custom_portfolio(pf_type: str):
     pf_clean = sanitize_portfolio_name(pf_type)

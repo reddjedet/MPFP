@@ -380,10 +380,23 @@ export function HoldingsManagerView() {
                 Cancelar
               </button>
               <button 
-                onClick={() => setShowDeleteAlert(false)}
-                className="px-4 py-2 bg-negative text-background rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/portfolios/delete_json/${encodeURIComponent(selectedPf)}`, { method: 'DELETE' });
+                    if (res.ok) {
+                      setShowDeleteAlert(false);
+                      window.location.reload();
+                    } else {
+                      alert('Error al borrar el portafolio.');
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    alert('Error de red al borrar.');
+                  }
+                }}
+                className="px-4 py-2 bg-negative text-white rounded-lg text-sm font-bold hover:bg-negative/80 transition-colors"
               >
-                Sí, borrar
+                Sí, eliminar definitivamente
               </button>
             </div>
           </div>
@@ -396,6 +409,7 @@ export function HoldingsManagerView() {
           <div className="bg-card border border-border rounded-2xl p-6 max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh]">
             <h3 className="text-lg font-bold text-foreground mb-2">Importar Portafolio via JSON</h3>
             <textarea 
+              id="import-json-textarea"
               className="w-full h-32 bg-background border border-border rounded-lg p-4 text-sm font-mono text-foreground focus:outline-none focus:border-foreground mb-6"
               placeholder="Pega el JSON aquí..."
             />
@@ -407,7 +421,28 @@ export function HoldingsManagerView() {
                 Cancelar
               </button>
               <button 
-                onClick={() => setShowImportModal(false)}
+                onClick={async () => {
+                  const ta = document.getElementById('import-json-textarea') as HTMLTextAreaElement;
+                  if (!ta || !ta.value) return;
+                  try {
+                    const blob = new Blob([ta.value], { type: 'application/json' });
+                    const fd = new FormData();
+                    fd.append('file', blob, 'import.json');
+                    const res = await fetch('/api/portfolios/import_json', {
+                      method: 'POST',
+                      body: fd
+                    });
+                    if (res.ok) {
+                      setShowImportModal(false);
+                      window.location.reload();
+                    } else {
+                      alert('Error al importar el portafolio JSON.');
+                    }
+                  } catch (e) {
+                    console.error(e);
+                    alert('Error de red.');
+                  }
+                }}
                 className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-bold hover:opacity-90 transition-opacity flex items-center gap-2"
               >
                 <Upload className="w-4 h-4" /> Importar
