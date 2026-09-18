@@ -127,7 +127,6 @@ def _post(path: str, payload: dict | None = None) -> Any:
         headers=HEADERS,
         json=payload or {},
         timeout=30,
-        verify=False,
     )
     r.raise_for_status()
     return r.json()
@@ -140,7 +139,6 @@ def _get(path: str, params: dict) -> Any:
         headers=HEADERS,
         params=params,
         timeout=30,
-        verify=False,
     )
     r.raise_for_status()
     return r.json()
