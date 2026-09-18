@@ -220,6 +220,71 @@ export function HoldingsManagerView() {
     return { holdings: rawHoldings.sort((a, b) => b.value - a.value) };
   }, [selectedPf, portfolios, quotes]);
 
+
+  const [draftHoldings, setDraftHoldings] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const newDraft: Record<string, any> = {};
+    holdings.forEach((h: any) => {
+      newDraft[h.ticker] = { ...h };
+    });
+    setDraftHoldings(newDraft);
+  }, [holdings]);
+
+  const handleFieldChange = (ticker: string, field: string, value: string) => {
+    setDraftHoldings(prev => ({
+      ...prev,
+      [ticker]: {
+        ...prev[ticker],
+        [field]: Number(value)
+      }
+    }));
+  };
+
+  const handleSaveHoldings = async () => {
+    if (!selectedPf) return;
+    setIsSaving(true);
+    try {
+      const weightsStr = Object.values(draftHoldings)
+        .filter(h => h.relWeight > 0)
+        .map(h => `${h.ticker}:${h.relWeight}`)
+        .join(', ');
+        
+      await fetch('/api/portfolios/create_json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: selectedPf, mode: 'weights', weights_str: weightsStr })
+      });
+
+      const realHoldings: Record<string, any> = {};
+      Object.values(draftHoldings).forEach(h => {
+        if (h.baseNominals > 0 || h.ppc > 0) {
+          realHoldings[h.ticker] = { nominals: h.baseNominals, ppc: h.ppc };
+        }
+      });
+      await fetch('/api/rotation/holdings/bulk_update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ portfolio: selectedPf, holdings: realHoldings })
+      });
+
+      for (const h of Object.values(draftHoldings)) {
+         await fetch('/api/portfolios/quick_update_json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticker: h.ticker, gf_value: h.fv })
+         });
+      }
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert('Error al guardar cambios');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleExportJSON = () => {
     if (!selectedPf || !portfolios[selectedPf]) return;
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(portfolios[selectedPf], null, 2));
@@ -279,6 +344,13 @@ export function HoldingsManagerView() {
           >
             <Download className="w-4 h-4" /> Exportar
           </button>
+          <button 
+            onClick={handleSaveHoldings}
+            disabled={isSaving}
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/80 text-accent-foreground rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" /> {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+          </button>
           <div className="w-px h-8 bg-border mx-1"></div>
           <button 
             onClick={() => setShowDeleteAlert(true)}
@@ -323,22 +395,22 @@ export function HoldingsManagerView() {
                       </td>
                       <td className="px-4 py-2 align-middle">
                         <div className="flex items-center justify-end h-full min-h-[40px]">
-                          <input type="number" defaultValue={asset.relWeight} className={inputClasses} />
+                          <input type="number" value={draftHoldings[asset.ticker]?.relWeight ?? asset.relWeight} onChange={e => handleFieldChange(asset.ticker, "relWeight", e.target.value)} className={inputClasses} />
                         </div>
                       </td>
                       <td className="px-4 py-2 align-middle">
                         <div className="flex items-center justify-end h-full min-h-[40px]">
-                          <input type="number" defaultValue={asset.baseNominals} className={inputClasses} />
+                          <input type="number" value={draftHoldings[asset.ticker]?.baseNominals ?? asset.baseNominals} onChange={e => handleFieldChange(asset.ticker, "baseNominals", e.target.value)} className={inputClasses} />
                         </div>
                       </td>
                       <td className="px-4 py-2 align-middle">
                         <div className="flex items-center justify-end h-full min-h-[40px]">
-                          <input type="number" defaultValue={asset.ppc} className={inputClasses} />
+                          <input type="number" value={draftHoldings[asset.ticker]?.ppc ?? asset.ppc} onChange={e => handleFieldChange(asset.ticker, "ppc", e.target.value)} className={inputClasses} />
                         </div>
                       </td>
                       <td className="px-4 py-2 align-middle">
                         <div className="flex items-center justify-end h-full min-h-[40px]">
-                          <input type="number" defaultValue={asset.fv} className={inputClasses} />
+                          <input type="number" value={draftHoldings[asset.ticker]?.fv ?? asset.fv} onChange={e => handleFieldChange(asset.ticker, "fv", e.target.value)} className={inputClasses} />
                         </div>
                       </td>
                       <td className="px-4 py-2 align-middle">
