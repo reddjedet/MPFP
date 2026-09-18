@@ -146,7 +146,7 @@ export function HoldingsManagerView() {
         {
           name: 'Sector',
           type: 'pie',
-          radius: [0, '35%'],
+          radius: [0, '30%'],
           label: {
             position: 'inner',
             formatter: (params: any) => {
@@ -167,19 +167,18 @@ export function HoldingsManagerView() {
         {
           name: 'Ticker',
           type: 'pie',
-          radius: ['45%', '65%'],
+          radius: ['40%', '55%'],
           label: {
             formatter: (params: any) => {
               const pct = ((params.value / totalValue) * 100).toFixed(1);
               return `${params.name} (${pct}%)`;
             },
             color: '#e4e4e7',
-            fontSize: 12,
-            edgeDistance: 10
+            fontSize: 11
           },
           labelLine: {
-            length: 15,
-            length2: 10,
+            length: 10,
+            length2: 5,
             smooth: true
           },
           labelLayout: {
