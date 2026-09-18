@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Upload, Trash2, AlertTriangle, Save, Anchor, Download, Minus } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
+import { CreatePortfolioModal } from './CreatePortfolioModal';
 
 const SECTOR_MAP: Record<string, string> = {
   'GOOGL': 'Comm Services', 'META': 'Comm Services', 'NFLX': 'Comm Services', 'DIS': 'Comm Services',
@@ -24,6 +25,7 @@ export function HoldingsManagerView() {
   
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Fetch real data
   useEffect(() => {
@@ -247,6 +249,7 @@ export function HoldingsManagerView() {
               </select>
               <button 
                 title="Crear Portafolio"
+                onClick={() => setShowCreateModal(true)}
                 className="p-2 bg-secondary hover:bg-border rounded-lg transition-colors border border-border"
               >
                 <Plus className="w-4 h-4 text-foreground" />
@@ -359,6 +362,15 @@ export function HoldingsManagerView() {
 
       </div>
 
+      <CreatePortfolioModal 
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreated={() => {
+          setShowCreateModal(false);
+          window.location.reload();
+        }}
+      />
+
       {/* Delete Alert Modal */}
       {showDeleteAlert && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -367,10 +379,10 @@ export function HoldingsManagerView() {
               <div className="p-3 bg-negative/10 rounded-full">
                 <AlertTriangle className="w-6 h-6 text-negative" />
               </div>
-              <h3 className="text-lg font-bold text-foreground">¿Estás completamente seguro?</h3>
+              <h3 className="text-lg font-bold text-foreground">¿Mover a papelera?</h3>
             </div>
             <p className="text-sm text-muted-foreground mb-6">
-              Estás a punto de eliminar el portafolio <strong>{selectedPf}</strong>.
+              Estás a punto de enviar el portafolio <strong>{selectedPf}</strong> a la papelera (capacidad: 7 últimos).
             </p>
             <div className="flex items-center justify-end gap-3">
               <button 
@@ -396,7 +408,7 @@ export function HoldingsManagerView() {
                 }}
                 className="px-4 py-2 bg-negative text-white rounded-lg text-sm font-bold hover:bg-negative/80 transition-colors"
               >
-                Sí, eliminar definitivamente
+                Sí, enviar a Papelera
               </button>
             </div>
           </div>
