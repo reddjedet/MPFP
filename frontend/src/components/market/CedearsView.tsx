@@ -69,10 +69,9 @@ const DEFAULT_TICKERS = ["AAPL", "NVDA", "MSFT", "MELI", "LLY", "GOOGL", "AMZN",
 const SUGGESTED_TICKERS = ["AAPL", "NVDA", "MSFT", "MELI", "LLY", "GOOGL", "AMZN", "TSLA", "META", "SPY", "QQQ", "VIST", "MSTR", "JPM", "KO", "MCD", "BRKB", "AMD", "PLTR", "NU"];
 
 export interface CedearsViewProps {
-  onNavigateToTab?: (area: any, subTab: string) => void;
 }
 
-export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => {
+export const CedearsView: React.FC<CedearsViewProps> = () => {
   const [watchlist, setWatchlist] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('finapp_cedears_watchlist_v2');
@@ -92,7 +91,7 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const { openTickerDrawer } = useAppStore();
+  const { openTickerDrawer, setArea, setSubTab } = useAppStore();
 
   // Catálogo completo de CEDEARs para autocompletado inteligente
   const [catalog, setCatalog] = useState<CedearCatalogItem[]>([]);
@@ -525,7 +524,7 @@ export const CedearsView: React.FC<CedearsViewProps> = ({ onNavigateToTab }) => 
       </div>
 
       {/* ETF Sector Thermometer */}
-      <EtfSectorThermometer onNavigateToRotation={() => onNavigateToTab?.('market', 'etfs')} />
+      <EtfSectorThermometer onNavigateToRotation={() => { setArea('renta_variable'); setSubTab('etfs'); }} />
 
       {/* Ticker Search & Quick Add Bar */}
       <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border p-5 rounded-2xl shadow-sm flex flex-col gap-4">

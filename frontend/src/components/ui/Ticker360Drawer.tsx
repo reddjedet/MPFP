@@ -19,11 +19,10 @@ import {
 import { useAppStore } from '@/store/useAppStore';
 
 interface Ticker360DrawerProps {
-  onNavigateToTab?: (area: 'portfolios' | 'market' | 'lab', subTab: string) => void;
 }
 
-export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTab }) => {
-  const { isTicker360Open: isOpen, selectedTicker: ticker, ticker360InitialData: initialData, closeTickerDrawer: closeTicker360 } = useAppStore();
+export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = () => {
+  const { isTicker360Open: isOpen, selectedTicker: ticker, ticker360InitialData: initialData, closeTickerDrawer: closeTicker360, setArea, setSubTab } = useAppStore();
 
   const [loading, setLoading] = useState<boolean>(false);
   const [data, setData] = useState<any>(null);
@@ -172,9 +171,8 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = ({ onNavigateToTa
       console.error(e);
     }
     closeTicker360();
-    if (onNavigateToTab) {
-      onNavigateToTab('lab', 'valuation');
-    }
+    setArea('renta_variable');
+    setSubTab('valuation');
   };
 
   if (!isOpen) return null;
