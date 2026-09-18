@@ -347,6 +347,9 @@ export const UnifiedPortfolioView: React.FC = () => {
             {rebalanceData?.fixed_income_summary?.has_fixed_income && (
               <div className="w-full mt-6">
                  <div className="mb-4">
+                   <h3 className="text-xl font-bold text-foreground tracking-tight">Cobertura de Renta Fija & Liquidez</h3>
+                 </div>
+                 <div className="mb-4">
                     <FixedIncomePortfolioCard 
                        items={rebalanceData.fixed_income_summary.items} 
                        pfType={selectedPf} 

@@ -105,7 +105,7 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
 
   if (!summary.items || summary.items.length === 0) {
     return (
-      <div className="glass-panel p-8 rounded-2xl text-center border border-white/10 text-zinc-400 text-sm">
+      <div className="glass-panel p-8 rounded-2xl text-center border border-border text-muted-foreground text-sm">
         Esta cartera no tiene activos de renta fija configurados.
       </div>
     );
@@ -115,21 +115,21 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
     <div className="flex flex-col gap-6">
       {/* TARJETAS EJECUTIVAS DE RENTA FIJA */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-[#181920] border border-white/10 p-4 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-400 mb-2">
+        <div className="bg-card border border-border p-4 rounded-2xl shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between text-muted-foreground mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider">Capital Invertido (RF)</span>
-            <Coins className="w-4 h-4 text-zinc-400" />
+            <Coins className="w-4 h-4 text-muted-foreground" />
           </div>
           <div>
             <div className="text-xl font-mono font-bold text-white tracking-tight">
               ${summary.total_invested.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <span className="text-[10px] text-zinc-400 font-mono">Costo base acumulado</span>
+            <span className="text-[10px] text-muted-foreground font-mono">Costo base acumulado</span>
           </div>
         </div>
 
-        <div className="bg-[#181920] border border-white/10 p-4 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-400 mb-2">
+        <div className="bg-card border border-border p-4 rounded-2xl shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between text-muted-foreground mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider">Valor de Mercado Spot</span>
             <TrendingUp className="w-4 h-4 text-emerald-400" />
           </div>
@@ -148,8 +148,8 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
           </div>
         </div>
 
-        <div className="bg-[#181920] border border-white/10 p-4 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-400 mb-2">
+        <div className="bg-card border border-border p-4 rounded-2xl shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between text-muted-foreground mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider">Cobro a Finish (Vto)</span>
             <ShieldCheck className="w-4 h-4 text-blue-400" />
           </div>
@@ -173,21 +173,21 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
           </div>
         </div>
 
-        <div className="bg-[#181920] border border-white/10 p-4 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-400 mb-2">
+        <div className="bg-card border border-border p-4 rounded-2xl shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between text-muted-foreground mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider">Próximo Vencimiento</span>
-            <Clock className={`w-4 h-4 ${summary.has_imminent_maturity ? 'text-amber-400 animate-pulse' : 'text-zinc-400'}`} />
+            <Clock className={`w-4 h-4 ${summary.has_imminent_maturity ? 'text-amber-400 animate-pulse' : 'text-muted-foreground'}`} />
           </div>
           <div>
             <div className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
               <span>{summary.nearest_maturity_ticker || '-'}</span>
               {summary.nearest_maturity_days !== null && (
-                <span className={`text-[11px] px-2 py-0.5 rounded font-mono font-bold ${summary.has_imminent_maturity ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-white/10 text-zinc-300'}`}>
+                <span className={`text-[11px] px-2 py-0.5 rounded font-mono font-bold ${summary.has_imminent_maturity ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-white/10 text-muted-foreground'}`}>
                   {summary.nearest_maturity_days} días
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-zinc-400">
+            <span className="text-[10px] text-muted-foreground">
               {summary.has_imminent_maturity ? '⚠️ Vencimiento inminente (< 30d)' : 'Posición temporal activa'}
             </span>
           </div>
@@ -195,13 +195,13 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
       </div>
 
       {/* TABLA PRINCIPAL DE RENTA FIJA */}
-      <div className="bg-[#181920] border border-white/10 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Calendar className="w-5 h-5 text-emerald-400" />
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">Títulos de Renta Fija en Cartera</h3>
           </div>
-          <span className="text-xs text-zinc-400 font-mono">
+          <span className="text-xs text-muted-foreground font-mono">
             {summary.items.length} {summary.items.length === 1 ? 'título registrado' : 'títulos registrados'}
           </span>
         </div>
@@ -210,35 +210,35 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               {/* TIER 1: MACRO-GRUPOS DE UTILIDAD */}
-              <tr className="border-b border-white/10 bg-[#121318] text-[10px] uppercase font-mono font-bold tracking-wider">
-                <th colSpan={2} className="px-2.5 py-2 border-r border-white/10 text-blue-400 bg-blue-500/5">
+              <tr className="border-b border-border bg-secondary text-[10px] uppercase font-mono font-bold tracking-wider">
+                <th colSpan={2} className="px-2.5 py-2 border-r border-border text-muted-foreground">
                   1. Instrumento & Plazo
                 </th>
-                <th colSpan={1} className="px-2.5 py-2 border-r border-white/10 text-purple-400 bg-purple-500/5 text-center">
+                <th colSpan={1} className="px-2.5 py-2 border-r border-border text-muted-foreground text-center">
                   2. Asignación
                 </th>
-                <th colSpan={4} className="px-2.5 py-2 border-r border-white/10 text-emerald-400 bg-emerald-500/5 text-center">
+                <th colSpan={4} className="px-2.5 py-2 border-r border-border text-muted-foreground text-center">
                   3. Mi Inversión (Compra)
                 </th>
-                <th colSpan={4} className="px-2.5 py-2 border-r border-white/10 text-zinc-300 bg-white/[0.02] text-center">
+                <th colSpan={4} className="px-2.5 py-2 border-r border-border text-muted-foreground text-center">
                   4. Mercado Spot (Hoy)
                 </th>
-                <th colSpan={2} className="px-2.5 py-2 border-r border-white/10 text-amber-400 bg-amber-500/5 text-center">
+                <th colSpan={2} className="px-2.5 py-2 border-r border-border text-muted-foreground text-center">
                   5. Al Vencimiento (Finish)
                 </th>
-                <th className="px-2 py-2 text-center text-zinc-500 bg-white/[0.01]">
+                <th className="px-2 py-2 text-center text-muted-foreground">
                   Acción
                 </th>
               </tr>
 
               {/* TIER 2: COLUMNAS CLARAS Y DIRECTAS */}
-              <tr className="border-b border-white/10 bg-white/[0.02] text-zinc-400 uppercase font-semibold text-[10px] tracking-wider font-mono">
+              <tr className="border-b border-border bg-white/[0.02] text-muted-foreground uppercase font-semibold text-[10px] tracking-wider font-mono">
                 {/* 1. Instrumento & Plazo */}
                 <th className="px-2.5 py-2">Instrumento</th>
-                <th className="px-2.5 py-2 text-center border-r border-white/10">Vto. & Ciclo</th>
+                <th className="px-2.5 py-2 text-center border-r border-border">Vto. & Ciclo</th>
 
                 {/* 2. Asignación */}
-                <th className="px-2.5 py-2 text-right border-r border-white/10" title="Ponderación objetivo en la cartera y tramo de renta fija">
+                <th className="px-2.5 py-2 text-right border-r border-border" title="Ponderación objetivo en la cartera y tramo de renta fija">
                   Peso Obj.
                 </th>
 
@@ -246,17 +246,17 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
                 <th className="px-2.5 py-2 text-right">Nominales</th>
                 <th className="px-2.5 py-2 text-right">PPC ($)</th>
                 <th className="px-2.5 py-2 text-right">Invertido ($)</th>
-                <th className="px-2.5 py-2 text-center border-r border-white/10">TNA Compra</th>
+                <th className="px-2.5 py-2 text-center border-r border-border">TNA Compra</th>
 
                 {/* 4. Mercado Spot */}
                 <th className="px-2.5 py-2 text-right">SPOT ($)</th>
                 <th className="px-2.5 py-2 text-right">Val. Mercado</th>
                 <th className="px-2.5 py-2 text-right">Ganancia Acumulada</th>
-                <th className="px-2.5 py-2 text-center border-r border-white/10">Tasa Mercado</th>
+                <th className="px-2.5 py-2 text-center border-r border-border">Tasa Mercado</th>
 
                 {/* 5. Al Vencimiento */}
                 <th className="px-2.5 py-2 text-right">Cobro Finish</th>
-                <th className="px-2.5 py-2 text-right border-r border-white/10">Ganancia Vto.</th>
+                <th className="px-2.5 py-2 text-right border-r border-border">Ganancia Vto.</th>
 
                 {/* Acción */}
                 <th className="px-2 py-2 text-center">Editar</th>
@@ -276,18 +276,18 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
                           {item.tipo}
                         </span>
                       </div>
-                      <div className="text-[10px] text-zinc-400 truncate max-w-[120px]">{item.nombre}</div>
+                      <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">{item.nombre}</div>
                     </td>
 
                     {/* Vto & Ciclo */}
-                    <td className="px-2.5 py-2 text-center border-r border-white/10">
-                      <div className="text-zinc-200 font-mono text-xs font-semibold">{item.vence}</div>
+                    <td className="px-2.5 py-2 text-center border-r border-border">
+                      <div className="text-foreground font-mono text-xs font-semibold">{item.vence}</div>
                       {item.dias !== null && (
                         <div className="flex flex-col items-center gap-0.5 mt-0.5">
                           <span className={`inline-block text-[9px] px-1.5 py-0.2 rounded font-bold font-mono ${
                             item.is_imminent 
                               ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse' 
-                              : 'text-zinc-400 bg-white/5'
+                              : 'text-muted-foreground bg-white/5'
                           }`}>
                             {item.dias}d restantes
                           </span>
@@ -304,21 +304,21 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
                     </td>
 
                     {/* 2. Asignación: Peso Objetivo con Hover Tooltip ergonómico */}
-                    <td className="px-2.5 py-2 text-right font-mono border-r border-white/10">
+                    <td className="px-2.5 py-2 text-right font-mono border-r border-border">
                       <div className="relative group/tip inline-flex flex-col items-end cursor-help">
                         <span className="font-bold text-white text-xs">{item.target_weight_portfolio.toFixed(2)}%</span>
                         {item.target_weight_rf > 0 && (
-                          <span className="text-[9px] text-zinc-500 font-mono">
+                          <span className="text-[9px] text-muted-foreground font-mono">
                             ({item.target_weight_rf.toFixed(1)}% RF)
                           </span>
                         )}
                         {/* Tooltip contextual al hover */}
-                        <div className="absolute bottom-full right-0 mb-1 hidden group-hover/tip:flex flex-col gap-0.5 z-50 bg-[#121318] border border-white/20 text-[10px] p-2 rounded shadow-2xl pointer-events-none whitespace-nowrap text-left">
+                        <div className="absolute bottom-full right-0 mb-1 hidden group-hover/tip:flex flex-col gap-0.5 z-50 bg-secondary border border-border text-[10px] p-2 rounded shadow-2xl pointer-events-none whitespace-nowrap text-left">
                           <span className="text-white font-bold mb-0.5">Ponderación Objetivo:</span>
-                          <span className="text-zinc-300 font-mono">Cartera Total: <strong className="text-emerald-400 font-bold">{item.target_weight_portfolio.toFixed(2)}%</strong></span>
-                          <span className="text-zinc-300 font-mono">Tramo Renta Fija: <strong className="text-blue-400 font-bold">{item.target_weight_rf.toFixed(1)}%</strong></span>
+                          <span className="text-muted-foreground font-mono">Cartera Total: <strong className="text-emerald-400 font-bold">{item.target_weight_portfolio.toFixed(2)}%</strong></span>
+                          <span className="text-muted-foreground font-mono">Tramo Renta Fija: <strong className="text-blue-400 font-bold">{item.target_weight_rf.toFixed(1)}%</strong></span>
                           {item.real_weight_rf !== undefined && item.real_weight_rf > 0 && (
-                            <span className="text-zinc-400 font-mono text-[9px] mt-0.5 border-t border-white/10 pt-0.5">
+                            <span className="text-muted-foreground font-mono text-[9px] mt-0.5 border-t border-border pt-0.5">
                               Real en RF: {item.real_weight_rf.toFixed(1)}%
                             </span>
                           )}
@@ -354,35 +354,35 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
                         />
                       ) : (
                         <div>
-                          <span className="text-zinc-200 font-semibold">${item.ppc_base_100.toFixed(2)}</span>
-                          <div className="text-[9px] text-zinc-500">(${item.ppc_unit.toFixed(4)} u)</div>
+                          <span className="text-foreground font-semibold">${item.ppc_base_100.toFixed(2)}</span>
+                          <div className="text-[9px] text-muted-foreground">(${item.ppc_unit.toFixed(4)} u)</div>
                         </div>
                       )}
                     </td>
 
                     {/* Invertido ($) */}
-                    <td className="px-2.5 py-2 text-right font-bold text-zinc-200 font-mono">
+                    <td className="px-2.5 py-2 text-right font-bold text-foreground font-mono">
                       ${item.invested_capital.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
 
                     {/* TNA Compra */}
-                    <td className="px-2.5 py-2 text-center font-mono border-r border-white/10">
+                    <td className="px-2.5 py-2 text-center font-mono border-r border-border">
                       {item.tna_compra !== null && item.tna_compra !== undefined ? (
                         <div>
                           <span className="text-emerald-400 font-bold text-xs">{item.tna_compra.toFixed(2)}%</span>
                           {item.tea_compra && (
-                            <span className="text-[9px] text-zinc-400 block font-sans">TEA {item.tea_compra.toFixed(1)}%</span>
+                            <span className="text-[9px] text-muted-foreground block font-sans">TEA {item.tea_compra.toFixed(1)}%</span>
                           )}
                         </div>
                       ) : (
-                        <span className="text-zinc-500 font-sans">-</span>
+                        <span className="text-muted-foreground font-sans">-</span>
                       )}
                     </td>
 
                     {/* 4. Mercado Spot: SPOT ($) */}
                     <td className="px-2.5 py-2 text-right font-mono">
-                      <span className="text-zinc-200 font-bold">${item.precio_spot_base_100.toFixed(2)}</span>
-                      <div className="text-[9px] text-zinc-500">(${item.precio_spot_unit.toFixed(4)} u)</div>
+                      <span className="text-foreground font-bold">${item.precio_spot_base_100.toFixed(2)}</span>
+                      <div className="text-[9px] text-muted-foreground">(${item.precio_spot_unit.toFixed(4)} u)</div>
                     </td>
 
                     {/* Val. Mercado */}
@@ -401,18 +401,18 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
                     </td>
 
                     {/* Tasa Mercado */}
-                    <td className="px-2.5 py-2 text-center font-mono border-r border-white/10">
+                    <td className="px-2.5 py-2 text-center font-mono border-r border-border">
                       {item.tem_mkt !== null && item.tem_mkt !== undefined ? (
                         <div>
                           <span className="text-white font-bold text-xs">TEM {item.tem_mkt.toFixed(2)}%</span>
                           {item.tna !== null && item.tna !== undefined && (
-                            <span className="text-[9px] text-zinc-400 block font-sans">TNA {item.tna.toFixed(1)}%</span>
+                            <span className="text-[9px] text-muted-foreground block font-sans">TNA {item.tna.toFixed(1)}%</span>
                           )}
                         </div>
                       ) : item.tna !== null && item.tna !== undefined ? (
                         <span className="text-white font-bold text-xs">TNA {item.tna.toFixed(1)}%</span>
                       ) : (
-                        <span className="text-zinc-500 font-sans">-</span>
+                        <span className="text-muted-foreground font-sans">-</span>
                       )}
                     </td>
 
@@ -429,7 +429,7 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
                     </td>
 
                     {/* Ganancia a Vto */}
-                    <td className="px-2.5 py-2 text-right font-mono border-r border-white/10">
+                    <td className="px-2.5 py-2 text-right font-mono border-r border-border">
                       <div className="text-emerald-400 font-bold text-xs">
                         +${item.projected_profit_ars.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
@@ -462,7 +462,7 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
                       ) : (
                         <button
                           onClick={() => startEdit(item)}
-                          className="p-1.5 text-zinc-400 hover:text-white rounded hover:bg-white/5 transition-colors cursor-pointer"
+                          className="p-1.5 text-muted-foreground hover:text-white rounded hover:bg-white/5 transition-colors cursor-pointer"
                           title="Editar nominales y precio de compra"
                         >
                           <Edit2 className="w-3.5 h-3.5" />

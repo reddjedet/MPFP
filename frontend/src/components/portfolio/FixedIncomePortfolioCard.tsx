@@ -237,7 +237,7 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
 
   if (loading) {
     return (
-      <div className="p-5 rounded-2xl bg-[#181920] border border-white/10 flex items-center justify-center gap-3 text-xs text-zinc-400">
+      <div className="p-5 rounded-2xl bg-card border border-border flex items-center justify-center gap-3 text-xs text-muted-foreground">
         <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
         <span>Sincronizando curvas de rendimiento BYMA / MAE...</span>
       </div>
@@ -247,7 +247,7 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
   const hasHeldItems = items && items.length > 0;
 
   return (
-    <div className="p-5 rounded-2xl bg-[#181920] border border-white/10 shadow-sm flex flex-col gap-4 relative overflow-hidden">
+    <div className="p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col gap-4 relative overflow-hidden">
       {/* Luz ambiental sutil */}
       <div className="absolute top-0 right-0 w-64 h-32 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -268,7 +268,7 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-zinc-400">
+            <p className="text-[11px] text-muted-foreground">
               Cruce cuantitativo en tiempo real entre tus títulos y la curva teórica spot
             </p>
           </div>
@@ -278,7 +278,7 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
           <button
             onClick={handleManualRefresh}
             disabled={refreshing}
-            className="p-1.5 rounded-[3px] bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 transition-colors cursor-pointer text-xs flex items-center gap-1"
+            className="p-1.5 rounded-[3px] bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white border border-border transition-colors cursor-pointer text-xs flex items-center gap-1"
             title="Actualizar datos de curvas"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-blue-400' : ''}`} />
@@ -315,11 +315,11 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
                     <div>
                       <div className="text-xs font-bold text-white flex items-center gap-2">
                         <span>Rotación Sugerida:</span>
-                        <span className="font-mono text-zinc-300">{opp.heldTicker} ({opp.heldTir.toFixed(1)}%)</span>
+                        <span className="font-mono text-muted-foreground">{opp.heldTicker} ({opp.heldTir.toFixed(1)}%)</span>
                         <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
                         <span className="font-mono text-emerald-400">{opp.betterTicker} ({opp.betterTir.toFixed(1)}%)</span>
                       </div>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
                         Mismo tramo de duration (~{opp.heldMd.toFixed(1)} años) con ganancia de spread de{' '}
                         <strong className="text-amber-300 font-mono">+{opp.diffBps} bps</strong> de rendimiento.
                       </p>
@@ -341,12 +341,12 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
             {analysis.enrichedHeldItems.map((item) => (
               <div
                 key={item.ticker}
-                className="p-3.5 rounded-xl bg-[#14151c] border border-white/5 flex flex-col justify-between gap-2.5 hover:border-white/10 transition-colors"
+                className="p-3.5 rounded-xl bg-[#14151c] border border-white/5 flex flex-col justify-between gap-2.5 hover:border-border transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-black text-white">{item.ticker}</span>
-                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/5 text-zinc-400 uppercase">
+                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/5 text-muted-foreground uppercase">
                       {item.tipo}
                     </span>
                   </div>
@@ -361,21 +361,21 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono pt-1 border-t border-white/5">
                   <div>
-                    <span className="text-[10px] text-zinc-500 block">TIR / TEA Spot</span>
+                    <span className="text-[10px] text-muted-foreground block">TIR / TEA Spot</span>
                     <span className="font-bold text-white">
                       {item.matchedTir ? `${item.matchedTir.toFixed(2)}%` : '-'}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-zinc-500 block">Modified Duration</span>
-                    <span className="font-bold text-zinc-300">
+                    <span className="text-[10px] text-muted-foreground block">Modified Duration</span>
+                    <span className="font-bold text-muted-foreground">
                       {item.matchedMd ? `${item.matchedMd.toFixed(2)}a` : '-'}
                     </span>
                   </div>
                 </div>
 
                 {item.bestAlt && (
-                  <div className="text-[10px] text-zinc-400 bg-black/30 p-2 rounded border border-white/5 flex items-center justify-between">
+                  <div className="text-[10px] text-muted-foreground bg-black/30 p-2 rounded border border-white/5 flex items-center justify-between">
                     <span>Alternativa: <strong className="text-emerald-400 font-mono">{item.bestAlt.ticker}</strong></span>
                     <span className="text-amber-300 font-mono font-bold">+{item.maxDiffBps} bps</span>
                   </div>
@@ -394,7 +394,7 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
               </div>
               <div>
                 <h4 className="text-xs font-bold text-white">Oportunidades de Tasa en Curva Soberana & LECAPs</h4>
-                <p className="text-[11px] text-zinc-400">
+                <p className="text-[11px] text-muted-foreground">
                   Esta cartera aún no tiene títulos de renta fija. Conoce los rendimientos destacados para diversificar con cobro predecible.
                 </p>
               </div>
@@ -408,7 +408,7 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
                 className="p-3.5 rounded-xl bg-[#14151c] border border-white/5 flex flex-col justify-between gap-2"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase font-bold text-zinc-400">{yieldItem.cat}</span>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground">{yieldItem.cat}</span>
                   <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold">
                     Líder de Tramo
                   </span>
@@ -420,7 +420,7 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
                   </div>
                 </div>
                 {yieldItem.dias && (
-                  <span className="text-[10px] text-zinc-500 font-mono">
+                  <span className="text-[10px] text-muted-foreground font-mono">
                     Plazo remanente: {yieldItem.dias} días
                   </span>
                 )}
