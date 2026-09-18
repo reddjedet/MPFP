@@ -115,7 +115,7 @@ const COMMON_BONDS = [
       icon: PieChart,
       badge: 'Portfolios',
       badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-      action: () => { onNavigate('portfolios', 'portfolios'); onClose(); },
+      action: () => { onNavigate('portfolios', 'dashboard'); onClose(); },
       keywords: ['cartera', 'rebalanceo', 'pesos', 'posiciones', 'acciones']
     },
     {
@@ -137,7 +137,7 @@ const COMMON_BONDS = [
       icon: TrendingUp,
       badge: 'Mercado',
       badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-      action: () => { onNavigate('renta_variable', 'cedears'); onClose(); },
+      action: () => { onNavigate('renta_variable', 'screener'); onClose(); },
       keywords: ['cedears', 'cotizaciones', 'precios', 'adr', 'byma', 'rsi']
     },
     {
@@ -148,7 +148,7 @@ const COMMON_BONDS = [
       icon: Compass,
       badge: 'Mercado',
       badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-      action: () => { onNavigate('renta_variable', 'etfs'); onClose(); },
+      action: () => { onNavigate('renta_variable', 'seguimiento_etfs'); onClose(); },
       keywords: ['etf', 'etfs', 'rotacion', 'spy', 'sectores', 'cuadrantes', 'alpha', 'rrg']
     },
     {
@@ -159,7 +159,7 @@ const COMMON_BONDS = [
       icon: Landmark,
       badge: 'Mercado',
       badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-      action: () => { onNavigate('renta_fija', 'renta-fija'); onClose(); },
+      action: () => { onNavigate('renta_fija', 'curvas'); onClose(); },
       keywords: ['renta fija', 'bonos', 'lecaps', 'boncer', 'curva', 'tir', 'duration']
     },
     {
@@ -170,7 +170,7 @@ const COMMON_BONDS = [
       icon: Calendar,
       badge: 'Mercado',
       badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-      action: () => { onNavigate('renta_variable', 'earnings'); onClose(); },
+      action: () => { onNavigate('renta_variable', 'calendario_reportes'); onClose(); },
       keywords: ['balances', 'earnings', 'reportes', 'fechas', 'trimestres']
     },
     {
@@ -192,7 +192,7 @@ const COMMON_BONDS = [
       icon: FlaskConical,
       badge: 'Laboratorio',
       badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-      action: () => { onNavigate('markowitz', 'markowitz'); onClose(); },
+      action: () => { onNavigate('markowitz', 'frontera'); onClose(); },
       keywords: ['markowitz', 'frontera', 'optimizacion', 'sharpe', 'riesgo', 'varianza']
     },
     {
@@ -203,7 +203,7 @@ const COMMON_BONDS = [
       icon: Calculator,
       badge: 'Laboratorio',
       badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-      action: () => { onNavigate('markowitz', 'valuation'); onClose(); },
+      action: () => { onNavigate('markowitz', 'valuacion'); onClose(); },
       keywords: ['valuacion', 'fundamental', 'dcf', 'fcf', 'fair value', 'multiplos']
     },
     {
@@ -320,7 +320,7 @@ const COMMON_BONDS = [
           badge: b.type,
           badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
           action: () => {
-            onNavigate('renta_fija', 'renta-fija');
+            onNavigate('renta_fija', 'curvas');
             onClose();
           }
         });

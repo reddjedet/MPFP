@@ -524,7 +524,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
       </div>
 
       {/* ETF Sector Thermometer */}
-      <EtfSectorThermometer onNavigateToRotation={() => { setArea('renta_variable'); setSubTab('etfs'); }} />
+      <EtfSectorThermometer onNavigateToRotation={() => { setArea('renta_variable'); setSubTab('seguimiento_etfs'); }} />
 
       {/* Ticker Search & Quick Add Bar */}
       <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-border p-5 rounded-2xl shadow-sm flex flex-col gap-4">

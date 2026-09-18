@@ -171,8 +171,8 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = () => {
       console.error(e);
     }
     closeTicker360();
-    setArea('renta_variable');
-    setSubTab('valuation');
+    setArea('markowitz');
+    setSubTab('valuacion');
   };
 
   if (!isOpen) return null;
