@@ -42,7 +42,6 @@ CRITICAL_IGNORES = [
     ".atl/",
     ".gentle/",
     ".engram/",
-    ".agents/",
     "WORKFLOW.md"
 ]
 
