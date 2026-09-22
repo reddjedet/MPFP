@@ -3,6 +3,7 @@
 # FastAPI + React 19 + TypeScript + Vite + Tailwind CSS + ECharts
 # ==============================================================================
 
+
 # --- Python & FastAPI Backend ---
 __pycache__/
 *.py[cod]
@@ -81,8 +82,14 @@ data/.tmp_*
 Thumbs.db
 .directory
 
-# --- Antigravity & Agent Framework (Local Only) ---
+# --- Antigravity & Agent Framework ---
+# El harness mínimo local es requerido por CI; los perfiles/documentos restantes siguen fuera de Git.
 .agents/
+!.agents/
+.agents/*
+!.agents/hooks.json
+!.agents/scripts/
+!.agents/scripts/*.py
 .opencode/
 scratch/
 brain/
@@ -126,3 +133,4 @@ claude.json
 
 # --- Documentación temporal de Harness ---
 nuevo_harness.md
+correcciones.md

@@ -1,0 +1,47 @@
+{
+  "token-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "view_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c 'import os, sys; p = \"scripts/guard_large_files.py\" if os.path.exists(\"scripts/guard_large_files.py\") else \".agents/scripts/guard_large_files.py\"; os.execv(sys.executable, [sys.executable, p])'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "command-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c 'import os, sys; p = \"scripts/guard_commands.py\" if os.path.exists(\"scripts/guard_commands.py\") else \".agents/scripts/guard_commands.py\"; os.execv(sys.executable, [sys.executable, p])'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "syntax-guard": {
+    "enabled": true,
+    "PostToolUse": [
+      {
+        "matcher": "replace_file_content|write_to_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c 'import os, sys; p = \"scripts/auto_verify_syntax.py\" if os.path.exists(\"scripts/auto_verify_syntax.py\") else \".agents/scripts/auto_verify_syntax.py\"; os.execv(sys.executable, [sys.executable, p])'",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

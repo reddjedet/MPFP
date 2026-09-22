@@ -131,7 +131,7 @@ class TestAgentGuards(unittest.TestCase):
 
     def test_command_guard_protects_central_library(self):
         script = AGENTS_DIR / "guard_commands.py"
-        cmd = "rm -rf '/run/media/user/contenido agentico/rules'"
+        cmd = "rm -rf 'contenido agentico/rules'"
         payload = {"toolCall": {"name": "run_command", "args": {"CommandLine": cmd}}}
         res = self._run_script(script, payload)
         self.assertEqual(res.get("decision"), "deny")
