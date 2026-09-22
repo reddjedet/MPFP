@@ -472,8 +472,6 @@ def analyze_rotation(target_pf_key: str = "min_drawdown_15") -> Dict[str, Any]:
                         bool(pfcf_signal and pfcf_signal.get("state_key") == "no_comprar")
         is_severely_overvalued = bool(gf_signal and gf_signal.get("signal") == "overvalued" and (gf_signal.get("discount_pct") or 0) <= -25.0) or \
                                  bool(pfcf_signal and pfcf_signal.get("state_key") == "no_comprar")
-
-        is_surplus = delta_noms > 0 or (tk not in norm_target_weights and real_noms > 0)
         is_deficit = delta_noms < 0 and tk in norm_target_weights
         
         # Timing táctico y filtro de veto para compras

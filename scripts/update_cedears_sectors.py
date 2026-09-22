@@ -4,7 +4,6 @@ Fuentes: Banco Comafi (Ratios oficiales) + BYMA (ETFs) + TradingView Scanner (Se
 """
 import re
 import sys
-import json
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path

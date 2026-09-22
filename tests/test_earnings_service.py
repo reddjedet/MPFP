@@ -4,7 +4,6 @@ from services.earnings_service import (
     load_earnings_calendar,
     calculate_earnings_status,
     get_all_earnings_summary,
-    get_ticker_earnings_badge,
     save_confirmed_earnings_date,
     _db
 )

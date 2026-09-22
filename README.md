@@ -174,11 +174,12 @@ cp .env.example .env
 ./scripts/test.sh
 ```
 
-El pipeline ejecuta en $< 3$ segundos:
+El pipeline unificado de verificación ejecuta secuencialmente 4 fases:
 
-1. **[1/3] Frontend:** Verificación de tipado TypeScript (`npx tsc --noEmit`) y bundle de producción en Vite.
-2. **[2/3] Backend:** Suite de **125 tests automatizados** en `tests/` con Snapshot Isolation estricto.
-3. **[3/3] Auditoría:** Diagnóstico de integridad de las 10 bases de datos JSON (`audit_project.py`) y escaneo de ciberseguridad, tokens y privacidad pre-commit (`audit_security_privacy.py`).
+1. **[1/4] Frontend (Tipado Estático):** Verificación de tipos en TypeScript (`npx tsc --noEmit`) para garantizar cero errores de interfaz.
+2. **[2/4] Backend (Suite Automatizada):** Ejecución de más de 130 tests unitarios y de integración en `tests/` con Snapshot Isolation estricto (incluye guardrails agénticos, modelos de valuación, Markowitz, curvas soberanas y persistencia).
+3. **[3/4] Ciberseguridad y Privacidad:** Auditoría pre-commit (`scripts/audit_security_privacy.py`) para verificar ausencia total de secretos, tokens, archivos `.env` expuestos y cumplimiento de `.gitignore`.
+4. **[4/4] Diagnóstico y Esquemas JSON:** Validación de integridad estructural de las bases de datos locales y pruebas de inyección/XSS (`scripts/audit_project.py`).
 
 ---
 

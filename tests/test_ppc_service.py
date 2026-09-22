@@ -3,10 +3,8 @@ import tempfile
 from pathlib import Path
 
 from services.ppc_service import (
-    load_ppc_values,
     get_ppc_value,
     save_ppc_value,
-    save_bulk_ppc_values,
     evaluate_ppc_return,
     parse_price_input,
     _db

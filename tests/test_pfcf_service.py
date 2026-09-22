@@ -3,7 +3,6 @@ import tempfile
 from pathlib import Path
 
 from services.pfcf_service import (
-    load_pfcf_values,
     get_pfcf_value,
     save_pfcf_value,
     save_bulk_pfcf_values,

@@ -1,6 +1,6 @@
 import json
-from typing import Optional, Any, Dict
-from fastapi import APIRouter, Request, Form, UploadFile, File
+from typing import Optional, Any, Dict, List
+from fastapi import APIRouter, Request, UploadFile, File
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -31,20 +31,24 @@ from services.fair_value_service import (
     get_fair_value,
     load_fair_values,
     save_fair_value,
+    save_bulk_fair_values,
     evaluate_fair_value_signal
 )
 from services.ppc_service import (
     load_ppc_values,
     get_ppc_value,
     save_ppc_value,
+    save_bulk_ppc_values,
     evaluate_ppc_return
 )
 from services.pfcf_service import (
     load_pfcf_values,
     get_pfcf_value,
     save_pfcf_value,
+    save_bulk_pfcf_values,
     evaluate_fcf_rsi_state
 )
+from services.rotation_service import load_user_holdings, analyze_rotation
 
 router = APIRouter()
 
@@ -53,6 +57,9 @@ class QuickUpdateAssetRequest(BaseModel):
     ppc: Optional[Any] = None
     gf_value: Optional[Any] = None
     pfcf: Optional[Any] = None
+
+class BulkQuickUpdateAssetRequest(BaseModel):
+    items: List[QuickUpdateAssetRequest]
 
 class PortfolioSettingsRequest(BaseModel):
     anchor: Optional[str] = None
@@ -84,7 +91,7 @@ def get_portfolios_list_json():
     })
 
 @router.get("/rebalance_json/{pf_type}", response_class=JSONResponse)
-def get_rebalance_data_json(pf_type: str, anchor: str = None, qty: int = None):
+def get_rebalance_data_json(pf_type: str, anchor: Optional[str] = None, qty: Optional[int] = None):
     pf_clean = sanitize_portfolio_name(pf_type)
     if not pf_clean:
         return JSONResponse({"error": "Nombre de portfolio no válido."}, status_code=400)
@@ -110,11 +117,12 @@ def get_rebalance_data_json(pf_type: str, anchor: str = None, qty: int = None):
         anchor_clean = sanitize_ticker(anchor)
         if not anchor_clean or anchor_clean not in weights:
             anchor_clean = saved_anchor if (saved_anchor and saved_anchor in weights) else (
-                mcm_info["bottleneck_ticker"] if (mcm_info and mcm_info.get("bottleneck_ticker") in weights) else list(weights.keys())[0]
+                mcm_info["most_expensive_ticker"] if (mcm_info and mcm_info.get("most_expensive_ticker") in weights) else list(weights.keys())[0]
             )
     else:
+        # Priorizar anchor guardado si existe, sino el activo dinámico más caro
         anchor_clean = saved_anchor if (saved_anchor and saved_anchor in weights) else (
-            mcm_info["bottleneck_ticker"] if (mcm_info and mcm_info.get("bottleneck_ticker") in weights) else list(weights.keys())[0]
+            mcm_info["most_expensive_ticker"] if (mcm_info and mcm_info.get("most_expensive_ticker") in weights) else list(weights.keys())[0]
         )
         
     if qty is not None:
@@ -122,19 +130,24 @@ def get_rebalance_data_json(pf_type: str, anchor: str = None, qty: int = None):
             qty_clean = max(1, int(qty))
         except (ValueError, TypeError):
             qty_clean = saved_qty if (saved_qty and saved_qty > 0) else (
-                mcm_info["bottleneck_qty"] if (mcm_info and anchor_clean == mcm_info.get("bottleneck_ticker")) else 1
+                mcm_info["most_expensive_qty"] if (mcm_info and anchor_clean == mcm_info.get("most_expensive_ticker")) else 1
             )
     else:
-        qty_clean = saved_qty if (saved_qty and saved_qty > 0) else (
-            mcm_info["bottleneck_qty"] if (mcm_info and anchor_clean == mcm_info.get("bottleneck_ticker")) else 1
-        )
+        # Priorizar cantidad guardada si existe, sino la calculada por MCM
+        if saved_qty and saved_qty > 0:
+            qty_clean = saved_qty
+        elif mcm_info and anchor_clean == mcm_info.get("most_expensive_ticker"):
+            qty_clean = mcm_info["most_expensive_qty"]
+        else:
+            qty_clean = 1
         
     result = calculate_portfolio_data(pf_data, data, anchor_clean, qty_clean)
     ppc_map = load_ppc_values()
     fair_values_map = load_fair_values()
     pfcf_map = load_pfcf_values()
     earnings_cal = load_earnings_calendar()
-    
+    user_holdings = load_user_holdings(pf_clean).get("holdings", {})
+
     if result:
         for item in result:
             tk = item.get("ticker", "")
@@ -144,11 +157,41 @@ def get_rebalance_data_json(pf_type: str, anchor: str = None, qty: int = None):
             item["earnings_badge"] = get_ticker_earnings_badge(tk, cal=earnings_cal)
             item["gf_signal"] = evaluate_fair_value_signal(tk, adr_p, gf_val_map=fair_values_map)
             item["gf_value"] = fair_values_map.get(tk)
-            item["ppc"] = ppc_map.get(tk)
+            
+            # Use portfolio-specific PPC if available, fallback to global PPC
+            tk_holdings = user_holdings.get(tk, {})
+            item["actual_qty"] = tk_holdings.get("nominals", 0)
+            
+            pf_ppc = tk_holdings.get("ppc")
+            if pf_ppc and pf_ppc > 0:
+                item["ppc"] = pf_ppc
+            else:
+                item["ppc"] = ppc_map.get(tk)
+                
             item["ppc_return"] = evaluate_ppc_return(tk, local_p, item["ppc"])
             item["pfcf"] = pfcf_map.get(tk)
             item["pfcf_signal"] = evaluate_fcf_rsi_state(tk, item["pfcf"], rsi_val)
             
+    # Recalcular pesos reales y errores de tracking si el usuario informó tenencias
+    if result:
+        actual_total_val = sum((item.get("actual_qty", 0) * item.get("price", 0)) for item in result)
+        has_actual_holdings = actual_total_val > 0
+        
+        for item in result:
+            if has_actual_holdings:
+                actual_val = item.get("actual_qty", 0) * item.get("price", 0)
+                real_w = (actual_val / actual_total_val * 100) if actual_total_val else 0
+                item["real_weight"] = round(real_w, 2)
+                
+                raw_error = real_w - item["weight"]
+                if abs(raw_error) < 2.5:
+                    item["error"] = 0.0
+                else:
+                    item["error"] = round(raw_error, 2)
+            else:
+                # Si no hay tenencias reales, conservar el error de redondeo teórico (fricción)
+                pass
+
     take_profit_alerts = [
         item for item in result 
         if item.get("ppc_return") and item["ppc_return"].get("is_take_profit")
@@ -173,6 +216,13 @@ def get_rebalance_data_json(pf_type: str, anchor: str = None, qty: int = None):
     # Desglose Sectorial
     sector_breakdown = calculate_sector_breakdown(result) if result else []
 
+    # Calculate Tactical Rotation Trades
+    try:
+        rotation_analysis = analyze_rotation(pf_clean)
+        rotation_trades = rotation_analysis.get("rotation_trades", [])
+    except Exception:
+        rotation_trades = []
+
     return JSONResponse({
         "pf_type": pf_clean,
         "mode": mode,
@@ -185,6 +235,7 @@ def get_rebalance_data_json(pf_type: str, anchor: str = None, qty: int = None):
         "sector_breakdown": sector_breakdown,
         "mcm_info": mcm_info,
         "take_profit_alerts": take_profit_alerts if take_profit_alerts is not None else [],
+        "rotation_trades": rotation_trades,
         "alpha_metrics": alpha_metrics,
         "summary": {
             "total_portfolio_value": round(total_portfolio_value, 2),
@@ -216,6 +267,35 @@ def quick_update_asset_json(body: QuickUpdateAssetRequest):
         "pfcf": get_pfcf_value(clean_tk)
     })
 
+@router.post("/bulk_quick_update_json", response_class=JSONResponse)
+def bulk_quick_update_asset_json(body: BulkQuickUpdateAssetRequest):
+    ppc_updates: Dict[str, Any] = {}
+    fv_updates: Dict[str, Any] = {}
+    pfcf_updates: Dict[str, Any] = {}
+    
+    for item in body.items:
+        clean_tk = sanitize_ticker(item.ticker)
+        if not clean_tk:
+            continue
+        if item.ppc is not None:
+            ppc_updates[clean_tk] = item.ppc
+        if item.gf_value is not None:
+            fv_updates[clean_tk] = item.gf_value
+        if item.pfcf is not None:
+            pfcf_updates[clean_tk] = item.pfcf
+            
+    if ppc_updates:
+        save_bulk_ppc_values(ppc_updates)
+    if fv_updates:
+        save_bulk_fair_values(fv_updates)
+    if pfcf_updates:
+        save_bulk_pfcf_values(pfcf_updates)
+        
+    return JSONResponse({
+        "success": True,
+        "updated_count": len(body.items)
+    })
+
 @router.post("/settings_json/{pf_type}", response_class=JSONResponse)
 def update_portfolio_settings_json(pf_type: str, body: PortfolioSettingsRequest):
     pf_clean = sanitize_portfolio_name(pf_type)
@@ -244,26 +324,20 @@ def update_portfolio_settings_json(pf_type: str, body: PortfolioSettingsRequest)
     })
 
 @router.post("/create_json", response_class=JSONResponse)
-async def create_custom_portfolio(
-    request: Request,
-    name: Optional[str] = Form(None),
-    mode: Optional[str] = Form("weights"),
-    weights_str: Optional[str] = Form(None)
-):
-    req_name = name
-    req_mode = mode
-    req_weights_str = weights_str
+async def create_custom_portfolio(request: Request):
+    req_name = None
+    req_mode = "weights"
+    req_weights_str = None
     
-    if not req_name:
-        try:
-            body = await request.json()
-            req_name = body.get("name")
-            req_mode = body.get("mode", "weights")
-            req_weights_str = body.get("weights_str")
-            if not req_weights_str and "assets" in body and isinstance(body["assets"], dict):
-                req_weights_str = ", ".join([f"{k}:{v}" for k, v in body["assets"].items()])
-        except Exception:
-            pass
+    try:
+        body = await request.json()
+        req_name = body.get("name")
+        req_mode = body.get("mode", "weights")
+        req_weights_str = body.get("weights_str")
+        if not req_weights_str and "assets" in body and isinstance(body["assets"], dict):
+            req_weights_str = ", ".join([f"{k}:{v}" for k, v in body["assets"].items()])
+    except Exception:
+        pass
 
     name_clean = sanitize_portfolio_name(req_name or "")
     if not name_clean:

@@ -126,7 +126,7 @@ const COMMON_BONDS = [
       icon: ArrowLeftRight,
       badge: 'Portfolios',
       badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-      action: () => { onNavigate('portfolios', 'rotation'); onClose(); },
+      action: () => { onNavigate('portfolios', 'tenencias'); onClose(); },
       keywords: ['rotacion', 'compra', 'venta', 'tenencia', 'broker', 'bal', 'bmb', 'calculadora']
     },
     {

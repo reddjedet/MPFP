@@ -242,11 +242,20 @@ export function HoldingsManagerView() {
     }));
   };
 
+  const handleRemoveAsset = (tickerToRemove: string) => {
+    setDraftHoldings(prev => {
+      const updated = { ...prev };
+      delete updated[tickerToRemove];
+      return updated;
+    });
+  };
+
   const handleSaveHoldings = async () => {
     if (!selectedPf) return;
     setIsSaving(true);
     try {
-      const weightsStr = Object.values(draftHoldings)
+      const remainingHoldings = Object.values(draftHoldings);
+      const weightsStr = remainingHoldings
         .filter(h => h.relWeight > 0)
         .map(h => `${h.ticker}:${h.relWeight}`)
         .join(', ');
@@ -258,7 +267,7 @@ export function HoldingsManagerView() {
       });
 
       const realHoldings: Record<string, any> = {};
-      Object.values(draftHoldings).forEach(h => {
+      remainingHoldings.forEach(h => {
         if (h.baseNominals > 0 || h.ppc > 0) {
           realHoldings[h.ticker] = { nominals: h.baseNominals, ppc: h.ppc };
         }
@@ -269,13 +278,19 @@ export function HoldingsManagerView() {
         body: JSON.stringify({ portfolio: selectedPf, holdings: realHoldings })
       });
 
-      for (const h of Object.values(draftHoldings)) {
-         await fetch('/api/portfolios/quick_update_json', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticker: h.ticker, gf_value: h.fv })
-         });
+      // Actualización en lote única de métricas (eliminando llamadas N+1)
+      const bulkItems = remainingHoldings
+        .filter(h => h.fv !== undefined && h.fv !== null)
+        .map(h => ({ ticker: h.ticker, gf_value: h.fv }));
+
+      if (bulkItems.length > 0) {
+        await fetch('/api/portfolios/bulk_quick_update_json', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: bulkItems })
+        });
       }
+
       window.location.reload();
     } catch (err) {
       console.error(err);
@@ -386,7 +401,7 @@ export function HoldingsManagerView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {holdings.map((asset: any) => (
+                  {holdings.filter((asset: any) => draftHoldings[asset.ticker] !== undefined).map((asset: any) => (
                     <tr key={asset.ticker} className="hover:bg-secondary/30 transition-colors group border-b border-border/50 last:border-0">
                       <td className="px-4 py-2 align-middle">
                         <div className="flex items-center h-full min-h-[40px]">
@@ -415,7 +430,12 @@ export function HoldingsManagerView() {
                       </td>
                       <td className="px-4 py-2 align-middle">
                         <div className="flex items-center justify-center h-full min-h-[40px]">
-                          <button className="p-1.5 text-muted-foreground hover:text-negative hover:bg-negative/10 rounded transition-colors inline-flex">
+                          <button 
+                            type="button"
+                            onClick={() => handleRemoveAsset(asset.ticker)}
+                            title={`Eliminar ${asset.ticker} del portafolio`}
+                            className="p-1.5 text-muted-foreground hover:text-negative hover:bg-negative/10 rounded transition-colors inline-flex cursor-pointer"
+                          >
                              <Trash2 className="w-4 h-4" />
                           </button>
                         </div>

@@ -4,7 +4,6 @@ Audit & Diagnostic Tool - Máquina de Planes, Finanzas y Portfolios (MPFP)
 Ejecuta un diagnóstico integral de salud, ciberseguridad, datos y pruebas del proyecto.
 """
 
-import os
 import sys
 import json
 import time
@@ -148,12 +147,14 @@ def check_security():
     print_header("2. Verificación de Ciberseguridad & Validaciones")
     from services.security_service import sanitize_ticker, sanitize_portfolio_name, parse_weights_string
     
+    sec_ok = True
     # 1. Test injection prevention
     xss_ticker = sanitize_ticker("<script>alert(1)</script>")
     if xss_ticker is None:
         print("  ✅ Filtro XSS en Tickers: Activo y bloqueando cargas maliciosas.")
     else:
         print("  ❌ Falló el filtro XSS en Tickers.")
+        sec_ok = False
 
     # 2. Test portfolio name validation
     sql_name = sanitize_portfolio_name("portfolio'; DROP TABLE;")
@@ -161,6 +162,7 @@ def check_security():
         print(f"  ✅ Sanitización de nombres de cartera: Activa ('{sql_name}').")
     else:
         print("  ❌ Falló la sanitización de nombres.")
+        sec_ok = False
 
     # 3. Test weights validation
     res, err = parse_weights_string("AAPL:50, MSFT:50")
@@ -168,6 +170,9 @@ def check_security():
         print("  ✅ Parser de ponderaciones: Operativo y validando sintaxis.")
     else:
         print(f"  ❌ Error en parser de ponderaciones: {err}")
+        sec_ok = False
+
+    return sec_ok
 
 def run_test_suite():
     print_header("3. Ejecución de la Suite de Pruebas Automatizadas")
@@ -191,16 +196,19 @@ def main():
     
     t0 = time.time()
     db_ok = check_database()
-    check_security()
+    sec_ok = check_security()
     tests_ok = run_test_suite()
     elapsed = time.time() - t0
     
     print_header("Resumen del Diagnóstico")
-    if db_ok and tests_ok:
-        print(f"  🏆 ESTADO GENERAL: 100% SALUDABLE (Completado en {elapsed:.2f}s)")
+    if db_ok and sec_ok and tests_ok:
+        print(f"  🏆 ESTADO GENERAL: SALUDABLE (0 anomalías detectadas en {elapsed:.2f}s)")
+        print("=" * 60 + "\n")
+        return 0
     else:
         print(f"  ⚠️ ESTADO GENERAL: REQUIERE ATENCIÓN (Completado en {elapsed:.2f}s)")
-    print("=" * 60 + "\n")
+        print("=" * 60 + "\n")
+        return 1
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

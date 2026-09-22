@@ -291,9 +291,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
       } else if (activeFilter === 'rsi_alerts') {
         return q.rsi !== null && (q.rsi >= 65 || q.rsi <= 35);
       } else if (activeFilter === 'valuation_signals') {
-        const hasGf = q.gf_signal && q.gf_signal.badge_text.toLowerCase().includes('margen');
-        const hasPfcf = q.pfcf_signal && (q.pfcf_signal.state_key === 'optimo' || q.pfcf_signal.state_key === 'compra_optima');
-        return hasGf || hasPfcf;
+        return Boolean(q.gf_signal || q.pfcf_signal);
       } else if (activeFilter === 'earnings') {
         return Boolean(q.earnings_badge);
       }
@@ -422,7 +420,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
             {row.gf_signal && (
               <span
                 title={row.gf_signal.tooltip || (row.gf_value ? `GuruFocus Fair Value: $${row.gf_value}` : undefined)}
-                className="cursor-help text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/25"
+                className="cursor-help text-[10px] px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 font-semibold border border-blue-500/25"
               >
                 {row.gf_signal.badge_text}
               </span>
@@ -432,21 +430,21 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
                 title={row.pfcf_signal.tooltip}
                 className={`cursor-help text-[10px] px-2 py-0.5 rounded font-semibold border transition-colors ${
                   row.pfcf_signal.state_key === 'optimo' || row.pfcf_signal.state_key === 'compra_optima'
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-positive/10 dark:text-positive dark:border-emerald-500/25'
+                    ? 'bg-positive/10 text-positive border-emerald-500/25'
                     : (row.pfcf_signal.state_key === 'no_comprar' || row.pfcf_signal.state_key === 'sobrevaluado'
-                      ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-negative/10 dark:text-negative dark:border-red-500/25'
+                      ? 'bg-negative/10 text-negative border-red-500/25'
                       : (row.pfcf_signal.state_key === 'sub_optimo'
-                        ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/25'
+                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/25'
                         : (row.pfcf_signal.state_key === 'hold'
-                          ? 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/25'
-                          : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-zinc-800 dark:text-muted-foreground dark:border-zinc-700')))
+                          ? 'bg-sky-500/15 text-sky-300 border-sky-500/25'
+                          : 'bg-secondary text-muted-foreground border-border')))
                 }`}
               >
                 {row.pfcf_signal.badge_text}
               </span>
             )}
             {!row.gf_signal && !row.pfcf_signal && (
-              <span className="text-slate-400 dark:text-zinc-600 font-mono text-xs">—</span>
+              <span className="text-muted-foreground font-mono text-xs">—</span>
             )}
           </div>
         );

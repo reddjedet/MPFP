@@ -91,6 +91,7 @@ WORKFLOW.md
 # --- Datos Privados del Usuario (Local Only) ---
 data/.cache_market.json
 data/.cache_market.tmp
+data/.cache_market.tmp_*
 data/user_holdings.json
 data/ppc_values.json
 data/user_valuation_inputs.json
@@ -122,3 +123,6 @@ claude.json
 .codeium/
 .continue/
 .cody/
+
+# --- Documentación temporal de Harness ---
+nuevo_harness.md

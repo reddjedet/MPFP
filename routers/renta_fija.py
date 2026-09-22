@@ -14,9 +14,7 @@ def _bond_type(ticker: str) -> str:
         return "Ley Local"
     return "Ley Local"
 
-@router.get("/curve", response_class=JSONResponse)
 @router.get("/curve_json", response_class=JSONResponse)
-@router.get("/data_json", response_class=JSONResponse)
 def get_yield_curve_json(
     category: str = "lecap",
     ley: str = "Ambas",

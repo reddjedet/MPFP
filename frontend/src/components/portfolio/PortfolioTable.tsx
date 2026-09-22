@@ -13,6 +13,7 @@ import { useAppStore } from '@/store/useAppStore';
 interface PortfolioAssetRow {
   ticker: string;
   qty: number;
+  actual_qty?: number;
   price: number;
   value: number;
   weight?: number;
@@ -78,11 +79,17 @@ interface ActionDrawerProps {
   onClose: () => void;
 }
 
+const PFCF_TICKERS = new Set([
+  'GOOGL', 'MSFT', 'META', 'AMZN', 'V', 'MA', 'AMAT', 'TSM', 'HD', 'PEP', 'PG', 'COST', 'MELI', 'LLY', 'NVDA', 'AAPL'
+]);
+
 const ActionDrawer: React.FC<ActionDrawerProps> = ({ row, pfType, onRefresh, onClose }) => {
   const [ppc, setPpc] = useState(row.ppc?.toString() || '');
   const [gfValue, setGfValue] = useState(row.gf_value?.toString() || '');
   const [pfcfValue, setPfcfValue] = useState(row.pfcf?.toString() || '');
   const [loading, setLoading] = useState(false);
+
+  const showPfcf = PFCF_TICKERS.has(row.ticker) || (row.pfcf !== undefined && row.pfcf !== null);
 
   const handleSave = async () => {
     setLoading(true);
@@ -144,17 +151,19 @@ const ActionDrawer: React.FC<ActionDrawerProps> = ({ row, pfType, onRefresh, onC
         </div>
       </div>
       
-      <div className="flex flex-col gap-1.5 flex-1">
-        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">P/FCF Norm</label>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs font-mono">×</span>
-          <input 
-            type="number" step="any" min="0"
-            className="w-full h-9 pl-7 pr-3 bg-black/40 border border-white/10 rounded-xl text-xs font-mono font-bold text-white outline-none focus:border-blue-500" 
-            value={pfcfValue} onChange={e => setPfcfValue(e.target.value)} placeholder="Ej: 25.5"
-          />
+      {showPfcf && (
+        <div className="flex flex-col gap-1.5 flex-1">
+          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">P/FCF Norm</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs font-mono">×</span>
+            <input 
+              type="number" step="any" min="0"
+              className="w-full h-9 pl-7 pr-3 bg-black/40 border border-white/10 rounded-xl text-xs font-mono font-bold text-white outline-none focus:border-blue-500" 
+              value={pfcfValue} onChange={e => setPfcfValue(e.target.value)} placeholder="Ej: 25.5"
+            />
+          </div>
         </div>
-      </div>
+      )}
       
       <div className="flex items-center gap-2">
         <button 
@@ -264,7 +273,16 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({ data, pfType, on
       }),
       columnHelper.accessor('qty', {
         header: 'CANTIDAD',
-        cell: info => <span className="font-mono font-bold text-white tabular-nums text-xs">{info.getValue() ?? 0}</span>,
+        cell: info => {
+          const row = info.row.original;
+          const actual = row.actual_qty || 0;
+          const target = info.getValue() ?? 0;
+          return (
+            <span className="font-mono font-bold text-white tabular-nums text-xs">
+              {actual} <span className="text-zinc-500 font-normal">/ {target}</span>
+            </span>
+          );
+        },
       }),
       columnHelper.accessor('price', {
         header: 'PRECIO ARS',

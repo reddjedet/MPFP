@@ -703,11 +703,23 @@ export const PerformanceView: React.FC = () => {
                 <thead className="bg-slate-50 dark:bg-secondary/50 border-b border-slate-200 dark:border-border">
                   {table.getHeaderGroups().map(headerGroup => (
                     <tr key={headerGroup.id}>
-                      {headerGroup.headers.map(header => (
-                        <th key={header.id} className="p-2.5 font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                        </th>
-                      ))}
+                      {headerGroup.headers.map(header => {
+                        const canSort = header.column.getCanSort();
+                        const isSorted = header.column.getIsSorted();
+                        return (
+                          <th 
+                            key={header.id} 
+                            onClick={header.column.getToggleSortingHandler()}
+                            className={`p-2.5 font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground select-none ${canSort ? 'cursor-pointer hover:text-foreground transition-colors' : ''}`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                              {isSorted === 'asc' && <span className="text-blue-500 font-bold">↑</span>}
+                              {isSorted === 'desc' && <span className="text-blue-500 font-bold">↓</span>}
+                            </div>
+                          </th>
+                        );
+                      })}
                     </tr>
                   ))}
                 </thead>

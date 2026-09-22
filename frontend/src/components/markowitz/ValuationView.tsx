@@ -141,7 +141,7 @@ const MetricInputField: React.FC<MetricInputFieldProps> = ({ field, value, onCha
           onChange(parsed);
         }
       }}
-      className="w-full h-10 px-3 bg-slate-50 dark:bg-secondary border border-slate-200 dark:border-border rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-foreground outline-none focus:border-blue-500 transition-colors"
+      className="w-full h-10 px-3 bg-secondary border border-border rounded-xl text-xs font-mono font-bold text-foreground outline-none focus:border-blue-500 transition-colors"
     />
   );
 };
@@ -156,6 +156,18 @@ export const ValuationView: React.FC = () => {
   const [evaluating, setEvaluating] = useState<boolean>(false);
   const [syncingGf, setSyncingGf] = useState<boolean>(false);
   const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
+  const [tickerFilter, setTickerFilter] = useState<string>('');
+
+  const filteredSectors = useMemo(() => {
+    const q = tickerFilter.trim().toLowerCase();
+    if (!q) return sectors;
+    return sectors.map(sec => ({
+      ...sec,
+      companies: sec.companies.filter(c =>
+        c.ticker.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
+      )
+    })).filter(sec => sec.companies.length > 0);
+  }, [sectors, tickerFilter]);
 
   // Load initial sectors & default profile
   useEffect(() => {
@@ -307,16 +319,32 @@ export const ValuationView: React.FC = () => {
           {/* Left Column: Sector & Company Picker (4 cols) */}
           <div className="lg:col-span-4 flex flex-col gap-3">
             <div className="bg-card border border-border p-4 rounded-2xl flex flex-col gap-3 border border-slate-200 dark:border-border shadow-sm">
-              <span className="text-xs font-bold text-slate-600 dark:text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <Building2 className="w-3.5 h-3.5 text-blue-500 dark:text-foreground" />
-                Universo de Activos por Sector
-              </span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-slate-600 dark:text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <Building2 className="w-3.5 h-3.5 text-blue-500 dark:text-foreground" />
+                  Universo de Activos por Sector
+                </span>
+                <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-muted-foreground">
+                  {sectors.reduce((acc, s) => acc + s.companies.length, 0)} activos
+                </span>
+              </div>
 
-              <div className="flex flex-col gap-4 max-h-[750px] overflow-y-auto pr-1">
-                {sectors.map(sec => (
+              {/* Buscador rápido de tickers */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={tickerFilter}
+                  onChange={e => setTickerFilter(e.target.value)}
+                  placeholder="Filtrar por ticker o nombre..."
+                  className="w-full h-8 px-3 text-xs bg-slate-50 dark:bg-secondary border border-slate-200 dark:border-border rounded-lg text-slate-900 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex flex-col gap-4 max-h-[720px] overflow-y-auto pr-1">
+                {filteredSectors.map(sec => (
                   <div key={sec.id} className="flex flex-col gap-1.5">
                     <span className="text-[11px] font-extrabold text-slate-500 dark:text-muted-foreground uppercase tracking-wider px-1">
-                      {sec.name}
+                      {sec.name} ({sec.companies.length})
                     </span>
                     <div className="grid grid-cols-2 gap-1.5">
                       {sec.companies.map(comp => {

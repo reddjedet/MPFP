@@ -177,9 +177,15 @@ def calculate_portfolio_mcm(weights: dict, data: dict) -> dict | None:
     total_nominals = sum(base_nominals.values())
     actual_base_capital = sum(base_nominals[t] * data[t]["local"] for t in base_nominals if t in data and data[t].get("local"))
 
+    # Find the most expensive ticker in pesos
+    valid_prices = {t: data[t]["local"] for t in norm.keys() if t in data and data[t].get("local")}
+    most_expensive_ticker = max(valid_prices, key=valid_prices.get) if valid_prices else bottleneck_ticker
+
     return {
         "bottleneck_ticker": bottleneck_ticker,
         "bottleneck_qty": base_nominals.get(bottleneck_ticker, 1),
+        "most_expensive_ticker": most_expensive_ticker,
+        "most_expensive_qty": base_nominals.get(most_expensive_ticker, 1),
         "base_capital": round(actual_base_capital, 2),
         "total_nominals": total_nominals,
         "base_nominals": base_nominals
@@ -722,7 +728,6 @@ def calculate_sector_breakdown(result: list[dict]) -> list[dict]:
         return []
 
     total_value = sum(item.get("value", 0.0) for item in result)
-    total_target_pct = sum(item.get("target_pct", item.get("weight", 0.0)) or 0.0 for item in result)
 
     sectors: dict[str, dict] = {}
     
@@ -971,7 +976,10 @@ def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
 
         # Fallback a tasa de referencia promedio de mercado de las ALyCs argentinas si persiste nulo
         if tem_mkt is None:
-            active_tems = [safe_float(v.get("tem_mkt")) for v in market_lookup.values() if safe_float(v.get("tem_mkt")) is not None and safe_float(v.get("tem_mkt")) > 0]
+            active_tems: list[float] = [
+                float(val) for v in market_lookup.values() 
+                if (val := safe_float(v.get("tem_mkt"))) is not None and val > 0
+            ]
             if active_tems:
                 tem_mkt = round(sum(active_tems) / len(active_tems), 2)
             else:

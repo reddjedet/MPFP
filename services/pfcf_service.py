@@ -129,8 +129,6 @@ def evaluate_fcf_rsi_state(
 
         # B) RÉGIMEN DE SOBREVENTA / CAÍDA: RSI < 35 -> "¿Debería comprar en la caída?"
         if rsi_val < 35.0:
-            rsi_desc = f"RSI {rsi_val:.1f} < 35"
-            
             # Si no hay P/FCF cargado
             if pfcf_val is None or pfcf_val <= 0:
                 return {
@@ -197,8 +195,6 @@ def evaluate_fcf_rsi_state(
 
         # C) RÉGIMEN DE SOBRECOMPRA / SUBA: RSI > 65 -> "¿Debería vender / tomar ganancias / frenar compras?"
         if rsi_val > 65.0:
-            rsi_desc = f"RSI {rsi_val:.1f} > 65"
-            
             # Si no hay P/FCF cargado
             if pfcf_val is None or pfcf_val <= 0:
                 return {

@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Form, Query
+from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 from services.portfolio_service import get_all_portfolio_tickers, get_ticker_sector
 from services.cedear_service import get_ticker_data, get_multiple_tickers_data, CEDEAR_RATIOS, load_cedear_ratios
@@ -7,7 +7,7 @@ from services.security_service import sanitize_ticker
 from services.earnings_service import get_ticker_earnings_badge, load_earnings_calendar, calculate_earnings_status
 from services.fair_value_service import load_fair_values, evaluate_fair_value_signal
 from services.ppc_service import load_ppc_values, evaluate_ppc_return
-from services.pfcf_service import get_pfcf_value, evaluate_fcf_rsi_state, load_pfcf_values
+from services.pfcf_service import evaluate_fcf_rsi_state, load_pfcf_values
 from services.rotation_service import load_user_holdings
 
 router = APIRouter()
@@ -38,23 +38,6 @@ def get_all_cedear_tickers():
 def get_portfolio_tickers_endpoint():
     return JSONResponse({"portfolio_tickers": get_all_portfolio_tickers()})
 
-@router.post("/card", response_class=JSONResponse)
-def get_cedear_card(ticker: str = Form(...)):
-    ticker = sanitize_ticker(ticker)
-    if not ticker:
-        return JSONResponse({"error": "Ticker inválido o no especificado."}, status_code=200)
-    
-    data = get_ticker_data(ticker)
-    if not data:
-        return JSONResponse({"error": f"Error cargando cotización para {ticker}"}, status_code=200)
-    
-    data["earnings_badge"] = get_ticker_earnings_badge(ticker)
-    pfcf_val = get_pfcf_value(ticker)
-    data["pfcf"] = pfcf_val
-    data["pfcf_signal"] = evaluate_fcf_rsi_state(ticker, pfcf_val, data.get("rsi"))
-    
-    return JSONResponse(data)
-
 @router.get("/quotes_json", response_class=JSONResponse)
 def get_cedears_quotes_json(tickers: str = Query(None)):
     portfolio_tickers = get_all_portfolio_tickers()
@@ -73,7 +56,6 @@ def get_cedears_quotes_json(tickers: str = Query(None)):
     tickers_data = get_multiple_tickers_data(clean_list)
     earnings_cal = load_earnings_calendar()
     fair_values_map = load_fair_values()
-    ppc_map = load_ppc_values()
     pfcf_map = load_pfcf_values()
 
     quotes = []
@@ -193,7 +175,8 @@ def get_single_cedear_json(ticker: str, portfolio: Optional[str] = Query(None)):
 
     # Tenencia en cartera activa
     user_holdings = load_user_holdings(portfolio)
-    nominals = user_holdings.get("holdings", {}).get(ticker_clean, 0)
+    holding_data = user_holdings.get("holdings", {}).get(ticker_clean, 0)
+    nominals = holding_data.get("nominals", 0) if isinstance(holding_data, dict) else (holding_data or 0)
     pos_val_ars = round(nominals * loc_p, 2) if (loc_p and nominals) else 0.0
 
     # Margen de seguridad vs GuruFocus Fair Value

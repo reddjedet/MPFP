@@ -65,6 +65,19 @@ if [ -f "${DIR}/scripts/audit_security_privacy.py" ]; then
     fi
 fi
 
+# 4. Project Full Diagnostic & Database Integrity
+echo ""
+echo "[Step 4] Running project health & database diagnostic..."
+if [ -f "${DIR}/scripts/audit_project.py" ]; then
+    PYTHON_BIN="${PYTHON_BIN:-python3}"
+    if "${PYTHON_BIN}" "${DIR}/scripts/audit_project.py"; then
+        echo "PASS: Project diagnostic & database audit healthy."
+    else
+        echo "FAIL: Project diagnostic flagged errors."
+        FAILED=1
+    fi
+fi
+
 echo ""
 echo "======================================================="
 if [ "${FAILED}" -eq 0 ]; then

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Wallet, 
   RefreshCw,
+  ArrowLeftRight
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 
@@ -95,7 +96,7 @@ export const UnifiedPortfolioView: React.FC = () => {
 
   if (rebalanceData?.result) {
     rebalanceData.result.forEach((item: any) => {
-      const qty = item.qty || 0;
+      const qty = item.actual_qty || item.qty || 0;
       const price = item.price || 0;
       const currentValue = qty * price;
       
@@ -278,6 +279,57 @@ export const UnifiedPortfolioView: React.FC = () => {
             <span className="text-[10px] text-zinc-500 font-mono">Desvío vs Modelo Teórico</span>
           </div>
         </div>
+        
+        {/* Sugerencias de Rotación Táctica */}
+        {rebalanceData?.rotation_trades && rebalanceData.rotation_trades.length > 0 && (
+          <div className="pb-6">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300 mb-3 flex items-center gap-2">
+              <ArrowLeftRight className="w-4 h-4 text-purple-400" /> Rotación Táctica Sugerida
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {rebalanceData.rotation_trades.map((trade: any) => (
+                <div key={trade.id} className="p-3 bg-zinc-900 border border-white/5 rounded-xl flex flex-col gap-2 relative overflow-hidden group">
+                  {/* Etiqueta Prioridad */}
+                  <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-bold uppercase ${
+                    trade.priority === 'Alta' ? 'bg-rose-500/20 text-rose-300' : 
+                    trade.priority === 'Media' ? 'bg-amber-500/20 text-amber-300' : 'bg-zinc-800 text-zinc-400'
+                  }`}>
+                    Prioridad {trade.priority}
+                  </div>
+                  
+                  {trade.sell && (
+                    <div className="flex flex-col gap-1 mt-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-rose-400 flex items-center gap-1">VENDER {trade.sell.nominals} <span className="text-white">{trade.sell.ticker}</span></span>
+                        <span className="font-mono text-zinc-400 tabular-nums">${trade.sell.total_cash.toLocaleString('es-AR')}</span>
+                      </div>
+                      <span className="text-[9px] text-zinc-500 truncate" title={trade.sell.reason}>{trade.sell.reason}</span>
+                    </div>
+                  )}
+                  
+                  {trade.sell && trade.buy && <div className="h-px w-full bg-white/5 my-0.5"></div>}
+                  
+                  {trade.buy && (
+                    <div className="flex flex-col gap-1 mt-1">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-emerald-400 flex items-center gap-1">COMPRAR {trade.buy.nominals} <span className="text-white">{trade.buy.ticker}</span></span>
+                        <span className="font-mono text-zinc-400 tabular-nums">${trade.buy.total_cash.toLocaleString('es-AR')}</span>
+                      </div>
+                      <span className="text-[9px] text-zinc-500 truncate" title={trade.buy.reason}>{trade.buy.reason}</span>
+                    </div>
+                  )}
+                  
+                  <div className="mt-1 pt-2 border-t border-white/5 flex justify-between items-center">
+                    <span className="text-[9px] font-bold uppercase text-zinc-500">Saldo Neto:</span>
+                    <span className={`font-mono text-xs font-bold ${trade.net_cash_ars >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {trade.net_cash_ars >= 0 ? '+' : '-'}${Math.abs(trade.net_cash_ars).toLocaleString('es-AR')}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tabla de Activos del Portfolio */}
         {rebalanceData && (
@@ -285,7 +337,7 @@ export const UnifiedPortfolioView: React.FC = () => {
             
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-2">
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                Matriz de Pesos Objetivos y Anclaje
+                Renta variable
               </h3>
 
               {/* Módulo de Calibración de Compras (Horizontal) */}
@@ -299,8 +351,8 @@ export const UnifiedPortfolioView: React.FC = () => {
                   <span className="text-[10px] text-zinc-500 font-bold uppercase">Ancla</span>
                   <select 
                     id="anchorInput"
-                    key={`anchor-${selectedPf}-${rebalanceData?.mcm_info?.bottleneck_ticker}`}
-                    defaultValue={rebalanceData?.mcm_info?.bottleneck_ticker || ''}
+                    key={`anchor-${selectedPf}-${rebalanceData?.mcm_info?.most_expensive_ticker}`}
+                    defaultValue={rebalanceData?.mcm_info?.most_expensive_ticker || ''}
                     className="w-24 bg-zinc-950 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono uppercase focus:ring-1 focus:ring-blue-500 outline-none cursor-pointer"
                   >
                     {rebalanceData?.result?.map((item: any) => (
@@ -317,8 +369,8 @@ export const UnifiedPortfolioView: React.FC = () => {
                     type="number" 
                     min="1"
                     id="qtyInput"
-                    key={`qty-${selectedPf}-${rebalanceData?.mcm_info?.bottleneck_qty}`}
-                    defaultValue={rebalanceData?.mcm_info?.bottleneck_qty || 1}
+                    key={`qty-${selectedPf}-${rebalanceData?.mcm_info?.most_expensive_qty}`}
+                    defaultValue={rebalanceData?.mcm_info?.most_expensive_qty || 1}
                     className="w-16 bg-zinc-950 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
                   />
                 </div>
@@ -347,7 +399,7 @@ export const UnifiedPortfolioView: React.FC = () => {
             {rebalanceData?.fixed_income_summary?.has_fixed_income && (
               <div className="w-full mt-6">
                  <div className="mb-4">
-                   <h3 className="text-xl font-bold text-foreground tracking-tight">Cobertura de Renta Fija & Liquidez</h3>
+                   <h3 className="text-xl font-bold text-foreground tracking-tight">Renta fija</h3>
                  </div>
                  <div className="mb-4">
                     <FixedIncomePortfolioCard 

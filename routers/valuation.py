@@ -20,7 +20,6 @@ class SyncGFRequest(BaseModel):
     ticker: str
     fair_value: float
 
-@router.post("/dashboard", response_class=JSONResponse)
 @router.get("/data_json", response_class=JSONResponse)
 def get_valuation_data_json():
     sectors = get_sectors_and_tickers()

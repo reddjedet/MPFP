@@ -42,8 +42,7 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
       name: 'Gestión de Portafolios',
       tabs: [
         { id: 'dashboard', label: 'Dashboard Consolidado', icon: Wallet },
-        { id: 'tenencias', label: 'Informar Tenencias', icon: ArrowLeftRight },
-        { id: 'rotation', label: 'Rotación Táctica', icon: ArrowLeftRight }
+        { id: 'tenencias', label: 'Informar Tenencias', icon: ArrowLeftRight }
       ]
     },
     renta_variable: {

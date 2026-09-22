@@ -42,7 +42,10 @@ from collections import OrderedDict
 import threading
 import pandas as pd
 
+import concurrent.futures
+
 DISK_CACHE_FILE = Path(__file__).resolve().parent.parent / "data" / ".cache_market.json"
+_disk_writer_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="cache_writer")
 
 def _load_disk_cache() -> dict:
     if DISK_CACHE_FILE.exists():
@@ -54,13 +57,30 @@ def _load_disk_cache() -> dict:
     return {}
 
 def _save_disk_cache(data: dict):
-    try:
-        tmp_file = DISK_CACHE_FILE.with_suffix(".tmp")
-        with open(tmp_file, "w", encoding="utf-8") as f:
-            json.dump(data, f)
-        os.replace(tmp_file, DISK_CACHE_FILE)
-    except Exception:
-        pass
+    def _write_worker(cache_data: dict):
+        try:
+            tmp_file = DISK_CACHE_FILE.with_suffix(f".tmp_{os.getpid()}")
+            with open(tmp_file, "w", encoding="utf-8") as f:
+                json.dump(cache_data, f)
+                f.flush()
+                os.fsync(f.fileno())
+            try:
+                os.chmod(tmp_file, 0o600)
+            except OSError:
+                pass
+            os.replace(tmp_file, DISK_CACHE_FILE)
+        except Exception:
+            pass
+        finally:
+            # Nunca dejar temporales de persistencia en data/ tras un fallo.
+            try:
+                if 'tmp_file' in locals() and tmp_file.exists():
+                    tmp_file.unlink()
+            except OSError:
+                pass
+
+    # Ejecutar en segundo plano para no demorar la respuesta de la API al cliente
+    _disk_writer_executor.submit(_write_worker, data)
 
 def smart_cache(category: str = "realtime", maxsize: int = 256):
     """

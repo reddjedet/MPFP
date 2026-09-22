@@ -85,6 +85,10 @@ class AtomicJsonDatabase:
                     json.dump(data, f, ensure_ascii=False, indent=2)
                     f.flush()
                     os.fsync(f.fileno())
+                try:
+                    os.chmod(temp_file, 0o600)
+                except OSError:
+                    pass
                 temp_file.replace(self.file_path)
                 self._last_mtime = self.file_path.stat().st_mtime if self.file_path.exists() else None
             except Exception as e:

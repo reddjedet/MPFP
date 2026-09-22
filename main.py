@@ -1,4 +1,5 @@
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -51,6 +52,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Máquina de Planes, Finanzas y Portfolios (MPFP)", docs_url=None, redoc_url=None, lifespan=lifespan)
 
+# Compresión Gzip automática para respuestas mayores a 1 KB (reduce transferencia hasta 80%)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",
     "http://localhost:8000",
@@ -77,6 +81,14 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-eval'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none';"
+    )
     response.headers["X-Process-Time"] = f"{(time.time() - start_time) * 1000:.2f}ms"
     
     return response
@@ -132,16 +144,19 @@ def health_check():
 def read_root():
     return _serve_spa_index()
 
-@app.get("/react", include_in_schema=False)
-@app.get("/react/{full_path:path}", include_in_schema=False)
-def serve_react_alias(full_path: str = ""):
-    return _serve_spa_index()
-
 @app.get("/{full_path:path}", include_in_schema=False)
 def catch_all_spa(full_path: str):
     if full_path.startswith("api/") or full_path.startswith("static/") or full_path.startswith("assets/"):
         return Response(status_code=404)
-    target = os.path.join(REACT_DIST_DIR, full_path)
+        
+    target = os.path.abspath(os.path.join(REACT_DIST_DIR, full_path))
+    # Mitigación Path Traversal: asegurar que target resuelto pertenezca estrictamente a REACT_DIST_DIR
+    try:
+        if os.path.commonpath([REACT_DIST_DIR, target]) != REACT_DIST_DIR:
+            return Response(status_code=403)
+    except ValueError:
+        return Response(status_code=403)
+        
     if os.path.isfile(target):
         media_type = "image/svg+xml" if target.endswith(".svg") else None
         return FileResponse(target, media_type=media_type)

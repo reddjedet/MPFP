@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import { BarChart, LineChart } from 'echarts/charts';
@@ -99,6 +99,7 @@ export const EtfRotationView: React.FC = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [universeFilter, setUniverseFilter] = useState<'all' | 'sectors'>('all');
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
 
   const fetchData = async (isManual = false) => {
     if (isManual) setRefreshing(true);
@@ -243,7 +244,7 @@ export const EtfRotationView: React.FC = () => {
         data: spyHistory,
         lineStyle: {
           color: '#fbbf24',
-          width: 4.5,
+          width: selectedTicker ? 3.5 : 4,
           type: 'solid',
           shadowColor: 'rgba(251, 191, 36, 0.75)',
           shadowBlur: 10,
@@ -255,7 +256,8 @@ export const EtfRotationView: React.FC = () => {
           borderWidth: 2
         },
         symbol: 'circle',
-        symbolSize: 8,
+        symbolSize: selectedTicker ? 7 : 8,
+        emphasis: { disabled: true },
         endLabel: {
           show: true,
           formatter: (params: any) => {
@@ -301,76 +303,142 @@ export const EtfRotationView: React.FC = () => {
       }
     ];
 
+    // Helper para determinar opacidad y ancho según selección
+    const getStyle = (ticker: string, defaultWidth: number, defaultOpacity: number, baseColor: string) => {
+      if (!selectedTicker) {
+        return {
+          width: defaultWidth,
+          opacity: defaultOpacity,
+          color: baseColor,
+          zIndex: 20
+        };
+      }
+      if (selectedTicker === ticker) {
+        return {
+          width: 4,
+          opacity: 1,
+          color: baseColor,
+          zIndex: 45
+        };
+      }
+      // Atenuar fuertemente las otras líneas cuando hay un ticker seleccionado
+      return {
+        width: 1,
+        opacity: 0.12,
+        color: '#475569',
+        zIndex: 5
+      };
+    };
+
     // Series de los otros tres Grandes Índices: QQQ, DIA e IWM
     const qqq = data.items.find(it => it.ticker === 'QQQ');
     if (qqq && displayedItems.some(it => it.ticker === 'QQQ')) {
       const history = qqq.history_5d || [0, 0, 0, 0, qqq.perf_w ?? 0];
+      const st = getStyle('QQQ', 2.2, 0.85, ETF_COLORS.QQQ || '#06b6d4');
       series.push({
         id: 'qqq-main',
         name: 'QQQ (Nasdaq 100)',
         type: 'line',
         data: history,
         lineStyle: {
-          color: ETF_COLORS.QQQ || '#06b6d4',
-          width: 2.2,
-          opacity: 0.85
+          color: st.color,
+          width: st.width,
+          opacity: st.opacity
         },
-        itemStyle: { color: ETF_COLORS.QQQ || '#06b6d4' },
-        symbol: 'none',
+        itemStyle: { color: st.color },
+        symbol: selectedTicker === 'QQQ' ? 'circle' : 'none',
+        symbolSize: 6,
         smooth: true,
-        emphasis: {
-          focus: 'series',
-          lineStyle: { width: 3.5, opacity: 1 }
-        },
-        z: 30
+        emphasis: { disabled: true },
+        endLabel: selectedTicker === 'QQQ' ? {
+          show: true,
+          formatter: () => ` QQQ (${(qqq.perf_w ?? 0) > 0 ? '+' : ''}${(qqq.perf_w ?? 0).toFixed(1)}%)`,
+          color: st.color,
+          fontWeight: 'bold',
+          fontSize: 11,
+          fontFamily: 'monospace',
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          borderColor: st.color,
+          borderWidth: 1,
+          borderRadius: 4,
+          padding: [2, 5],
+          distance: 6
+        } : { show: false },
+        z: st.zIndex
       });
     }
 
     const dia = data.items.find(it => it.ticker === 'DIA');
     if (dia && displayedItems.some(it => it.ticker === 'DIA')) {
       const history = dia.history_5d || [0, 0, 0, 0, dia.perf_w ?? 0];
+      const st = getStyle('DIA', 2.2, 0.85, ETF_COLORS.DIA || '#818cf8');
       series.push({
         id: 'dia-main',
         name: 'DIA (Dow Jones)',
         type: 'line',
         data: history,
         lineStyle: {
-          color: ETF_COLORS.DIA || '#818cf8',
-          width: 2.2,
-          opacity: 0.85
+          color: st.color,
+          width: st.width,
+          opacity: st.opacity
         },
-        itemStyle: { color: ETF_COLORS.DIA || '#818cf8' },
-        symbol: 'none',
+        itemStyle: { color: st.color },
+        symbol: selectedTicker === 'DIA' ? 'circle' : 'none',
+        symbolSize: 6,
         smooth: true,
-        emphasis: {
-          focus: 'series',
-          lineStyle: { width: 3.5, opacity: 1 }
-        },
-        z: 30
+        emphasis: { disabled: true },
+        endLabel: selectedTicker === 'DIA' ? {
+          show: true,
+          formatter: () => ` DIA (${(dia.perf_w ?? 0) > 0 ? '+' : ''}${(dia.perf_w ?? 0).toFixed(1)}%)`,
+          color: st.color,
+          fontWeight: 'bold',
+          fontSize: 11,
+          fontFamily: 'monospace',
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          borderColor: st.color,
+          borderWidth: 1,
+          borderRadius: 4,
+          padding: [2, 5],
+          distance: 6
+        } : { show: false },
+        z: st.zIndex
       });
     }
 
     const iwm = data.items.find(it => it.ticker === 'IWM');
     if (iwm && displayedItems.some(it => it.ticker === 'IWM')) {
       const history = iwm.history_5d || [0, 0, 0, 0, iwm.perf_w ?? 0];
+      const st = getStyle('IWM', 2.2, 0.85, ETF_COLORS.IWM || '#c084fc');
       series.push({
         id: 'iwm-main',
         name: 'IWM (Russell 2000)',
         type: 'line',
         data: history,
         lineStyle: {
-          color: ETF_COLORS.IWM || '#c084fc',
-          width: 2.2,
-          opacity: 0.85
+          color: st.color,
+          width: st.width,
+          opacity: st.opacity
         },
-        itemStyle: { color: ETF_COLORS.IWM || '#c084fc' },
-        symbol: 'none',
+        itemStyle: { color: st.color },
+        symbol: selectedTicker === 'IWM' ? 'circle' : 'none',
+        symbolSize: 6,
         smooth: true,
-        emphasis: {
-          focus: 'series',
-          lineStyle: { width: 3.5, opacity: 1 }
-        },
-        z: 30
+        emphasis: { disabled: true },
+        endLabel: selectedTicker === 'IWM' ? {
+          show: true,
+          formatter: () => ` IWM (${(iwm.perf_w ?? 0) > 0 ? '+' : ''}${(iwm.perf_w ?? 0).toFixed(1)}%)`,
+          color: st.color,
+          fontWeight: 'bold',
+          fontSize: 11,
+          fontFamily: 'monospace',
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          borderColor: st.color,
+          borderWidth: 1,
+          borderRadius: 4,
+          padding: [2, 5],
+          distance: 6
+        } : { show: false },
+        z: st.zIndex
       });
     }
 
@@ -378,141 +446,52 @@ export const EtfRotationView: React.FC = () => {
     const majorSet = new Set(['SPY', 'QQQ', 'DIA', 'IWM', 'TLT', 'ARGT']);
     displayedItems.filter(it => !majorSet.has(it.ticker)).forEach(it => {
       const history = it.history_5d || [0, 0, 0, 0, it.perf_w ?? 0];
-      const color = ETF_COLORS[it.ticker] || '#94a3b8';
+      const baseColor = ETF_COLORS[it.ticker] || '#94a3b8';
+      const st = getStyle(it.ticker, 1.4, 0.45, baseColor);
+      const isSelected = selectedTicker === it.ticker;
+
       series.push({
         name: `${it.ticker} (${it.name})`,
         type: 'line',
         data: history,
         lineStyle: {
-          color,
-          width: 1.4,
-          opacity: 0.45
+          color: st.color,
+          width: st.width,
+          opacity: st.opacity
         },
-        itemStyle: { color },
-        symbol: 'none',
+        itemStyle: { color: st.color },
+        symbol: isSelected ? 'circle' : 'none',
+        symbolSize: 6,
         smooth: true,
-        emphasis: {
-          focus: 'series',
-          lineStyle: {
-            width: 3,
-            opacity: 1
-          }
-        },
-        z: 10
+        emphasis: { disabled: true },
+        endLabel: isSelected ? {
+          show: true,
+          formatter: () => ` ${it.ticker} (${(it.perf_w ?? 0) > 0 ? '+' : ''}${(it.perf_w ?? 0).toFixed(1)}%)`,
+          color: st.color,
+          fontWeight: 'bold',
+          fontSize: 11,
+          fontFamily: 'monospace',
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          borderColor: st.color,
+          borderWidth: 1,
+          borderRadius: 4,
+          padding: [2, 5],
+          distance: 6
+        } : { show: false },
+        z: st.zIndex
       });
     });
 
     return {
       backgroundColor: 'transparent',
       grid: {
-        top: 35,
-        right: 85, // Espacio para el badge "★ SPY (x.x%)" sin recortes
-        bottom: 30,
+        top: 25,
+        right: 95, // Espacio para etiquetas finales
+        bottom: 25,
         left: 45
       },
-      legend: {
-        type: 'scroll',
-        top: 0,
-        textStyle: { color: chartTheme.textMuted, fontSize: 10, fontFamily: 'monospace' },
-        formatter: (name: string) => {
-          if (name.includes('SPY')) return `⭐ ${name}`;
-          if (name.startsWith('QQQ')) return `🔷 ${name}`;
-          if (name.startsWith('DIA')) return `🔶 ${name}`;
-          if (name.startsWith('IWM')) return `🟣 ${name}`;
-          return name;
-        },
-        pageTextStyle: { color: '#ffffff' },
-        pageIconColor: '#3b82f6',
-        pageIconInactiveColor: '#4b5563'
-      },
-      tooltip: {
-        trigger: 'axis',
-        backgroundColor: '#12131a',
-        borderColor: 'rgba(255, 255, 255, 0.15)',
-        borderWidth: 1,
-        padding: [8, 12],
-        extraCssText: 'box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7); max-height: 420px; overflow-y: auto; border-radius: 8px;',
-        textStyle: { color: '#ffffff', fontSize: 11, fontFamily: 'monospace' },
-        formatter: (params: any) => {
-          if (!Array.isArray(params) || params.length === 0) return '';
-          const dateLabel = params[0].axisValueLabel || params[0].name || '';
-
-          // Filtrar series silenciosas como el halo
-          const items = params.filter((p: any) => p.seriesName && p.seriesName.trim() !== '' && p.value !== undefined && p.seriesId !== 'spy-halo');
-
-          const isMajorIndex = (name: string) => {
-            return name.includes('SPY') || name.startsWith('QQQ') || name.startsWith('DIA') || name.startsWith('IWM');
-          };
-
-          const majorItems = items.filter((p: any) => isMajorIndex(p.seriesName));
-          majorItems.sort((a: any, b: any) => {
-            const getPriority = (name: string) => {
-              if (name.includes('SPY')) return 1;
-              if (name.startsWith('QQQ')) return 2;
-              if (name.startsWith('DIA')) return 3;
-              if (name.startsWith('IWM')) return 4;
-              return 99;
-            };
-            return getPriority(a.seriesName) - getPriority(b.seriesName);
-          });
-
-          const sectorItems = items.filter((p: any) => !isMajorIndex(p.seriesName));
-          sectorItems.sort((a: any, b: any) => (Number(b.value) || 0) - (Number(a.value) || 0));
-
-          const renderRow = (p: any, isBenchmark = false) => {
-            const val = Number(p.value);
-            const isPos = val > 0;
-            const isNeg = val < 0;
-            const valColor = isBenchmark ? '#fbbf24' : isPos ? '#34d399' : isNeg ? '#f87171' : '#94a3b8';
-            const formattedVal = `${isPos ? '+' : ''}${val.toFixed(2)}%`;
-            const dotColor = isBenchmark ? '#fbbf24' : (p.color || '#94a3b8');
-
-            return `
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 2px 0; font-size: 11px;">
-                <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px;">
-                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${dotColor}; flex-shrink: 0; ${isBenchmark ? 'box-shadow: 0 0 6px #fbbf24;' : ''}"></span>
-                  <span style="${isBenchmark ? 'font-weight: bold; color: #fbbf24;' : 'color: #e2e8f0;'}">${p.seriesName}</span>
-                </div>
-                <strong style="color: ${valColor}; font-family: monospace; font-size: 11px;">${formattedVal}</strong>
-              </div>
-            `;
-          };
-
-          let html = `
-            <div style="font-family: monospace; min-width: 220px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.12); padding-bottom: 4px; margin-bottom: 6px;">
-                <span style="font-weight: bold; color: #a1a1aa; font-size: 10px; text-transform: uppercase;">📅 Rueda: ${dateLabel}</span>
-                <span style="font-size: 9px; color: #71717a;">Trayectoria WTD</span>
-              </div>
-          `;
-
-          if (majorItems.length > 0) {
-            html += `
-              <div style="margin-bottom: 6px;">
-                <div style="font-size: 9px; font-weight: 800; color: #fbbf24; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px;">
-                  🏛️ Índices Principales
-                </div>
-                ${majorItems.map((p: any) => renderRow(p, p.seriesName.includes('SPY'))).join('')}
-              </div>
-            `;
-          }
-
-          if (sectorItems.length > 0) {
-            html += `
-              <div style="border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 5px; margin-top: 5px;">
-                <div style="font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; display: flex; justify-content: space-between;">
-                  <span>📊 Sectores / Activos</span>
-                  <span style="font-size: 8px; color: #64748b;">(ord. rendimiento)</span>
-                </div>
-                ${sectorItems.map((p: any) => renderRow(p, false)).join('')}
-              </div>
-            `;
-          }
-
-          html += `</div>`;
-          return html;
-        }
-      },
+      legend: { show: false }, // Manejaremos la selección de tickers directamente en la región superior interactiva
+      tooltip: { show: false }, // Hover eliminado por completo según requerimiento de UX limpia
       xAxis: {
         type: 'category',
         data: dates,
@@ -531,7 +510,7 @@ export const EtfRotationView: React.FC = () => {
       },
       series
     };
-  }, [data, displayedItems, chartTheme]);
+  }, [data, displayedItems, selectedTicker, chartTheme]);
 
   // 2. Gráfico de Barras Divergentes de Diferencial vs SPY (1W)
   const barChartOption = useMemo(() => {
@@ -794,9 +773,56 @@ export const EtfRotationView: React.FC = () => {
                 Evolución Semanal (Week to Date) vs SPY
               </h2>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Trayectoria de 5 ruedas con <strong className="text-amber-400">SPY</strong> como benchmark rector
+                {selectedTicker 
+                  ? <span>Mostrando foco: <strong className="text-foreground">{selectedTicker}</strong> vs <strong className="text-amber-400">SPY</strong></span>
+                  : <span>Haz clic en un ticker para aislar su evolución contra <strong className="text-amber-400">SPY</strong></span>
+                }
               </p>
             </div>
+            {selectedTicker && (
+              <button
+                onClick={() => setSelectedTicker(null)}
+                className="text-[10px] font-mono px-2 py-1 rounded bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition-colors flex items-center gap-1"
+              >
+                <span>✕</span> Ver todos
+              </button>
+            )}
+          </div>
+
+          {/* Barra interactiva superior de tickers */}
+          <div className="flex items-center gap-1.5 flex-wrap pb-2.5 mb-1 overflow-x-auto text-[11px] font-mono">
+            {/* Chip SPY Fijo */}
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+              ★ SPY (Benchmark)
+            </span>
+
+            {/* Chips de Tickers Clicables */}
+            {displayedItems
+              .filter(it => it.ticker !== 'TLT' && it.ticker !== 'ARGT')
+              .map(it => {
+                const isSelected = selectedTicker === it.ticker;
+                const baseColor = ETF_COLORS[it.ticker] || '#94a3b8';
+                return (
+                  <button
+                    key={it.ticker}
+                    onClick={() => setSelectedTicker(isSelected ? null : it.ticker)}
+                    style={{
+                      borderColor: isSelected ? baseColor : 'rgba(255, 255, 255, 0.1)',
+                      backgroundColor: isSelected ? `${baseColor}22` : 'transparent',
+                      color: isSelected ? '#ffffff' : (selectedTicker ? '#64748b' : '#cbd5e1')
+                    }}
+                    className={`px-2 py-0.5 rounded text-[10px] border transition-all duration-150 flex items-center gap-1 hover:border-white/30 ${
+                      isSelected ? 'font-bold shadow-sm' : 'font-medium'
+                    }`}
+                  >
+                    <span 
+                      className="w-1.5 h-1.5 rounded-full" 
+                      style={{ backgroundColor: baseColor }}
+                    />
+                    {it.ticker}
+                  </button>
+                );
+              })}
           </div>
 
           <div className="w-full h-[360px]">

@@ -5,8 +5,6 @@ import pandas as pd
 from fastapi.testclient import TestClient
 from main import app
 from services.fixed_income_service import (
-    fetch_lecaps,
-    fetch_yield_curve,
     calc_spread,
     fit_yield_curve,
     LECAP_BONCAP_SPECS
@@ -92,6 +90,8 @@ class TestFixedIncomeService(unittest.TestCase):
         self.assertGreater(vf, 150.0)
         self.assertGreater(tea, 20.0)
         self.assertLess(tea, 60.0)
+        self.assertGreater(tna, 15.0)
+        self.assertLess(tna, 55.0)
         self.assertGreater(tem_mkt, 1.5)
         self.assertLess(tem_mkt, 4.0)
         self.assertGreater(md, 0.3)

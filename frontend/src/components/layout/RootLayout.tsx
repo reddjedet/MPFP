@@ -8,18 +8,19 @@ import { TickerTape } from '../ui/TickerTape';
 
 import { UnifiedPortfolioView } from '../portfolio/UnifiedPortfolioView';
 import { HoldingsManagerView } from '../portfolio/HoldingsManagerView';
-import { CedearsView } from '../market/CedearsView';
-import { EtfRotationView } from '../market/EtfRotationView';
-import { EarningsView as EarningsCalendarView } from '../market/EarningsCalendarView';
-import { FixedIncomeView } from '../market/FixedIncomeView';
-import { MarketIndicesView } from '../market/MarketIndicesView';
-import { MarkowitzLab } from '../markowitz/MarkowitzLab';
-import { ValuationView } from '../markowitz/ValuationView';
-import { PerformanceView } from '../markowitz/PerformanceView';
-import { RotationView } from '../rotation/RotationView';
-import { BuyerModeView } from '../action/BuyerModeView';
-import { SellerModeView } from '../action/SellerModeView';
 import { AnimatePresence } from 'framer-motion';
+
+// Code-split heavy views to prevent loading 1.15MB ECharts and specialized logic upfront
+const CedearsView = React.lazy(() => import('../market/CedearsView').then(m => ({ default: m.CedearsView })));
+const EtfRotationView = React.lazy(() => import('../market/EtfRotationView').then(m => ({ default: m.EtfRotationView })));
+const EarningsCalendarView = React.lazy(() => import('../market/EarningsCalendarView').then(m => ({ default: m.EarningsView })));
+const FixedIncomeView = React.lazy(() => import('../market/FixedIncomeView').then(m => ({ default: m.FixedIncomeView })));
+const MarketIndicesView = React.lazy(() => import('../market/MarketIndicesView').then(m => ({ default: m.MarketIndicesView })));
+const MarkowitzLab = React.lazy(() => import('../markowitz/MarkowitzLab').then(m => ({ default: m.MarkowitzLab })));
+const ValuationView = React.lazy(() => import('../markowitz/ValuationView').then(m => ({ default: m.ValuationView })));
+const PerformanceView = React.lazy(() => import('../markowitz/PerformanceView').then(m => ({ default: m.PerformanceView })));
+const BuyerModeView = React.lazy(() => import('../action/BuyerModeView').then(m => ({ default: m.BuyerModeView })));
+const SellerModeView = React.lazy(() => import('../action/SellerModeView').then(m => ({ default: m.SellerModeView })));
 
 interface Props {
   children: ReactNode;
@@ -69,8 +70,6 @@ export function RootLayout() {
         return <UnifiedPortfolioView />;
       case 'tenencias':
         return <HoldingsManagerView />;
-      case 'rotation':
-        return <RotationView />;
       case 'screener':
       case 'cedears':
         return <CedearsView />;
@@ -113,21 +112,28 @@ export function RootLayout() {
 
       <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
         <ErrorBoundary key={currentSubTab}>
-          {renderContent()}
+          <React.Suspense fallback={
+            <div className="flex items-center justify-center p-12 text-center text-muted-foreground animate-pulse font-mono text-xs">
+              <span className="inline-block w-2 h-2 rounded-full bg-accent mr-2 animate-ping" />
+              Cargando módulo...
+            </div>
+          }>
+            {renderContent()}
+          </React.Suspense>
         </ErrorBoundary>
       </main>
 
       <TickerTape />
 
-
-
       <CommandPalette />
       <Ticker360Drawer />
 
-      <AnimatePresence>
-        {isBuyerModeOpen && <BuyerModeView />}
-        {isSellerModeOpen && <SellerModeView />}
-      </AnimatePresence>
+      <React.Suspense fallback={null}>
+        <AnimatePresence>
+          {isBuyerModeOpen && <BuyerModeView />}
+          {isSellerModeOpen && <SellerModeView />}
+        </AnimatePresence>
+      </React.Suspense>
     </div>
   );
 }

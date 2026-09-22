@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from main import app
-import json
 import io
 from services.earnings_service import load_earnings_calendar, _db as _earnings_db
 from services.fair_value_service import load_fair_values, _db as _gf_db
@@ -157,13 +156,13 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertIn("Máquina de Planes, Finanzas y Portfolios", resp.text)
         self.assertIn("root", resp.text)
 
-    def test_cedear_card_invalid_ticker(self):
-        resp = self.client.post("/api/cedears/card", data={"ticker": "INVALID<XSS>"})
-        self.assertEqual(resp.status_code, 200)
-        self.assertIn("inválido", resp.text)
+    def test_cedear_quote_invalid_ticker(self):
+        resp = self.client.get("/api/cedears/quote_json/INVALID<XSS>")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("error", resp.text)
 
     def test_portfolio_create_protected_override(self):
-        resp = self.client.post("/api/portfolios/create", data={
+        resp = self.client.post("/api/portfolios/create_json", json={
             "name": "bmb",
             "mode": "weights",
             "weights_str": "AAPL: 100"
@@ -172,14 +171,14 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertIn("No puedes sobreescribir el portfolio predeterminado", resp.text)
 
     def test_portfolio_delete_protected(self):
-        resp = self.client.delete("/api/portfolios/delete/bmb")
+        resp = self.client.delete("/api/portfolios/delete_json/bmb")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("No se puede eliminar el portfolio predeterminado", resp.text)
 
     def test_portfolio_import_invalid_json(self):
         file_content = b"Not a JSON content"
         files = {"file": ("test.json", io.BytesIO(file_content), "application/json")}
-        resp = self.client.post("/api/portfolios/import", files=files)
+        resp = self.client.post("/api/portfolios/import_json", files=files)
         self.assertEqual(resp.status_code, 200)
         self.assertIn("no contiene un formato JSON válido", resp.text)
 
@@ -189,8 +188,8 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertIn("NVDA", resp.text)
         self.assertIn("earnings", resp.text)
 
-    def test_valuation_dashboard_endpoint(self):
-        resp = self.client.post("/api/valuation/dashboard")
+    def test_valuation_data_endpoint(self):
+        resp = self.client.get("/api/valuation/data_json")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("sectors", resp.text)
 

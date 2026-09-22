@@ -1,6 +1,5 @@
 import unittest
 import os
-from pathlib import Path
 from services.cache_service import get_market_ttl, smart_cache, DISK_CACHE_FILE
 
 class TestCacheService(unittest.TestCase):

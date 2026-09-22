@@ -4,7 +4,6 @@ Auditoría de Seguridad y Privacidad Pre-GitHub / Pre-Commit
 Verifica ausencia de secrets, tokens, rutas absolutas, cumplimiento de .gitignore y sanitización de datos.
 """
 
-import os
 import sys
 import re
 import subprocess
@@ -155,12 +154,16 @@ def main():
     if not secret_found:
         print("  ✓ Cero tokens o secretos detectados en archivos auditados.")
 
-    # 4. Escaneo de rutas absolutas locales
+    # 4. Escaneo de rutas absolutas locales en código de producción
     print("\n[4/6] Escaneando rutas absolutas de entorno local...")
     path_found = False
-    code_extensions = (".py", ".ts", ".tsx", ".js", ".json", ".sh", ".md", ".html", ".yml", ".yaml")
+    # Verificamos estrictamente código ejecutable y configuración operativa
+    code_extensions = (".py", ".ts", ".tsx", ".js", ".json", ".sh", ".yml", ".yaml")
     
     for tf in files_to_audit:
+        # Excluir documentación, bitácoras y archivos de reglas/harness de penalizaciones de ruta documental
+        if tf.endswith(".md") or "nuevo_harness" in tf or "walkthrough" in tf or "audit_security_privacy" in tf:
+            continue
         if not tf.endswith(code_extensions):
             continue
         filepath = ROOT_DIR / tf
@@ -171,10 +174,9 @@ def main():
 
         for pattern, desc in PATH_PATTERNS:
             if re.search(pattern, content):
-                if "audit_security_privacy" in tf or "walkthrough.md" in tf:
-                    continue
-                print(f"  ⚠️ RUTA LOCAL en {tf}: {desc}")
+                print(f"  ❌ RUTA ABSOLUTA EN CÓDIGO en {tf}: {desc}")
                 path_found = True
+                has_errors = True
 
     if not path_found:
         print("  ✓ Cero rutas absolutas locales encontradas en el código fuente.")
@@ -207,7 +209,7 @@ def main():
 
     print("\n" + "=" * 65)
     if not has_errors:
-        print(" 🏆 RESULTADO: EL CÓDIGO ESTÁ 100% SEGURO Y LIMPIO")
+        print(" 🏆 RESULTADO: AUDITORÍA CONCLUIDA (0 alertas críticas detectadas)")
         print("=" * 65)
         return 0
     else:

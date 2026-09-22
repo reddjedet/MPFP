@@ -352,7 +352,7 @@ export const MarkowitzLab: React.FC = () => {
       </div>
 
       <div className="bg-card border border-border p-6 rounded-2xl relative z-20 flex flex-col gap-5">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
           <div className="flex flex-col gap-2">
             <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Cartera Base</label>
             <Dropdown
@@ -392,6 +392,26 @@ export const MarkowitzLab: React.FC = () => {
               accentColor="emerald"
               buttonClassName="w-full h-11"
             />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Tasa Libre Riesgo (Rf %)</label>
+            <div className="relative flex items-center">
+              <input
+                type="number"
+                step="0.5"
+                min="0"
+                max="25"
+                value={rfRate}
+                onChange={e => {
+                  const val = parseFloat(e.target.value);
+                  setRfRate(isNaN(val) ? 0 : val);
+                }}
+                className="w-full h-11 px-3.5 bg-background border border-border rounded-xl text-xs font-mono font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                placeholder="4.0"
+              />
+              <span className="absolute right-3 text-xs font-bold text-muted-foreground">%</span>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">

@@ -72,8 +72,6 @@ def _resolve_tickers_and_weights(
     custom_tickers_str = ", ".join(tickers_list)
     return selected_pf_clean, tickers_list, current_weights, custom_tickers_str
 
-@router.post("/dashboard", response_class=JSONResponse)
-@router.get("/dashboard", response_class=JSONResponse)
 @router.get("/markowitz_json", response_class=JSONResponse)
 @router.post("/markowitz_json", response_class=JSONResponse)
 async def markowitz_json_api(

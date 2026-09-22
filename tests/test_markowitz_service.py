@@ -113,7 +113,7 @@ class TestMarkowitzService(unittest.TestCase):
         self.assertAlmostEqual(total_min_w, 100.0, places=1)
 
     def test_markowitz_dashboard_endpoint(self):
-        resp = self.client.post("/api/markowitz/dashboard", data={
+        resp = self.client.post("/api/markowitz/markowitz_json", json={
             "selected_pf": "bmb",
             "custom_tickers": "",
             "period": "2y",
@@ -128,7 +128,7 @@ class TestMarkowitzService(unittest.TestCase):
         self.assertIn("global_stats", data)
 
     def test_markowitz_dashboard_custom_with_explicit_weights(self):
-        resp = self.client.post("/api/markowitz/dashboard", data={
+        resp = self.client.post("/api/markowitz/markowitz_json", json={
             "selected_pf": "custom",
             "custom_tickers": "AAPL:60, MSFT:40",
             "period": "2y",
