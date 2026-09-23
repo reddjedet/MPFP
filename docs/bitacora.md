@@ -80,8 +80,17 @@ This document tracks project evolution, session metrics, and seamless context ha
   - Verificación en `scripts/audit_project.py` integrando la tabla `market_cache`.
   - Suite de 17 pruebas exhaustivas en `tests/test_cache_service.py` (concurrencia multihilo, TTLs, roundtrip DataFrame, fallback stale, etc.).
 - Verification: 218/218 tests pasando al 100% (`./scripts/test.sh` en 4.16s), TypeScript limpio (`tsc -b && vite build`), auditorías de seguridad y privacidad en verde.
-- Immediate Next Step:
   - [ ] Implementar **Fase 7: Frontend, Calidad y Experiencia de Usuario (`QA-01`, `FE-01` a `FE-03`, `DOC-01`)**.
+
+### Session 2026-09-23: Diagnóstico y Fix de CI en GitHub Actions + Reorganización de Docs
+- Primary Goal: Diagnosticar y solucionar el fallo de la suite backend en GitHub Actions (`3a50f42`), configurar directorio `ignorados/` y actualizar documentación.
+- Changes Delivered:
+  - Creado directorio `ignorados/` (ignorado en `.gitignore` y auditado en `scripts/audit_security_privacy.py`), trasladando notas de harness y prompts de valuación (`docs/prompts/` -> `ignorados/prompts/`).
+  - Corregido `services/sqlite_persistence.py` (`load()` en `valuation_profiles` retornando default limpio).
+  - Corregido `services/atomic_persistence.py` (`_bootstrap_if_needed()` con detección amplia de tablas vacías y target DB con `.db`).
+  - Actualizados `README.md`, `SECURITY.md`, `instructivo.md` y `docs/aprendizaje_de_errores.md` (INC-08).
+- Verification: 218/218 tests pasando al 100% en clon limpio y `./scripts/test.sh`.
+
 
 ---
 

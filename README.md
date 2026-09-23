@@ -13,7 +13,7 @@ Plataforma financiera integral para la gestión de carteras de inversión, arbit
 * **Backend:** Python 3.12+ (compatible hasta 3.14; versión canónica de producción 3.12.8 en Render / `.python-version`) + [FastAPI](https://fastapi.tiangolo.com/) + [Pydantic v2](https://docs.pydantic.dev/) + [NumPy](https://numpy.org/) / [Pandas](https://pandas.pydata.org/) / [SciPy](https://scipy.org/).
 * **Frontend:** [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) + [Vite](https://vitejs.dev/) + [Tailwind CSS](https://tailwindcss.com/) + [Apache ECharts](https://echarts.apache.org/) (`echarts-for-react/lib/core`) + [TanStack Table v8](https://tanstack.com/table) + [Lucide Icons](https://lucide.dev/).
 * **Arquitectura:** Single Page Application (SPA) desacoplada servida desde la raíz de FastAPI (`http://127.0.0.1:8000/`) consumiendo exclusivamente contratos REST JSON tipados.
-* **Persistencia Atómica POSIX:** Motor `AtomicJsonDatabase` (`services/atomic_persistence.py`) con cerrojos reentrantes `threading.RLock()`, escritura atómica en archivo temporal (`.tmp`), `flush`, `fsync` y `os.replace`.
+* **Persistencia Robusta SQLite WAL & Caché Multinivel:** Motor relacional SQLite (`services/sqlite_persistence.py`) con modo WAL (`PRAGMA journal_mode=WAL`), transacciones ACID inmediatas y durabilidad. Integrado con `MarketCacheStore` (`services/cache_service.py`) con arquitectura L1 en memoria (LRU) + L2 SQLite WAL persistente con prevención de estampidas (*single-flight coalescing*), preservando la interfaz retrocompatible `AtomicJsonDatabase` (`services/atomic_persistence.py`).
 
 > [!IMPORTANT]
 > **Arquitectura Pura y Cero Código Muerto:** Este proyecto opera exclusivamente con la SPA en React 19 y endpoints REST JSON en FastAPI. Toda tecnología de renderizado de servidor previa (Streamlit, HTMX, plantillas Jinja2 y gráficos generados con Plotly SSR) ha sido formalmente purgada y está prohibida en el desarrollo futuro.
@@ -177,18 +177,17 @@ cp .env.example .env
 El pipeline unificado de verificación ejecuta secuencialmente 4 fases:
 
 1. **[1/4] Frontend (Tipado Estático):** Verificación de tipos en TypeScript (`npx tsc --noEmit`) para garantizar cero errores de interfaz.
-2. **[2/4] Backend (Suite Automatizada):** Ejecución de más de 130 tests unitarios y de integración en `tests/` con Snapshot Isolation estricto (incluye guardrails agénticos, modelos de valuación, Markowitz, curvas soberanas y persistencia).
+2. **[2/4] Backend (Suite Automatizada):** Ejecución de 218 tests unitarios y de integración en `tests/` con Snapshot Isolation estricto (incluye persistencia SQLite, caché de mercado, guardrails agénticos, modelos de valuación, Markowitz y curvas soberanas).
 3. **[3/4] Ciberseguridad y Privacidad:** Auditoría pre-commit (`scripts/audit_security_privacy.py`) para verificar ausencia total de secretos, tokens, archivos `.env` expuestos y cumplimiento de `.gitignore`.
-4. **[4/4] Diagnóstico y Esquemas JSON:** Validación de integridad estructural de las bases de datos locales y pruebas de inyección/XSS (`scripts/audit_project.py`).
+4. **[4/4] Diagnóstico y Esquemas:** Validación de integridad estructural de las bases de datos y pruebas de inyección/XSS (`scripts/audit_project.py`).
 
 ---
 
 ## 📚 Documentación Técnica & Bitácora
 
 * **[Instructivo General & Fórmulas](instructivo.md):** Mapa completo de modelos matemáticos, PnL, Rebalanceo MCM y fórmulas financieras.
-* **[Prompt Maestro de Valuación Fundamental](docs/prompts/instructivo_valuacion.md):** Metodología por vía negativa para valuación con LLMs.
 * **[Aprendizaje de Errores & Anti-Patrones](docs/aprendizaje_de_errores.md):** Post-mortem técnico de incidentes, causas raíz y 9 Reglas de Oro inquebrantables.
-* **[Bitácora de Evolución](docs/bitacora.md):** Registro histórico de fases de desarrollo y purga definitiva del stack anterior.
+* **[Bitácora de Evolución](docs/bitacora.md):** Registro histórico de fases de desarrollo y mejoras continuas de arquitectura.
 * **[Módulos de Data Science & Finanzas Cuantitativas](docs/data_science/README.md):** Guía modular de 5 capítulos (Markowitz, Curvas de Rendimiento, Wilder RSI, Modelos Factoriales y Asignación Discreta).
 
 ---

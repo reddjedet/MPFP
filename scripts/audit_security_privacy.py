@@ -43,7 +43,8 @@ CRITICAL_IGNORES = [
     ".atl/",
     ".gentle/",
     ".engram/",
-    "WORKFLOW.md"
+    "WORKFLOW.md",
+    "ignorados/"
 ]
 
 # Palabras clave o identificadores personales a verificar

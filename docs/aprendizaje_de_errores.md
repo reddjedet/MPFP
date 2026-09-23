@@ -15,6 +15,7 @@ Este documento constituye la **caja negra de ingeniería y memoria forense** del
 | **INC-05** | **Cierre Instantáneo de Selectores en Linux/Chromium** (Bug de captura del evento `mouseup`) | Selectores nativos con `appearance-none` y contenedor con `overflow-hidden` capturan el `mouseup` al hacer clic | Componente canónico `Dropdown.tsx` con React state, `useRef`, `Escape`, `z-50` y `stopPropagation` | 🟢 Blindado |
 | **INC-06** | **Oclusión de Menús por Stacking Contexts Hermanos** (Imposibilidad de seleccionar opciones superiores en dropdown) | Hermanos relativos con igual `z-index`: el segundo se apila encima y captura los clics de los hijos absolutos | Elevación jerárquica del stacking context padre (`z-40` vs `z-20`) para liberar el área de interacción | 🟢 Blindado |
 | **INC-07** | **Inconsistencias Cromáticas y Contraste por Modo Claro** (Textos ilegibles y deuda técnica) | Coexistencia de temas claro y oscuro en dashboards cuantitativos de alta densidad genera colisiones | Erradicación total del Modo Claro; estandarización canónica en **Modo Oscuro Exclusivo (*Eigengrau* `#0f1015`)** | 🟢 Blindado |
+| **INC-08** | **Fallo de Bootstrap de SQLite en CI / Entornos Limpios** (Omisión de carga inicial de catálogos y colisión de rutas) | `_store.load()` devolvía un template `{"sectors": [], "profiles": {}}` en lugar de vacío, impidiendo la hidratación de datos iniciales en ausencia de `mpfp.db` | Retorno canónico de `self.default_data` limpio, bootstrap ampliado para detectar colecciones sin valores y aislamiento de SQLite DB con sufijo `.db` | 🟢 Blindado |
 
 ---
 
@@ -67,3 +68,16 @@ Al enfrentar un bug complejo o regresión, duplicar este bloque y completarlo al
 - **Causa Raíz:** La escritura directa mediante `json.dump()` en un archivo existente corrompe la base de datos si el proceso es interrumpido o se apaga abruptamente a mitad de la escritura.
 - **Solución Definitiva:** `AtomicJsonDatabase` con cerrojo reentrante `threading.RLock()`, escritura en `.tmp`, volcado a disco forzado (`os.fsync()`) y sustitución atómica POSIX con `os.replace()`.
 - **Regla de Oro:** Nunca sobreescribir un archivo de base de datos directamente en su ruta de destino; siempre escribir en un archivo temporal con `fsync` y luego realizar un reemplazo atómico con `os.replace`.
+
+### INC-08: Fallo de Bootstrap de SQLite en Entornos Limpios (CI GitHub Actions)
+- **Síntoma y Contexto:** En local todos los tests pasaban al 100%, pero en el runner de GitHub Actions la suite backend fallaba con 9 tests en `test_valuation_service.py` y `test_api_endpoints.py`.
+- **Causa Raíz:**
+  1. En un clon limpio donde `data/mpfp.db` aún no existe, `SQLiteTableStore.load()` para la tabla `valuation_profiles` retornaba el molde `{"sectors": [], "profiles": {}}` en vez de un diccionario vacío o default.
+  2. `_bootstrap_if_needed()` en `atomic_persistence.py` solo verificaba `current_data == {} or current_data == []`, por lo que consideraba la tabla erróneamente inicializada y omitía cargar `data/valuation_profiles.json`.
+  3. Adicionalmente, `atomic_persistence.py` buscaba la subcadena `"test"` o `"tmp"` en cualquier parte de la ruta absoluta del archivo para alternar la base SQLite, lo que provocaba que rutas legítimas que contuvieran la palabra "test" intentaran abrir archivos `.json` directamente con el motor binario de SQLite.
+- **Solución Definitiva:**
+  1. Modificar `SQLiteTableStore.load()` para retornar `copy.deepcopy(self.default_data)` cuando no hay registros en `key_value_store`.
+  2. Extender la detección de vacío en `_bootstrap_if_needed()` para abarcar `{"sectors": [], "profiles": {}}` y diccionarios con valores vacíos, forzando la hidratación desde el JSON de datos o `.example`.
+  3. Aislamiento estricto de la base SQLite usando `.with_suffix(".db")` para evitar toda colisión de formato entre JSON y SQLite.
+- **Regla de Oro:** Todo motor de persistencia relacional con respaldo de archivos de ejemplo/semilla debe garantizar hidratación idempotente desde cero sobre un entorno recién clonado sin bases de datos preexistentes.
+

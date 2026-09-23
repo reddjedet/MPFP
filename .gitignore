@@ -138,9 +138,8 @@ claude.json
 .continue/
 .cody/
 
-# --- Documentación temporal de Harness ---
+# --- Carpeta de Documentación de Harness, Guardrails y Notas LLM (Local Only) ---
+ignorados/
 nuevo_harness.md
 correcciones.md
-mejora-harness.md
-sugerencias-antigravity.md
 

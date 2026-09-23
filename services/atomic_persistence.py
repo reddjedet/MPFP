@@ -33,9 +33,9 @@ class AtomicJsonDatabase:
         self.table_name = self._orig_file_path.stem
         self.default_data = default_data if default_data is not None else ({} if self.table_name != "portfolios_trash" else [])
         
-        # Si se pasa una ruta en un directorio temporal o específica, usar esa base
-        is_temp_or_custom = ("tmp" in str(self._orig_file_path) or "test" in str(self._orig_file_path) or "pytest" in str(self._orig_file_path))
-        target_db = self._orig_file_path if is_temp_or_custom else DEFAULT_DB_PATH
+        # Si se pasa una ruta fuera del directorio estándar de datos (ej. tests con snapshot isolation), usar esa base .db
+        is_custom_dir = self._orig_file_path.parent != DEFAULT_DB_PATH.parent
+        target_db = (self._orig_file_path.with_suffix(".db") if self._orig_file_path.suffix == ".json" else self._orig_file_path) if is_custom_dir else DEFAULT_DB_PATH
         
         self._store = get_sqlite_store(
             name_or_file=self.table_name,
@@ -49,7 +49,14 @@ class AtomicJsonDatabase:
         """Si la tabla SQLite está vacía pero existe un archivo JSON local o .example, inicializar datos."""
         try:
             current_data = self._store.load()
-            if (current_data == {} or current_data == []) and self._orig_file_path.exists():
+            is_empty = (
+                not current_data 
+                or current_data == {} 
+                or current_data == [] 
+                or current_data == {"sectors": [], "profiles": {}}
+                or (isinstance(current_data, dict) and all(not v for v in current_data.values()))
+            )
+            if is_empty and self._orig_file_path.exists() and self._orig_file_path.suffix == ".json":
                 with open(self._orig_file_path, "r", encoding="utf-8") as f:
                     file_data = json.load(f)
                 if file_data:
@@ -59,7 +66,7 @@ class AtomicJsonDatabase:
             pass
 
         # Check for .example file
-        if not self._orig_file_path.exists():
+        if not self._orig_file_path.exists() or is_empty:
             example_file = self._orig_file_path.with_name(f"{self._orig_file_path.name}.example")
             if example_file.exists():
                 try:
@@ -80,9 +87,11 @@ class AtomicJsonDatabase:
         with self.lock:
             self._orig_file_path = Path(new_path).resolve()
             self.table_name = self._orig_file_path.stem
+            is_custom_dir = self._orig_file_path.parent != DEFAULT_DB_PATH.parent
+            target_db = (self._orig_file_path.with_suffix(".db") if self._orig_file_path.suffix == ".json" else self._orig_file_path) if is_custom_dir else DEFAULT_DB_PATH
             self._store = get_sqlite_store(
                 name_or_file=self.table_name,
-                db_path=self._orig_file_path,
+                db_path=target_db,
                 default_data=self.default_data
             )
             self._bootstrap_if_needed()

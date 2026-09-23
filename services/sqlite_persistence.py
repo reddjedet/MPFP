@@ -610,8 +610,8 @@ class SQLiteTableStore:
                 try:
                     return json.loads(row["value_json"])
                 except Exception:
-                    return {"sectors": [], "profiles": {}}
-            return {"sectors": [], "profiles": {}}
+                    return copy.deepcopy(self.default_data)
+            return copy.deepcopy(self.default_data)
 
         else:
             rows = conn.execute("SELECT key, value_json FROM key_value_store WHERE namespace = ?;", (t,)).fetchall()

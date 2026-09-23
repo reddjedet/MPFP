@@ -6,10 +6,10 @@ Este documento recopila la totalidad de las funcionalidades, modelos matemático
 
 ## 1. Arquitectura General del Sistema
 
-* **Backend:** FastAPI (Python 3.14 / venv) con arquitectura modular de routers y servicios en `services/`.
+* **Backend:** FastAPI (Python 3.12, canónico 3.12.8 / venv) con arquitectura modular de routers y servicios en `services/`.
 * **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS + ECharts (`echarts-for-react`) + TanStack Table v8 + Lucide Icons.
-* **Binding Seguro:** Exclusivamente en `127.0.0.1:8000` (Localhost) sin exposición a redes externas.
-* **Persistencia Atómica:** Clase `AtomicJsonDatabase` (`services/atomic_persistence.py`) con escrituras seguras temporales `.tmp` y reemplazo atómico `os.replace()`, respaldado por cerrojos reentrantes `threading.RLock()`.
+* **Binding Seguro:** Exclusivamente en `127.0.0.1:8000` (Localhost) sin exposición a redes externas (en Render PaaS `0.0.0.0` restringido al contenedor interno).
+* **Persistencia Atómica y Caché L1/L2:** Motor SQLite WAL (`services/sqlite_persistence.py`), durabilidad ACID y `MarketCacheStore` (`services/cache_service.py`) con memoria L1 LRU + L2 SQLite WAL persistente con single-flight coalescing, preservando la fachada `AtomicJsonDatabase` (`services/atomic_persistence.py`).
 
 ---
 
