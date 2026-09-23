@@ -127,11 +127,13 @@ def get_cedears_quotes_json(tickers: str = Query(None)):
 def get_single_cedear_json(ticker: str, portfolio: Optional[str] = Query(None)):
     ticker_clean = sanitize_ticker(ticker)
     if not ticker_clean:
-        return JSONResponse({"error": "Ticker inválido"}, status_code=400)
+        from services.exceptions import InvalidTickerError
+        raise InvalidTickerError(f"Ticker inválido: '{ticker}'")
         
     data = get_ticker_data(ticker_clean)
     if not data:
-        return JSONResponse({"error": f"No se encontraron datos para {ticker_clean}"}, status_code=404)
+        from services.exceptions import AssetNotFoundError
+        raise AssetNotFoundError(f"No se encontraron datos para {ticker_clean}")
         
     earnings_cal = load_earnings_calendar()
     fair_values_map = load_fair_values()

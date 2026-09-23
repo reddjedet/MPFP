@@ -1,5 +1,6 @@
 import { EtfSectorThermometer } from "@/components/EtfSectorThermometer";
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { useCachedFetch, getCachedData, setCachedData, cachedFetch } from '@/lib/queryCache';
 import { 
   createColumnHelper, 
   flexRender, 
@@ -81,20 +82,33 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
     }
   });
 
-  const [portfolioTickers, setPortfolioTickers] = useState<string[]>([]);
-  const [quotes, setQuotes] = useState<CedearQuote[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [portfolioTickers, setPortfolioTickers] = useState<string[]>(() => {
+    return getCachedData<string[]>('cedears-portfolio-tickers') || [];
+  });
+  const [quotes, setQuotes] = useState<CedearQuote[]>(() => {
+    const cached = getCachedData<CedearQuote[]>('cedears-quotes-list');
+    return cached || [];
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    const cached = getCachedData<CedearQuote[]>('cedears-quotes-list');
+    return !cached || cached.length === 0;
+  });
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [newTicker, setNewTicker] = useState<string>('');
   const [searchFilter, setSearchFilter] = useState<string>('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'in_portfolio' | 'rsi_alerts' | 'valuation_signals' | 'earnings'>('rsi_alerts');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'in_portfolio' | 'rsi_alerts' | 'valuation_signals' | 'earnings'>('all');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const { openTickerDrawer, setArea, setSubTab } = useAppStore();
 
-  // Catálogo completo de CEDEARs para autocompletado inteligente
-  const [catalog, setCatalog] = useState<CedearCatalogItem[]>([]);
+  // Catálogo completo de CEDEARs — cacheado y compartido con CommandPalette (misma key)
+  const { data: catalogData } = useCachedFetch<{ catalog: CedearCatalogItem[] }>(
+    'cedears-catalog',
+    '/api/cedears/tickers',
+    { ttl: 3600 }
+  );
+  const catalog = catalogData?.catalog ?? [];
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -107,24 +121,6 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
       console.error(e);
     }
   }, [watchlist]);
-
-  // Carga inicial del catálogo de 305 CEDEARs
-  useEffect(() => {
-    const fetchCatalog = async () => {
-      try {
-        const res = await fetch('/api/cedears/tickers');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.catalog) {
-            setCatalog(data.catalog);
-          }
-        }
-      } catch (e) {
-        console.error("Error al cargar catálogo de CEDEARs:", e);
-      }
-    };
-    fetchCatalog();
-  }, []);
 
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
@@ -141,14 +137,19 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
   useEffect(() => {
     const fetchPortfolioTickers = async () => {
       try {
-        const res = await fetch('/api/cedears/portfolio_tickers');
-        if (res.ok) {
-          const data = await res.json();
-          const pfTickers: string[] = data.portfolio_tickers || [];
-          setPortfolioTickers(pfTickers);
-          if (pfTickers.length > 0) {
-            setWatchlist(prev => Array.from(new Set([...pfTickers, ...prev])));
-          }
+        const { data } = await cachedFetch<{ portfolio_tickers?: string[] }>(
+          'cedears-portfolio-tickers',
+          async () => {
+            const res = await fetch('/api/cedears/portfolio_tickers');
+            if (!res.ok) throw new Error('Error al cargar portfolio tickers');
+            return res.json();
+          },
+          120 * 1000
+        );
+        const pfTickers: string[] = data.portfolio_tickers || [];
+        setPortfolioTickers(pfTickers);
+        if (pfTickers.length > 0) {
+          setWatchlist(prev => Array.from(new Set([...pfTickers, ...prev])));
         }
       } catch (err) {
         console.error("Error fetching portfolio tickers:", err);
@@ -167,12 +168,22 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
     setRefreshing(true);
     setErrorMsg(null);
     try {
-      const res = await fetch(`/api/cedears/quotes_json?tickers=${tickersToFetch.join(',')}`);
-      if (!res.ok) throw new Error('Error al cargar cotizaciones');
-      const data = await res.json();
-      setQuotes(data.quotes || []);
+      const cacheKey = `cedears-quotes:${tickersToFetch.slice().sort().join(',')}`;
+      const { data } = await cachedFetch<any>(
+        cacheKey,
+        async () => {
+          const res = await fetch(`/api/cedears/quotes_json?tickers=${tickersToFetch.join(',')}`);
+          if (!res.ok) throw new Error('Error al cargar cotizaciones');
+          return res.json();
+        },
+        90 * 1000
+      );
+      const quotesList = data.quotes || [];
+      setQuotes(quotesList);
+      setCachedData('cedears-quotes-list', quotesList, 90);
       if (data.portfolio_tickers) {
         setPortfolioTickers(data.portfolio_tickers);
+        setCachedData('cedears-portfolio-tickers', data.portfolio_tickers, 120);
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
@@ -184,43 +195,62 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
     }
   };
 
+  // Carga inicial y reactiva de cotizaciones
   useEffect(() => {
-    if (watchlist.length === 0) {
-      setQuotes([]);
-      setLoading(false);
-      return;
-    }
-    const controller = new AbortController();
-    setRefreshing(true);
-    setErrorMsg(null);
+    let isCancelled = false;
 
-    const runFetch = async () => {
+    const run = async () => {
+      if (watchlist.length === 0) {
+        setQuotes([]);
+        setLoading(false);
+        return;
+      }
+
+      setErrorMsg(null);
+      if (quotes.length === 0) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+
       try {
-        const res = await fetch(`/api/cedears/quotes_json?tickers=${watchlist.join(',')}`, {
-          signal: controller.signal
-        });
-        if (!res.ok) throw new Error('Error al cargar cotizaciones');
-        const data = await res.json();
-        setQuotes(data.quotes || []);
-        if (data.portfolio_tickers) {
-          setPortfolioTickers(data.portfolio_tickers);
+        const cacheKey = `cedears-quotes:${watchlist.slice().sort().join(',')}`;
+        const { data } = await cachedFetch<any>(
+          cacheKey,
+          async () => {
+            const res = await fetch(`/api/cedears/quotes_json?tickers=${watchlist.join(',')}`);
+            if (!res.ok) throw new Error('Error al cargar cotizaciones');
+            return res.json();
+          },
+          90 * 1000
+        );
+
+        if (!isCancelled && data) {
+          const quotesList = data.quotes || [];
+          setQuotes(quotesList);
+          setCachedData('cedears-quotes-list', quotesList, 90);
+          if (data.portfolio_tickers) {
+            setPortfolioTickers(data.portfolio_tickers);
+            setCachedData('cedears-portfolio-tickers', data.portfolio_tickers, 120);
+          }
         }
       } catch (err: any) {
-        if (err.name !== 'AbortError') {
+        if (!isCancelled) {
+          console.error("Error cargando cotizaciones:", err);
           setErrorMsg(err.message || 'Error de conexión');
         }
       } finally {
-        if (!controller.signal.aborted) {
+        if (!isCancelled) {
           setLoading(false);
           setRefreshing(false);
         }
       }
     };
 
-    runFetch();
+    run();
 
     return () => {
-      controller.abort();
+      isCancelled = true;
     };
   }, [watchlist]);
 
@@ -681,7 +711,15 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
       ) : filteredQuotes.length === 0 ? (
         <div className="bg-card border border-border p-12 rounded-2xl text-center flex flex-col items-center gap-3">
           <AlertCircle className="w-8 h-8 text-zinc-600" />
-          <p className="text-xs text-muted-foreground">No se encontraron activos para los filtros seleccionados.</p>
+          <p className="text-xs text-muted-foreground">No se encontraron activos para el filtro seleccionado.</p>
+          {activeFilter !== 'all' && (
+            <button
+              onClick={() => setActiveFilter('all')}
+              className="mt-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors"
+            >
+              Ver todos los activos ({quotes.length})
+            </button>
+          )}
         </div>
       ) : viewMode === 'grid' ? (
         /* GRID VIEW */

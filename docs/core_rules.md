@@ -5,17 +5,20 @@ This document establishes universal canonical rules for software engineering, se
 ---
 
 ## 1. Security & Backend Shielding
-1. **Strict Local Binding**: Local services must bind exclusively to `127.0.0.1` (localhost). Never expose to `0.0.0.0` without explicit authentication layers.
+1. **Host Binding Policy (DEP-01)**:
+   - **Local Development**: Services and scripts bind strictly and exclusively to `127.0.0.1` (localhost).
+   - **Cloud/PaaS Deployment (Render)**: Binding to `0.0.0.0` is permitted strictly within the internal container runtime when required by the PaaS ingress router, operating behind the managed TLS reverse proxy and strict CORS origin validation.
 2. **Zero Trust Input Validation**:
    - Every input (parameters, query strings, body payloads, files) must be strictly validated against typed schemas and strict regex patterns.
    - User inputs must never be directly concatenated into OS commands, file system paths, or raw shell calls.
    - Enforce payload size limits (e.g. 1 MB max) to prevent memory exhaustion and Denial of Service.
-3. **OWASP Standard Headers (For Web/HTTP services)**:
+3. **OWASP Standard Headers & CSP (SEC-03)**:
    - `X-Content-Type-Options: nosniff`
    - `X-Frame-Options: DENY`
-   - `X-XSS-Protection: 1; mode=block`
+   - `X-XSS-Protection: 0` (modern OWASP standard; sanitizes legacy XSS filter vulnerabilities in favor of CSP)
    - `Referrer-Policy: strict-origin-when-cross-origin`
    - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+   - Strict `Content-Security-Policy` without `'unsafe-eval'`: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';`
 4. **POSIX Atomic Persistence**:
    - File-based persistence must implement atomic writes with concurrency control (e.g. `threading.RLock`):
      1. Write to ephemeral temporary file (`.tmp`).

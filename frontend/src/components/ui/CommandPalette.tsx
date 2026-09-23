@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useCachedFetch } from '@/lib/queryCache';
 import { 
   Search, 
   X, 
@@ -53,27 +54,16 @@ const COMMON_BONDS = [
 ];
   const [query, setQuery] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
-  const [catalog, setCatalog] = useState<any[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Cargar catálogo de CEDEARs al montar
-  useEffect(() => {
-    const fetchCatalog = async () => {
-      try {
-        const res = await fetch('/api/cedears/tickers');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.catalog) {
-            setCatalog(data.catalog);
-          }
-        }
-      } catch (e) {
-        console.error("Error al cargar catálogo para buscador:", e);
-      }
-    };
-    fetchCatalog();
-  }, []);
+  // Catálogo de CEDEARs — cacheado y compartido con CedearsView (misma key)
+  const { data: catalogData } = useCachedFetch<{ catalog: any[] }>(
+    'cedears-catalog',
+    '/api/cedears/tickers',
+    { ttl: 3600 }
+  );
+  const catalog = catalogData?.catalog ?? [];
 
   // Manejador del atajo de teclado global Ctrl+K / Cmd+K y Escape
   useEffect(() => {

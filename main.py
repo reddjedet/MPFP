@@ -17,80 +17,145 @@ from routers import (
 from services.portfolio_service import load_portfolios
 from services.cedear_service import get_multiple_tickers_data
 from services.tv_service import fetch_performance
+from services.security_service import get_cors_configuration
+from services.observability import (
+    CorrelationIdMiddleware,
+    configure_logging,
+    get_current_request_id
+)
+from services.prewarm_service import prewarm_portfolio_cache
+from services.exceptions import MPFPError
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import os
 import time
 import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-logger = logging.getLogger(__name__)
-
-async def prewarm_portfolio_cache():
-    try:
-        await asyncio.sleep(1.0)
-        portfolios_data = load_portfolios()
-        loop = asyncio.get_running_loop()
-        
-        all_tickers = set()
-        for pf in portfolios_data.values():
-            all_tickers.update(pf.get("assets", {}).keys())
-            
-        if all_tickers:
-            await loop.run_in_executor(None, get_multiple_tickers_data, list(all_tickers))
-            all_perf_tickers = sorted(list(all_tickers | {"SPY", "QQQ", "DIA"}))
-            await loop.run_in_executor(None, fetch_performance, all_perf_tickers)
-            
-    except Exception as e:
-        logger.error(f"Error precalentando caché: {e}", exc_info=True)
+configure_logging()
+logger = logging.getLogger("MPFPBackend")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Iniciando MPFP backend...")
     task = asyncio.create_task(prewarm_portfolio_cache())
-    yield
-    if not task.done():
-        task.cancel()
+    try:
+        yield
+    finally:
+        logger.info("Cerrando MPFP backend...")
+        if not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        logger.info("MPFP backend finalizado limpiamente.")
 
-app = FastAPI(title="Máquina de Planes, Finanzas y Portfolios (MPFP)", docs_url=None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(
+    title="Máquina de Planes, Finanzas y Portfolios (MPFP)",
+    docs_url=None,
+    redoc_url=None,
+    lifespan=lifespan
+)
 
-# Compresión Gzip automática para respuestas mayores a 1 KB (reduce transferencia hasta 80%)
+# 1. Observabilidad y Correlation-ID (API-05)
+app.add_middleware(CorrelationIdMiddleware)
+
+# 2. Compresión Gzip automática para respuestas mayores a 1 KB (reduce transferencia hasta 80%)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-ALLOWED_ORIGINS = [
-    "http://127.0.0.1:8000",
-    "http://localhost:8000",
-    "http://127.0.0.1:5173",
-    "http://localhost:5173",
-]
-
+# 3. Configuración CORS
+cors_origins, cors_regex, cors_credentials = get_cors_configuration()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"^https?://(127\.0\.0\.1|localhost|.*\.onrender\.com)(:[0-9]+)?$",
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_origin_regex=cors_regex,
+    allow_credentials=cors_credentials,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
+# ------------------------------------------------------------------------------
+# Handlers Globales de Excepciones de Dominio (API-01)
+# ------------------------------------------------------------------------------
+
+@app.exception_handler(MPFPError)
+async def handle_mpfp_domain_error(request: Request, exc: MPFPError):
+    req_id = getattr(request.state, "request_id", get_current_request_id())
+    logger.warning(f"Domain error [{exc.code}] [req_id={req_id}]: {exc.message}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=exc.to_dict(request_id=req_id)
+    )
+
+@app.exception_handler(RequestValidationError)
+async def handle_request_validation_error(request: Request, exc: RequestValidationError):
+    req_id = getattr(request.state, "request_id", get_current_request_id())
+    error_messages = []
+    for err in exc.errors():
+        loc = " -> ".join(str(l) for l in err.get("loc", []))
+        msg = err.get("msg", "Dato inválido")
+        error_messages.append(f"{loc}: {msg}")
+    
+    combined_msg = "; ".join(error_messages) if error_messages else "Error de validación en parámetros de entrada."
+    logger.warning(f"Validation error [req_id={req_id}]: {combined_msg}")
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": combined_msg,
+            "code": "VALIDATION_ERROR",
+            "details": exc.errors(),
+            "request_id": req_id
+        }
+    )
+
+@app.exception_handler(StarletteHTTPException)
+async def handle_http_exception(request: Request, exc: StarletteHTTPException):
+    req_id = getattr(request.state, "request_id", get_current_request_id())
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": exc.detail,
+            "code": f"HTTP_{exc.status_code}",
+            "request_id": req_id
+        }
+    )
+
+@app.exception_handler(Exception)
+async def handle_unhandled_exception(request: Request, exc: Exception):
+    req_id = getattr(request.state, "request_id", get_current_request_id())
+    logger.critical(f"Unhandled server exception [req_id={req_id}]: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Error interno del servidor.",
+            "code": "INTERNAL_SERVER_ERROR",
+            "request_id": req_id
+        }
+    )
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
-    start_time = time.time()
     response: Response = await call_next(request)
     
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["X-XSS-Protection"] = "0"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-eval'; "
+        "script-src 'self'; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data: https:; "
+        "font-src 'self' data:; "
         "connect-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
         "frame-ancestors 'none';"
     )
-    response.headers["X-Process-Time"] = f"{(time.time() - start_time) * 1000:.2f}ms"
-    
     return response
 
 # Mount static & React assets
@@ -133,12 +198,53 @@ app.include_router(markowitz.router, prefix="/api/markowitz", tags=["markowitz"]
 app.include_router(rotation.router, prefix="/api/rotation", tags=["rotation"])
 app.include_router(indices.router, prefix="/api/indices", tags=["indices"])
 
+@app.get("/live", response_class=JSONResponse)
+def live_check():
+    """Verifica si el proceso FastAPI está activo y respondiendo (Liveness)."""
+    return {"status": "alive"}
+
+@app.get("/ready", response_class=JSONResponse)
+def ready_check():
+    """Verifica si los subsistemas de persistencia de datos están operativos (Readiness)."""
+    try:
+        portfolios_data = load_portfolios()
+        return {
+            "status": "ready",
+            "checks": {
+                "storage": "ok",
+                "portfolios_loaded": len(portfolios_data)
+            }
+        }
+    except Exception as e:
+        logger.error(f"Readiness check falló: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "error": "Fallo en lectura de persistencia"}
+        )
+
 @app.get("/health", response_class=JSONResponse)
 def health_check():
-    return {
-        "status": "healthy",
-        "app": "Máquina de Planes, Finanzas y Portfolios (MPFP)"
-    }
+    """Endpoint de salud unificado para balanceadores, Render y monitor local."""
+    try:
+        portfolios_data = load_portfolios()
+        storage_ok = True
+        pf_count = len(portfolios_data)
+    except Exception:
+        storage_ok = False
+        pf_count = 0
+
+    is_healthy = storage_ok
+    status_code = 200 if is_healthy else 503
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": "healthy" if is_healthy else "degraded",
+            "app": "Máquina de Planes, Finanzas y Portfolios (MPFP)",
+            "live": True,
+            "ready": storage_ok,
+            "portfolios_count": pf_count
+        }
+    )
 
 @app.get("/", include_in_schema=False)
 def read_root():

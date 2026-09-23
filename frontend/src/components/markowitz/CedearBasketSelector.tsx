@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, X, RotateCcw, Trash2, AlertCircle, CheckCircle2, Search } from 'lucide-react';
+import { useCachedFetch } from '@/lib/queryCache';
 
 interface CedearBasketSelectorProps {
   selectedTickers: string[];
@@ -16,34 +17,19 @@ export const CedearBasketSelector: React.FC<CedearBasketSelectorProps> = ({
   portfolioName = 'Cartera Base',
   onResetToOriginal,
 }) => {
-  const [allCedears, setAllCedears] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Cargar catálogo oficial de CEDEARs
-  useEffect(() => {
-    let isMounted = true;
-    const loadTickers = async () => {
-      try {
-        const res = await fetch('/api/cedears/tickers');
-        if (res.ok) {
-          const data = await res.json();
-          if (isMounted && Array.isArray(data.tickers)) {
-            setAllCedears(data.tickers);
-          }
-        }
-      } catch (e) {
-        console.error('Error cargando catálogo de CEDEARs:', e);
-      }
-    };
-    loadTickers();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  // Cargar catálogo oficial de CEDEARs (compartido y cacheado con CommandPalette y CedearsView)
+  const { data: catalogData } = useCachedFetch<{ tickers?: string[] }>(
+    'cedears-catalog',
+    '/api/cedears/tickers',
+    { ttl: 3600 }
+  );
+  const allCedears = catalogData?.tickers ?? [];
 
   // Manejo de clic fuera del dropdown de autocompletado
   useEffect(() => {

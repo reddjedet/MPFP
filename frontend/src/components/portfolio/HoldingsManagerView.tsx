@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { cachedFetch, getCachedData, invalidateCache } from '@/lib/queryCache';
 import { Plus, Upload, Trash2, AlertTriangle, Save, Anchor, Download, Minus } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
 import { CreatePortfolioModal } from './CreatePortfolioModal';
@@ -18,42 +19,62 @@ const SECTOR_MAP: Record<string, string> = {
 };
 
 export function HoldingsManagerView() {
-  const [portfolios, setPortfolios] = useState<Record<string, any>>({});
+  const [portfolios, setPortfolios] = useState<Record<string, any>>(() => {
+    const cached = getCachedData<any>('portfolios-list');
+    return cached?.portfolios || {};
+  });
   const [quotes, setQuotes] = useState<Record<string, any>>({});
-  const [selectedPf, setSelectedPf] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  const [selectedPf, setSelectedPf] = useState<string>(() => {
+    const cached = getCachedData<any>('portfolios-list');
+    return cached?.selected_pf || Object.keys(cached?.portfolios || {})[0] || '';
+  });
+  const [loading, setLoading] = useState(() => {
+    return !getCachedData('portfolios-list');
+  });
   
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Fetch real data
+  // Fetch real data (deduplicado con cache)
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
       try {
-        const [pfRes, qRes] = await Promise.all([
-          fetch('/api/portfolios/list_json'),
-          fetch('/api/cedears/quotes_json')
+        const [{ data: pfData }, { data: qData }] = await Promise.all([
+          cachedFetch<any>(
+            'portfolios-list',
+            async () => {
+              const res = await fetch('/api/portfolios/list_json');
+              if (!res.ok) throw new Error('Error al cargar lista de portfolios');
+              return res.json();
+            },
+            120 * 1000
+          ),
+          cachedFetch<any>(
+            'cedears-quotes-default',
+            async () => {
+              const res = await fetch('/api/cedears/quotes_json');
+              if (!res.ok) throw new Error('Error al cargar cotizaciones');
+              return res.json();
+            },
+            60 * 1000
+          )
         ]);
         if (!isMounted) return;
-        if (pfRes.ok && qRes.ok) {
-          const pfData = await pfRes.json();
-          const qData = await qRes.json();
-          
-          setPortfolios(pfData.portfolios || {});
-          if (pfData.selected_pf && !selectedPf) {
-            setSelectedPf(pfData.selected_pf);
-          } else if (Object.keys(pfData.portfolios || {}).length > 0 && !selectedPf) {
-            setSelectedPf(Object.keys(pfData.portfolios)[0]);
-          }
-
-          const qMap: Record<string, any> = {};
-          (qData.quotes || []).forEach((q: any) => {
-            qMap[q.symbol] = q;
-          });
-          setQuotes(qMap);
+        
+        setPortfolios(pfData.portfolios || {});
+        if (pfData.selected_pf && !selectedPf) {
+          setSelectedPf(pfData.selected_pf);
+        } else if (Object.keys(pfData.portfolios || {}).length > 0 && !selectedPf) {
+          setSelectedPf(Object.keys(pfData.portfolios)[0]);
         }
+
+        const qMap: Record<string, any> = {};
+        (qData.quotes || []).forEach((q: any) => {
+          qMap[q.symbol] = q;
+        });
+        setQuotes(qMap);
       } catch (e) {
         console.error("Error fetching portfolios", e);
       } finally {
@@ -290,6 +311,10 @@ export function HoldingsManagerView() {
           body: JSON.stringify({ items: bulkItems })
         });
       }
+
+      // Invalidar caches antes del reload
+      invalidateCache('portfolios-list');
+      invalidateCache(`portfolio-rebalance:${selectedPf}`);
 
       window.location.reload();
     } catch (err) {

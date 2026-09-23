@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { getCachedData, setCachedData, cachedFetch, invalidateCache } from '@/lib/queryCache';
 import { 
   Wallet, 
   RefreshCw,
@@ -20,23 +21,36 @@ export const UnifiedPortfolioView: React.FC = () => {
     }
   });
 
-  const [loading, setLoading] = useState<boolean>(true);
+  const [portfolioMetadata, setPortfolioMetadata] = useState<any>(() => {
+    return getCachedData('portfolios-list');
+  });
+  const [rebalanceData, setRebalanceData] = useState<any>(() => {
+    const active = localStorage.getItem('finapp_active_portfolio') || 'min_drawdown_15';
+    return getCachedData(`portfolio-rebalance:${active}`);
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    const active = localStorage.getItem('finapp_active_portfolio') || 'min_drawdown_15';
+    return !getCachedData(`portfolio-rebalance:${active}`);
+  });
   const [error, setError] = useState<string | null>(null);
-  const [portfolioMetadata, setPortfolioMetadata] = useState<any>(null);
-  const [rebalanceData, setRebalanceData] = useState<any>(null);
 
   const fetchMetadata = async () => {
     try {
-      const res = await fetch('/api/portfolios/list_json');
-      if (res.ok) {
-        const data = await res.json();
-        setPortfolioMetadata(data);
-        if (!selectedPf || !data.portfolios[selectedPf]) {
-          const first = Object.keys(data.portfolios || {})[0];
-          if (first) {
-            setSelectedPf(first);
-            localStorage.setItem('finapp_active_portfolio', first);
-          }
+      const { data } = await cachedFetch<any>(
+        'portfolios-list',
+        async () => {
+          const res = await fetch('/api/portfolios/list_json');
+          if (!res.ok) throw new Error('Error metadata');
+          return res.json();
+        },
+        120 * 1000
+      );
+      setPortfolioMetadata(data);
+      if (!selectedPf || !data.portfolios?.[selectedPf]) {
+        const first = Object.keys(data.portfolios || {})[0];
+        if (first) {
+          setSelectedPf(first);
+          localStorage.setItem('finapp_active_portfolio', first);
         }
       }
     } catch (e) {
@@ -46,7 +60,11 @@ export const UnifiedPortfolioView: React.FC = () => {
 
   const fetchAllData = useCallback(async (pfKey = selectedPf, anchor?: string, qty?: number) => {
     if (!pfKey) return;
-    setLoading(true);
+    const cacheKey = `portfolio-rebalance:${pfKey}${anchor ? `:${anchor}` : ''}${qty !== undefined ? `:${qty}` : ''}`;
+    const hasCached = !!getCachedData(cacheKey);
+    if (!hasCached) {
+      setLoading(true);
+    }
     setError(null);
     try {
       let url = `/api/portfolios/rebalance_json/${encodeURIComponent(pfKey)}`;
@@ -56,12 +74,17 @@ export const UnifiedPortfolioView: React.FC = () => {
       const qString = params.toString();
       if (qString) url += `?${qString}`;
 
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error(`Error API: ${res.status}`);
-      }
-      const rbData = await res.json();
+      const { data: rbData } = await cachedFetch<any>(
+        cacheKey,
+        async () => {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`Error API: ${res.status}`);
+          return res.json();
+        },
+        90 * 1000
+      );
       setRebalanceData(rbData);
+      setCachedData(cacheKey, rbData, 90);
     } catch (err: any) {
       setError(err.message || 'Error cargando dashboard.');
     } finally {
@@ -167,7 +190,12 @@ export const UnifiedPortfolioView: React.FC = () => {
             )}
             
             <button 
-              onClick={() => fetchAllData()}
+              onClick={() => {
+                invalidateCache(`portfolio-rebalance:${selectedPf}`);
+                invalidateCache('portfolios-list');
+                fetchMetadata();
+                fetchAllData();
+              }}
               disabled={loading}
               className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-colors"
               title="Refrescar Datos"

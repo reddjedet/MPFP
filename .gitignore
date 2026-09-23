@@ -104,6 +104,13 @@ data/ppc_values.json
 data/user_valuation_inputs.json
 data/portfolios.json
 data/portfolios_trash.json
+data/mpfp.db
+data/mpfp.db-wal
+data/mpfp.db-shm
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/backups/
 
 # --- AI Agents, LLM Assistants & Runtimes ---
 .gentle/
@@ -134,3 +141,6 @@ claude.json
 # --- Documentación temporal de Harness ---
 nuevo_harness.md
 correcciones.md
+mejora-harness.md
+sugerencias-antigravity.md
+

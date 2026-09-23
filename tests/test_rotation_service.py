@@ -103,6 +103,23 @@ class TestRotationService(unittest.TestCase):
         self.assertIsNotNone(cost_item)
         self.assertEqual(cost_item["status"], "surplus")
 
+        # Revisor del seguimiento de CEDEARs: cada activo debe exponer el
+        # desvío contra el objetivo y el resumen debe coincidir con esos datos.
+        self.assertIsInstance(res["avg_tracking_error"], (int, float))
+        tracked_items = [
+            item for item in res["items"]
+            if item["in_target"] or item["real_nominals"] > 0
+        ]
+        self.assertTrue(tracked_items, "El seguimiento no puede quedar sin activos monitoreados")
+        expected_tracking_error = round(
+            sum(abs(item["weight_gap"]) for item in tracked_items) / len(tracked_items),
+            2,
+        )
+        self.assertEqual(res["avg_tracking_error"], expected_tracking_error)
+        for item in tracked_items:
+            self.assertIn("weight_gap", item)
+            self.assertIsInstance(item["weight_gap"], (int, float))
+
     def test_rotation_api_endpoints(self):
         resp = self.client.get("/api/rotation/holdings")
         self.assertEqual(resp.status_code, 200)

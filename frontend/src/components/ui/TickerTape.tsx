@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useCachedQuery } from '@/lib/queryCache';
 
 interface TickerTapeItem {
   ticker: string;
@@ -10,9 +11,47 @@ interface TickerTapeItem {
 /** Speed in px/s for the auto-scroll */
 const SCROLL_SPEED = 50;
 
+/** Fetcher: loads quotes + portfolio list, filters oversold, builds portfolio map */
+async function fetchTickerTapeData(): Promise<TickerTapeItem[]> {
+  const [quotesRes, pfRes] = await Promise.all([
+    fetch('/api/cedears/quotes_json'),
+    fetch('/api/portfolios/list_json')
+  ]);
+
+  if (!quotesRes.ok || !pfRes.ok) return [];
+
+  const quotesData = await quotesRes.json();
+  const pfData = await pfRes.json();
+
+  const portfolios = pfData.portfolios || {};
+  const portfolioMap: Record<string, string[]> = {};
+
+  for (const [pfName, pfObj] of Object.entries(portfolios)) {
+    const assets = (pfObj as any).assets || {};
+    for (const tk of Object.keys(assets)) {
+      if (!portfolioMap[tk]) portfolioMap[tk] = [];
+      portfolioMap[tk].push(pfName);
+    }
+  }
+
+  const quotes = quotesData.quotes || [];
+  return quotes
+    .filter((q: any) => q.rsi !== null && q.rsi <= 35)
+    .map((q: any) => ({
+      ticker: q.symbol,
+      price: q.local || q.cedear_usd || 0,
+      rsi: q.rsi,
+      portfolios: portfolioMap[q.symbol] || []
+    }))
+    .sort((a: any, b: any) => a.rsi - b.rsi);
+}
+
 export function TickerTape() {
-  const [oversoldTickers, setOversoldTickers] = useState<TickerTapeItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: oversoldTickers, loading } = useCachedQuery<TickerTapeItem[]>(
+    'ticker-tape-oversold',
+    fetchTickerTapeData,
+    { ttl: 60, refetchInterval: 60 }
+  );
   const [grabbing, setGrabbing] = useState(false);
 
   // --- drag + animation refs ---
@@ -24,62 +63,7 @@ export function TickerTape() {
   const dragStartX = useRef(0);
   const dragStartOffset = useRef(0);
 
-  // ---- data fetch (unchanged) ----
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchData = async () => {
-      try {
-        const [quotesRes, pfRes] = await Promise.all([
-          fetch('/api/cedears/quotes_json'),
-          fetch('/api/portfolios/list_json')
-        ]);
-        
-        if (!quotesRes.ok || !pfRes.ok) return;
-
-        const quotesData = await quotesRes.json();
-        const pfData = await pfRes.json();
-        
-        if (!isMounted) return;
-
-        const portfolios = pfData.portfolios || {};
-        const portfolioMap: Record<string, string[]> = {};
-        
-        // Build map of ticker -> portfolio names
-        for (const [pfName, pfObj] of Object.entries(portfolios)) {
-          const assets = (pfObj as any).assets || {};
-          for (const tk of Object.keys(assets)) {
-            if (!portfolioMap[tk]) portfolioMap[tk] = [];
-            portfolioMap[tk].push(pfName);
-          }
-        }
-
-        const quotes = quotesData.quotes || [];
-        const oversold = quotes
-          .filter((q: any) => q.rsi !== null && q.rsi <= 35)
-          .map((q: any) => ({
-            ticker: q.symbol,
-            price: q.local || q.cedear_usd || 0,
-            rsi: q.rsi,
-            portfolios: portfolioMap[q.symbol] || []
-          }))
-          .sort((a: any, b: any) => a.rsi - b.rsi);
-        
-        setOversoldTickers(oversold);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching TickerTape data", err);
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 60000);
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, []);
+  const items = oversoldTickers ?? [];
 
   // ---- rAF auto-scroll loop ----
   const applyTransform = useCallback(() => {
@@ -160,7 +144,7 @@ export function TickerTape() {
       );
     }
     
-    if (oversoldTickers.length === 0) {
+    if (items.length === 0) {
       return (
         <div className="flex gap-12 pr-12 text-muted-foreground text-xs font-mono">
           <span>SIN ACTIVOS SOBREVENDIDOS</span>
@@ -170,7 +154,7 @@ export function TickerTape() {
 
     return (
       <div className="flex gap-12 pr-12">
-        {oversoldTickers.map((item) => (
+        {items.map((item) => (
           <div key={`${keyPrefix}-${item.ticker}`} className="group relative flex items-center gap-3 text-xs font-mono">
             <span className="font-bold text-negative">↓ {item.ticker}</span>
             <span className="text-foreground">${item.price.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -214,7 +198,7 @@ export function TickerTape() {
         className="flex z-10 will-change-transform"
       >
         {renderItems('1')}
-        {!loading && oversoldTickers.length > 0 && (
+        {!loading && items.length > 0 && (
           <>
             {renderItems('2')}
             {renderItems('3')}

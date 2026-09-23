@@ -10,7 +10,7 @@ Plataforma financiera integral para la gestión de carteras de inversión, arbit
 
 ## Stack Tecnológico Canónico
 
-* **Backend:** Python 3.14 + [FastAPI](https://fastapi.tiangolo.com/) + [Pydantic v2](https://docs.pydantic.dev/) + [NumPy](https://numpy.org/) / [Pandas](https://pandas.pydata.org/) / [SciPy](https://scipy.org/).
+* **Backend:** Python 3.12+ (compatible hasta 3.14; versión canónica de producción 3.12.8 en Render / `.python-version`) + [FastAPI](https://fastapi.tiangolo.com/) + [Pydantic v2](https://docs.pydantic.dev/) + [NumPy](https://numpy.org/) / [Pandas](https://pandas.pydata.org/) / [SciPy](https://scipy.org/).
 * **Frontend:** [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) + [Vite](https://vitejs.dev/) + [Tailwind CSS](https://tailwindcss.com/) + [Apache ECharts](https://echarts.apache.org/) (`echarts-for-react/lib/core`) + [TanStack Table v8](https://tanstack.com/table) + [Lucide Icons](https://lucide.dev/).
 * **Arquitectura:** Single Page Application (SPA) desacoplada servida desde la raíz de FastAPI (`http://127.0.0.1:8000/`) consumiendo exclusivamente contratos REST JSON tipados.
 * **Persistencia Atómica POSIX:** Motor `AtomicJsonDatabase` (`services/atomic_persistence.py`) con cerrojos reentrantes `threading.RLock()`, escritura atómica en archivo temporal (`.tmp`), `flush`, `fsync` y `os.replace`.
@@ -196,8 +196,8 @@ El pipeline unificado de verificación ejecuta secuencialmente 4 fases:
 ## 🛡️ Ciberseguridad & Buenas Prácticas
 
 1. **Zero Hardcoded Secrets:** Sin credenciales ni claves privadas en el código fuente. Las variables opcionales se configuran en un archivo local `.env` a partir de `.env.example`.
-2. **Host Binding Estricto:** La aplicación escucha únicamente en `127.0.0.1` (localhost).
-3. **Cabeceras de Seguridad OWASP:** `nosniff`, `DENY` en X-Frame-Options, bloqueo XSS y CSP estricta.
+2. **Host Binding Canónico (DEP-01):** La aplicación local se enlaza exclusivamente a `127.0.0.1` (localhost). En plataformas PaaS (Render), `0.0.0.0` está reservado exclusivamente al contenedor interno detrás del reverse proxy administrado con TLS.
+3. **Cabeceras de Seguridad OWASP & CSP (SEC-02 / SEC-03):** `nosniff`, `DENY` en X-Frame-Options, `X-XSS-Protection: 0`, CSP estricta sin `'unsafe-eval'` ni objetos embebidos (`object-src 'none'`), y CORS por entorno con `allow_credentials=False`.
 4. **Snapshot Isolation Total:** Ninguna ejecución de pruebas toca ni modifica los datos de `data/*.json`. Cada suite redirige los punteros de base de datos a carpetas efímeras con `tempfile.TemporaryDirectory()`.
 5. **Licencia & Términos:** Publicado bajo Licencia MIT (ver [LICENSE](LICENSE)).
 

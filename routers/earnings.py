@@ -9,6 +9,8 @@ from services.earnings_service import (
     MESES_CORTOS
 )
 from services.security_service import sanitize_ticker
+from services.exceptions import DomainValidationError, InvalidTickerError
+from services.financial_validation import validate_ticker
 from datetime import datetime
 
 router = APIRouter()
@@ -75,9 +77,9 @@ def get_earnings_summary_json():
 def save_confirmed_date_json(body: UpdateDateRequest):
     clean_tk = sanitize_ticker(body.ticker)
     if not clean_tk:
-        return JSONResponse({"error": "Ticker inválido"}, status_code=400)
+        raise InvalidTickerError("Ticker inválido")
         
     success = save_confirmed_earnings_date(clean_tk, body.confirmed_date)
     if success:
         return JSONResponse({"success": True, "ticker": clean_tk, "confirmed_date": body.confirmed_date})
-    return JSONResponse({"error": "No se pudo guardar la fecha para el ticker especificado"}, status_code=400)
+    raise DomainValidationError("No se pudo guardar la fecha para el ticker especificado")

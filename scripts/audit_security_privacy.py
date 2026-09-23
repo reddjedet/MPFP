@@ -39,6 +39,7 @@ CRITICAL_IGNORES = [
     "data/.cache_market.json",
     "data/user_holdings.json",
     "data/ppc_values.json",
+    "data/mpfp.db",
     ".atl/",
     ".gentle/",
     ".engram/",

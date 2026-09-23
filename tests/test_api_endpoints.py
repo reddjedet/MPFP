@@ -143,8 +143,24 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data.get("status"), "healthy")
+        self.assertTrue(data.get("live"))
+        self.assertTrue(data.get("ready"))
+
+    def test_live_endpoint(self):
+        resp = self.client.get("/live")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data.get("status"), "alive")
+
+    def test_ready_endpoint(self):
+        resp = self.client.get("/ready")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data.get("status"), "ready")
+        self.assertEqual(data.get("checks", {}).get("storage"), "ok")
         
     def test_security_headers_present(self):
+
         resp = self.client.get("/health")
         self.assertEqual(resp.headers.get("X-Content-Type-Options"), "nosniff")
         self.assertEqual(resp.headers.get("X-Frame-Options"), "DENY")

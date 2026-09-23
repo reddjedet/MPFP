@@ -19,23 +19,76 @@ def print_header(title: str):
     print("=" * 60)
 
 def check_database():
-    print_header("1. Verificación de Base de Datos Local")
+    print_header("1. Verificación de Base de Datos Local (SQLite & Resguardos)")
+    sqlite_db_path = ROOT_DIR / "data" / "mpfp.db"
+    
+    if sqlite_db_path.exists():
+        import sqlite3
+        try:
+            conn = sqlite3.connect(str(sqlite_db_path))
+            cur = conn.cursor()
+            
+            # 1. Integridad física de la base de datos
+            cur.execute("PRAGMA integrity_check;")
+            integrity_result = cur.fetchone()[0]
+            if integrity_result == "ok":
+                print(f"  ✅ SQLite '{sqlite_db_path.name}': Integridad física verificada (PRAGMA integrity_check = ok).")
+            else:
+                print(f"  ❌ SQLite '{sqlite_db_path.name}': Error de integridad: {integrity_result}")
+                return False
+                
+            # 2. Modo WAL y configuración de concurrencia
+            cur.execute("PRAGMA journal_mode;")
+            journal_mode = cur.fetchone()[0]
+            print(f"  ✅ Concurrencia SQLite: journal_mode={journal_mode.upper()} (acceso multi-proceso seguro).")
+            
+            # 3. Conteo de entidades en tablas maestras
+            tables_to_check = [
+                ("portfolios", "Carteras de Inversión Activas"),
+                ("portfolios_trash", "Papelera de Portfolios"),
+                ("user_holdings", "Tenencias Físicas de Activos"),
+                ("user_portfolio_cash", "Saldos Líquidos de Carteras"),
+                ("ppc_values", "Precios Promedio de Compra"),
+                ("fair_values", "GuruFocus Fair Values"),
+                ("pfcf_values", "Múltiplos P/Normalized FCF"),
+                ("cedear_ratios", "Ratios de Conversión CEDEAR"),
+                ("earnings_calendar", "Calendario de Reportes"),
+                ("user_valuation_inputs", "Inputs Personalizados de Valuación"),
+                ("market_cache", "Caché de Cotizaciones de Mercado")
+            ]
+            
+            for tbl, desc in tables_to_check:
+                try:
+                    cur.execute(f"SELECT COUNT(*) FROM {tbl};")
+                    count = cur.fetchone()[0]
+                    print(f"     • [{tbl:<21}] {count:>4} registros | {desc}")
+                except Exception as e:
+                    print(f"     • [{tbl:<21}] ⚠️ Error al consultar tabla: {e}")
+                    
+            conn.close()
+        except Exception as e:
+            print(f"  ❌ Error al conectar con SQLite {sqlite_db_path}: {e}")
+            return False
+    else:
+        print(f"  ⚠️ Base de datos SQLite '{sqlite_db_path}' aún no generada.")
+
     db_path = ROOT_DIR / "data" / "portfolios.json"
-    if not db_path.exists():
-        print(f"  ❌ Archivo {db_path} no encontrado.")
+    if not db_path.exists() and not sqlite_db_path.exists():
+        print(f"  ❌ Ni base de datos SQLite ni archivo {db_path} encontrados.")
         return False
     try:
-        with open(db_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        if not isinstance(data, dict):
-            print("  ❌ Formato JSON inválido (no es un diccionario).")
-            return False
-        
-        print(f"  ✅ Portfolios registrados: {len(data)}")
-        for name, pf in data.items():
-            mode = pf.get("mode", "weights")
-            assets = pf.get("assets", {})
-            print(f"     • [{name}] Modo: {mode} | Activos: {len(assets)} ({', '.join(list(assets.keys())[:5])}...)")
+        if db_path.exists():
+            with open(db_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                print("  ❌ Formato JSON inválido (no es un diccionario).")
+                return False
+            
+            print(f"  ✅ Portfolios registrados (JSON backup): {len(data)}")
+            for name, pf in data.items():
+                mode = pf.get("mode", "weights")
+                assets = pf.get("assets", {})
+                print(f"     • [{name}] Modo: {mode} | Activos: {len(assets)} ({', '.join(list(assets.keys())[:5])}...)")
             
         # Verificar base de datos de calendario de reportes
         earn_path = ROOT_DIR / "data" / "earnings_calendar.json"

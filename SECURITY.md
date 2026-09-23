@@ -31,6 +31,7 @@ La seguridad y la integridad de los datos financieros son pilares fundamentales 
 
 ## Directrices de Seguridad del Sistema
 
-1. **Localhost Binding:** Por diseño, el backend y el frontend están concebidos para ejecutarse vinculados estrictamente a `127.0.0.1`.
-2. **Sin Almacenamiento de Credenciales:** El sistema no almacena ni requiere credenciales bancarias ni claves privadas en el repositorio.
-3. **Persistencia Atómica:** La base de datos opera bajo el protocolo de escritura segura `.tmp` + `os.replace` para evitar corrupción de datos por terminaciones abruptas.
+1. **Host Binding Estricto (DEP-01):** Por diseño, el backend y el frontend en entornos de desarrollo local se ejecutan vinculados exclusivamente a `127.0.0.1`. En despliegues PaaS (Render), el binding en `0.0.0.0` está restringido al contenedor interno detrás del reverse proxy administrado con TLS.
+2. **CORS y CSP Endurecidos (SEC-02 / SEC-03):** Se prohíbe el uso de comodines en producción (`.*\.onrender\.com` eliminado) y se deshabilitan credenciales (`allow_credentials=False`). La CSP prohíbe terminantemente `unsafe-eval` y objetos no confiables (`object-src 'none'`).
+3. **Sin Almacenamiento de Credenciales:** El sistema no almacena ni requiere credenciales bancarias ni claves privadas en el repositorio.
+4. **Persistencia Atómica:** La base de datos opera bajo el protocolo de escritura segura `.tmp` + `os.replace` para evitar corrupción de datos por terminaciones abruptas.

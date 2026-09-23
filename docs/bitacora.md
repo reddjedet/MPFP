@@ -21,36 +21,67 @@ This document tracks project evolution, session metrics, and seamless context ha
 
 ## 2. Chronological Session Registry
 
-### Session YYYY-MM-DD: [Milestone / Focus Area]
-- Exchanges: `[N/25]` | Artifacts: `[M/10]`
-- Primary Goal: [Concise objective of the session]
-- Tools & Subagents: [Antigravity Lead / QA Engineer / Backend Engineer / etc.]
+### Session 2026-09-23: Refactorización por Fases de correcciones.md (Fases 1, 2 y 3)
+- Primary Goal: Resolver por fases metódicas las correcciones de valuación/renta fija (Fase 1), motor MCM/rotación (Fase 2) y seguridad/despliegue (Fase 3).
+- Context Handoff File: `FASE_4_Y_PENDIENTES.md` (ubicado en la raíz).
 
 #### 2.1 Changes Delivered
-- Backend / Services:
-  - `services/...`: [Key change]
-  - `routers/...`: [Key change]
-- Frontend / UI:
-  - `components/...`: [Key change]
-  - `views/...`: [Key change]
+- **Fase 1 (Valuación y Renta Fija):**
+  - Creado `services/financial_units.py` (normalización base 100 y aislamiento de magnitudes).
+  - Resueltos `DASH-01` (error factor 100x), `DASH-02` (doble conteo patrimonial), `DASH-03` (prohibida venta de renta fija para comprar equity) y `MATH-07`.
+- **Fase 2 (Motor de Recomendación y MCM):**
+  - Modificado `services/rotation_service.py` (`DASH-04..06`, `DEC-01..10`).
+  - MCM discreto como única fuente de verdad; déficit estructural desacoplado de presupuesto inmediato (`wait_cash`); venta estricta de excedentes.
+- **Fase 3 (Seguridad y Despliegue):**
+  - Modificado `services/security_service.py` (`get_cors_configuration()`) desacoplando CORS y eliminando comodines en producción (`SEC-02`).
+  - Modificado `main.py`: CSP endurecida sin `'unsafe-eval'`, directivas completas y `X-XSS-Protection: 0` (`SEC-03`); ciclo de vida graceful en `lifespan` (`DEP-03`); endpoints `/live` y `/ready` (`DEP-04`).
+  - Creado `.python-version` (3.12.8) coincidente con `render.yaml` (`DEP-02`).
+  - Armonizado host binding: local 127.0.0.1 y container Render 0.0.0.0 (`DEP-01`).
+  - Modificado `stop.sh` con apagado `SIGTERM` previo al fallback `SIGKILL` (`DEP-03`).
 
-#### 2.2 Architectural & Antifragile Decisions
-- [Rationale for decisions made, edge cases handled, and debt avoided]
+#### 2.2 Verification Results
+- [x] TypeScript check: `tsc --noEmit` limpio (0 errores).
+- [x] Production build: `npm run build` en `frontend/` exitoso.
+- [x] Automated test suite: **165/165 tests pasando al 100%** (`./scripts/test.sh`).
+- [x] Security & privacy audit: Limpio (0 anomalías detectadas).
 
-#### 2.3 Verification Results
-- [ ] TypeScript check: `npx tsc --noEmit` clean.
-- [ ] Production build: `npm run build` passed.
-- [ ] Unit & integration tests: All tests passed with Snapshot Isolation.
-- [ ] Security audit: Zero secrets or uncommitted sensitive files.
+#### 2.3 Context Handoff Snapshot (Carry-over to Next Chat)
+- Documento guía: [FASE_4_Y_PENDIENTES.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/FASE_4_Y_PENDIENTES.md).
+- Status: Completado.
 
-#### 2.4 Context Handoff Snapshot (Carry-over to Next Chat)
-- Completed in this session:
-  - [Item 1]
-  - [Item 2]
-- Immediate Next Steps:
-  - [ ] [Next task to execute]
-  - [ ] [Edge case or refactor to address]
-- Active Blockers / Unresolved Questions: `None`
+### Session 2026-09-23: Fase 4 — Persistencia y Migración a SQLite (DATA-01 a DATA-03)
+- Primary Goal: Migrar almacenamiento JSON a SQLite con modo WAL, transacciones inmediatas, durabilidad ACID y test de concurrencia.
+- Changes Delivered:
+  - Creado `services/sqlite_persistence.py` con `PRAGMA journal_mode=WAL`, `PRAGMA busy_timeout=5000`, `PRAGMA synchronous=NORMAL` y tabla de versiones `schema_migrations`.
+  - Fachada retrocompatible `services/atomic_persistence.py` conectada a `SQLiteTableStore`.
+  - Migración y respaldo automático con `scripts/migrate_json_to_sqlite.py` (10 datasets JSON a `data/mpfp.db`).
+  - Suite de pruebas `tests/test_sqlite_persistence.py` (10 tests cubriendo multiproceso concurrente, no destructividad y rollback).
+- Verification: 175/175 tests pasando al 100%.
+
+### Session 2026-09-23: Fase 5 — Backend, Arquitectura de APIs y Excepciones (API-01 a API-05)
+- Primary Goal: Jerarquía de excepciones de dominio, modelos Pydantic v2, prewarm asíncrono con timeouts, validación centralizada de invariantes y observabilidad con Correlation-ID.
+- Changes Delivered:
+  - `API-01`: Creada jerarquía `services/exceptions.py` (`MPFPError`, `DomainValidationError`, `FinancialInvariantError`, `ResourceNotFoundError`, `ExternalProviderError`, `PersistenceFailureError`) y handlers globales en `main.py` con envelope uniforme (`error`, `code`, `details`, `request_id`).
+  - `API-02`: Modelos Pydantic v2 fuertemente tipados en `schemas/api_schemas.py` y modernización de endpoints en `routers/`.
+  - `API-03`: Prewarm desacoplado en `services/prewarm_service.py` con timeouts estrictos (5s), flag `ENABLE_PREWARM` y cancelación segura sin bloquear readiness.
+  - `API-04`: Validación centralizada de invariantes en `services/financial_validation.py` (pesos al 100% ± 0.5%, no-negatividad y nominales enteros en CEDEARs).
+  - `API-05`: Middleware de observabilidad en `services/observability.py` inyectando `X-Request-ID` y `X-Process-Time`, y logging estructurado con sanitización de credenciales.
+  - Suite de pruebas exhaustiva en `tests/test_api_architecture.py` (30 tests pasando).
+- Verification: 205/205 tests pasando al 100% (`./scripts/test.sh`), TypeScript limpio, auditorías de seguridad y privacidad saludables.
+
+### Session 2026-09-23: Fase 6 — Caché de Mercado y Rendimiento (CACHE-01, CACHE-02)
+- Primary Goal: Optimizar el subsistema de caché en `services/cache_service.py` eliminando la reescritura masiva de archivos JSON y colisiones de claves.
+- Changes Delivered:
+  - `CACHE-01`: Migración SQLite v2 implementada en `services/sqlite_persistence.py` creando la tabla `market_cache` con índices en `expires_at`, `func_name`, `category` y `last_accessed_at`.
+  - `CACHE-01`: Arquitectura de dos niveles: L1 (en memoria con thread lock y LRU) + L2 (SQLite WAL individual fila por fila con single-flight coordination para evitar dogpiling).
+  - `CACHE-01`: TTL granular adaptado a la rueda bursátil argentina (intradía 60s, realtime 180s, market_data 300s, slow_metrics 1h, historical 4h, static/calendar 24h, o custom numérico).
+  - `CACHE-01`: Soporte recursivo tipado para DataFrames, Series, ndarrays de NumPy, tuplas y DatetimeIndex/Timestamps. Políticas de desalojo `purge_expired` y `enforce_lru`.
+  - `CACHE-02`: Generación canónica de claves con SHA-256 e introspección de firmas (`inspect.signature`), resolución de defaults y normalización recursiva de argumentos. Invariante ante paso de positional vs keyword arguments y orden de diccionarios.
+  - Verificación en `scripts/audit_project.py` integrando la tabla `market_cache`.
+  - Suite de 17 pruebas exhaustivas en `tests/test_cache_service.py` (concurrencia multihilo, TTLs, roundtrip DataFrame, fallback stale, etc.).
+- Verification: 218/218 tests pasando al 100% (`./scripts/test.sh` en 4.16s), TypeScript limpio (`tsc -b && vite build`), auditorías de seguridad y privacidad en verde.
+- Immediate Next Step:
+  - [ ] Implementar **Fase 7: Frontend, Calidad y Experiencia de Usuario (`QA-01`, `FE-01` a `FE-03`, `DOC-01`)**.
 
 ---
 

@@ -1,6 +1,5 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 from typing import Dict
 from services.valuation_service import (
     get_sectors_and_tickers, 
@@ -9,16 +8,10 @@ from services.valuation_service import (
 )
 from services.fair_value_service import save_fair_value
 from services.security_service import sanitize_ticker
+from services.exceptions import DomainValidationError, InvalidTickerError
+from schemas.api_schemas import EvaluateValuationRequest, SyncGFRequest
 
 router = APIRouter()
-
-class EvaluateValuationRequest(BaseModel):
-    ticker: str
-    metrics: Dict[str, float]
-
-class SyncGFRequest(BaseModel):
-    ticker: str
-    fair_value: float
 
 @router.get("/data_json", response_class=JSONResponse)
 def get_valuation_data_json():
@@ -88,4 +81,4 @@ def sync_gf_json(req: SyncGFRequest):
     if clean_tk and req.fair_value and req.fair_value > 0:
         save_fair_value(clean_tk, req.fair_value)
         return JSONResponse({"success": True, "ticker": clean_tk, "fair_value": req.fair_value})
-    return JSONResponse({"error": "Parámetros inválidos"}, status_code=400)
+    raise DomainValidationError("Parámetros inválidos")

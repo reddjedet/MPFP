@@ -2,6 +2,7 @@ import math
 from pathlib import Path
 from typing import Any, Optional
 from services.atomic_persistence import AtomicJsonDatabase
+from services.financial_units import normalize_fixed_income_price, to_base_100
 
 from datetime import datetime
 
@@ -991,18 +992,14 @@ def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
 
 
         if ppc_val is not None and ppc_val > 0:
-            if ppc_val < 10.0:
-                ppc_unit = ppc_val
-                ppc_base_100 = round(ppc_val * 100.0, 2)
-            else:
-                ppc_unit = round(ppc_val / 100.0, 4)
-                ppc_base_100 = ppc_val
+            ppc_unit = normalize_fixed_income_price(ppc_val)
+            ppc_base_100 = to_base_100(ppc_unit)
         else:
             ppc_base_100 = precio_spot_base_100
-            ppc_unit = (precio_spot_base_100 / 100.0) if precio_spot_base_100 else 1.0
+            ppc_unit = normalize_fixed_income_price(precio_spot_base_100) if precio_spot_base_100 else 1.0
 
-        spot_unit = (precio_spot_base_100 / 100.0) if precio_spot_base_100 else ppc_unit
-        vf_unit = (vf_base_100 / 100.0) if vf_base_100 else spot_unit
+        spot_unit = normalize_fixed_income_price(precio_spot_base_100) if precio_spot_base_100 else ppc_unit
+        vf_unit = normalize_fixed_income_price(vf_base_100) if vf_base_100 else spot_unit
 
         invested_capital = round(nominals * ppc_unit, 2)
         current_market_value = round(nominals * spot_unit, 2)

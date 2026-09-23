@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 from typing import Dict, Any, Optional
+import threading
 
 from services.rotation_service import (
     load_user_holdings,
@@ -14,26 +14,20 @@ from services.rotation_service import (
     analyze_rotation
 )
 from services.security_service import sanitize_ticker
-import threading
+from services.exceptions import InvalidTickerError
+from schemas.api_schemas import HoldingItemPayload, BulkHoldingsPayload, FixedIncomeHoldingPayload
 
 router = APIRouter()
 HOLDINGS_LOCK = threading.RLock()
 
-class HoldingItemPayload(BaseModel):
-    portfolio: Optional[str] = "bmb"
-    ticker: str
-    nominals: int
-    ppc: Optional[float] = None
-
-class BulkHoldingsPayload(BaseModel):
-    portfolio: Optional[str] = "bmb"
-    holdings: Dict[str, Dict[str, Any]]
-    cash_ars: Optional[float] = 0.0
-
 @router.get("/analysis", response_class=JSONResponse)
-def get_rotation_analysis(target_pf: str = Query("min_drawdown_15")):
+def get_rotation_analysis(
+    target_pf: str = Query("min_drawdown_15"),
+    cash_budget: Optional[float] = Query(None),
+    tolerance_pct: float = Query(1.5)
+):
     """Retorna el análisis completo de brechas y sugerencias de rotación."""
-    data = analyze_rotation(target_pf)
+    data = analyze_rotation(target_pf, cash_budget=cash_budget, tolerance_pct=tolerance_pct)
     return JSONResponse(content=data)
 
 @router.get("/holdings", response_class=JSONResponse)

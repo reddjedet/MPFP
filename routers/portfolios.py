@@ -50,26 +50,25 @@ from services.pfcf_service import (
 )
 from services.rotation_service import load_user_holdings, analyze_rotation
 
-router = APIRouter()
+from services.exceptions import (
+    DomainValidationError,
+    FinancialInvariantError,
+    PortfolioNotFoundError,
+    InvalidTickerError
+)
+from schemas.api_schemas import (
+    QuickUpdateAssetRequest,
+    PortfolioSettingsRequest,
+    PortfolioCreateRequest
+)
 
-class QuickUpdateAssetRequest(BaseModel):
-    ticker: str
-    ppc: Optional[Any] = None
-    gf_value: Optional[Any] = None
-    pfcf: Optional[Any] = None
+router = APIRouter()
 
 class BulkQuickUpdateAssetRequest(BaseModel):
     items: List[QuickUpdateAssetRequest]
 
-class PortfolioSettingsRequest(BaseModel):
-    anchor: Optional[str] = None
-    qty: Optional[int] = None
-
-class CreatePortfolioRequest(BaseModel):
-    name: str
-    mode: Optional[str] = "weights"
-    weights_str: Optional[str] = None
-    assets: Optional[Dict[str, float]] = None
+class CreatePortfolioRequest(PortfolioCreateRequest):
+    pass
 
 class RenamePortfolioRequest(BaseModel):
     old_name: str
@@ -91,21 +90,27 @@ def get_portfolios_list_json():
     })
 
 @router.get("/rebalance_json/{pf_type}", response_class=JSONResponse)
-def get_rebalance_data_json(pf_type: str, anchor: Optional[str] = None, qty: Optional[int] = None):
+def get_rebalance_data_json(
+    pf_type: str,
+    anchor: Optional[str] = None,
+    qty: Optional[int] = None,
+    cash_budget: Optional[float] = None,
+    tolerance_pct: float = 1.5
+):
     pf_clean = sanitize_portfolio_name(pf_type)
     if not pf_clean:
-        return JSONResponse({"error": "Nombre de portfolio no válido."}, status_code=400)
+        raise DomainValidationError("Nombre de portfolio no válido.")
         
     portfolios = load_portfolios()
     if pf_clean not in portfolios:
-        return JSONResponse({"error": f"El portfolio '{pf_clean}' no existe."}, status_code=404)
+        raise PortfolioNotFoundError(f"El portfolio '{pf_clean}' no existe.")
         
     pf_data = portfolios[pf_clean]
     mode = pf_data.get("mode", "weights")
     weights = pf_data.get("assets", {})
     
     if not weights:
-        return JSONResponse({"error": "El portfolio seleccionado no contiene activos."}, status_code=400)
+        raise DomainValidationError("El portfolio seleccionado no contiene activos.")
     
     data = get_multiple_tickers_data(list(weights.keys()))
     mcm_info = calculate_portfolio_mcm(weights, data) if mode == "weights" else None
@@ -218,9 +223,10 @@ def get_rebalance_data_json(pf_type: str, anchor: Optional[str] = None, qty: Opt
 
     # Calculate Tactical Rotation Trades
     try:
-        rotation_analysis = analyze_rotation(pf_clean)
+        rotation_analysis = analyze_rotation(pf_clean, cash_budget=cash_budget, tolerance_pct=tolerance_pct)
         rotation_trades = rotation_analysis.get("rotation_trades", [])
     except Exception:
+        rotation_analysis = {}
         rotation_trades = []
 
     return JSONResponse({
@@ -250,7 +256,7 @@ def get_rebalance_data_json(pf_type: str, anchor: Optional[str] = None, qty: Opt
 def quick_update_asset_json(body: QuickUpdateAssetRequest):
     clean_tk = sanitize_ticker(body.ticker)
     if not clean_tk:
-        return JSONResponse({"error": "Ticker no válido"}, status_code=400)
+        raise InvalidTickerError("Ticker no válido")
     
     if body.ppc is not None:
         save_ppc_value(clean_tk, body.ppc)
@@ -304,7 +310,7 @@ def update_portfolio_settings_json(pf_type: str, body: PortfolioSettingsRequest)
         
     portfolios = load_portfolios()
     if pf_clean not in portfolios:
-        return JSONResponse({"error": "Portfolio no encontrado."}, status_code=404)
+        raise PortfolioNotFoundError("Portfolio no encontrado.")
         
     pf_data = portfolios[pf_clean]
     if body.anchor is not None:
@@ -496,5 +502,5 @@ def export_custom_portfolio(pf_type: str):
     pf_clean = sanitize_portfolio_name(pf_type)
     portfolios = load_portfolios()
     if not pf_clean or pf_clean not in portfolios:
-        return JSONResponse({"error": "Portfolio no encontrado"}, status_code=404)
+        raise PortfolioNotFoundError("Portfolio no encontrado.")
     return JSONResponse({pf_clean: portfolios[pf_clean]})
