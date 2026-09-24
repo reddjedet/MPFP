@@ -90,14 +90,14 @@ export async function cachedFetch<T>(
   // 1. Check memory cache
   const memEntry = memoryCache.get(key) as CacheEntry<T> | undefined;
   if (memEntry && isFresh(memEntry)) {
-    return { data: memEntry.data, fromCache: false };
+    return { data: memEntry.data, fromCache: true };
   }
 
   // 2. Deduplicate in-flight requests
   const existing = inflightRequests.get(key);
   if (existing) {
     const data = (await existing) as T;
-    return { data, fromCache: false };
+    return { data, fromCache: true };
   }
 
   // 3. Execute fetch with dedup guard
@@ -193,6 +193,8 @@ export function useCachedFetch<T>(
   const [error, setError] = useState<Error | null>(null);
 
   const mountedRef = useRef(true);
+  const dataRef = useRef<T | null>(data);
+  dataRef.current = data;
   const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   const doFetch = useCallback(() => {
@@ -210,7 +212,7 @@ export function useCachedFetch<T>(
     }
 
     // We have stale data to show? Mark stale, not loading
-    const hasStaleData = data !== null;
+    const hasStaleData = dataRef.current !== null;
     if (hasStaleData) {
       setStale(true);
       setLoading(false);
@@ -260,6 +262,7 @@ export function useCachedFetch<T>(
     // Invalidate cache for this key and refetch
     memoryCache.delete(key);
     try { sessionStorage.removeItem(STORAGE_PREFIX + key); } catch {}
+    inflightRequests.delete(key);
     doFetch();
   }, [key, doFetch]);
 
@@ -307,6 +310,8 @@ export function useCachedQuery<T>(
 
   const [error, setError] = useState<Error | null>(null);
   const mountedRef = useRef(true);
+  const dataRef = useRef<T | null>(data);
+  dataRef.current = data;
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
   const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
@@ -324,7 +329,7 @@ export function useCachedQuery<T>(
       return;
     }
 
-    const hasStaleData = data !== null;
+    const hasStaleData = dataRef.current !== null;
     if (hasStaleData) {
       setStale(true);
       setLoading(false);
@@ -365,6 +370,7 @@ export function useCachedQuery<T>(
   const refetch = useCallback(() => {
     memoryCache.delete(key);
     try { sessionStorage.removeItem(STORAGE_PREFIX + key); } catch {}
+    inflightRequests.delete(key);
     doFetch();
   }, [key, doFetch]);
 
@@ -385,9 +391,8 @@ export function invalidateCache(key: string): void {
  * e.g., invalidateCacheByPrefix('portfolios') clears 'portfolios-list', 'portfolios-rebalance-xyz', etc.
  */
 export function invalidateCacheByPrefix(prefix: string): void {
-  for (const k of memoryCache.keys()) {
-    if (k.startsWith(prefix)) memoryCache.delete(k);
-  }
+  const keysToRemove = [...memoryCache.keys()].filter((k) => k.startsWith(prefix));
+  keysToRemove.forEach((k) => memoryCache.delete(k));
   try {
     const toRemove: string[] = [];
     for (let i = 0; i < sessionStorage.length; i++) {
