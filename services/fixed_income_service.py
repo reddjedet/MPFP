@@ -5,6 +5,7 @@ logger = logging.getLogger(__name__)
 from datetime import datetime
 from typing import Any
 import pandas as pd
+from services.financial_units import normalize_quote_to_base_100
 
 try:
     from services.clients.mae_client import fetch_flujo_fondos, fetch_datos
@@ -172,7 +173,7 @@ def fetch_yield_curve(category: str = "hard_dollar") -> pd.DataFrame | None:
         paridad = None
         if precio_raw is not None and float(precio_raw) > 0:
             p_val = float(precio_raw)
-            precio = p_val if p_val > 5.0 else p_val * 100.0
+            precio = normalize_quote_to_base_100(p_val, ticker=ticker)
             if detalle:
                 vr = detalle[0].get("vr")
                 if vr and vr > 0:
@@ -219,7 +220,7 @@ def fetch_yield_curve(category: str = "hard_dollar") -> pd.DataFrame | None:
                     raw_t = m.get("ticker", "").strip().upper().split("/")[0]
                     if raw_t in missing and m.get("ultimo") and raw_t not in prices_found:
                         p = float(m["ultimo"])
-                        prices_found[raw_t] = p if p > 5.0 else p * 100.0
+                        prices_found[raw_t] = normalize_quote_to_base_100(p, ticker=raw_t)
             except Exception as e:
                 logger.warning(f"MAE snapshot lookup: {e}")
 
@@ -235,7 +236,7 @@ def fetch_yield_curve(category: str = "hard_dollar") -> pd.DataFrame | None:
                             if sym.startswith(f"{m_tick}D") and b.get("trade", 0) > 0:
                                 p = float(b["trade"])
                                 if m_tick not in prices_found or b.get("volumeAmount", 0) > prices_found.get(f"{m_tick}_vol", 0):
-                                    prices_found[m_tick] = p if p > 5.0 else p * 100.0
+                                    prices_found[m_tick] = normalize_quote_to_base_100(p, ticker=m_tick)
                                     prices_found[f"{m_tick}_vol"] = b.get("volumeAmount", 0)
                 except Exception as e:
                     logger.warning(f"BYMA panel lookup: {e}")
@@ -512,10 +513,7 @@ def fetch_lecaps() -> pd.DataFrame | None:
 
         # Normalizar precio a base 100 nominales
         if precio is not None and precio > 0:
-            if precio < 10.0:
-                precio = precio * 100.0
-            elif precio > 5000.0:
-                precio = precio / 100.0
+            precio = normalize_quote_to_base_100(precio, ticker=ticker)
 
         d_emis = datetime.strptime(spec["emision"], "%Y-%m-%d").date()
         d_vto = datetime.strptime(spec["vencimiento"], "%Y-%m-%d").date()

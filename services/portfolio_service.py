@@ -2,7 +2,7 @@ import math
 from pathlib import Path
 from typing import Any, Optional
 from services.atomic_persistence import AtomicJsonDatabase
-from services.financial_units import normalize_fixed_income_price, to_base_100
+from services.financial_units import normalize_fixed_income_price, to_base_100, normalize_quote_to_base_100
 
 from datetime import datetime
 
@@ -940,7 +940,7 @@ def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
         precio_spot_base_100 = safe_float(mkt.get("precio"))
         if precio_spot_base_100 is None or precio_spot_base_100 <= 0:
             if ppc_val is not None and ppc_val > 0:
-                precio_spot_base_100 = ppc_val if ppc_val >= 10.0 else ppc_val * 100.0
+                precio_spot_base_100 = normalize_quote_to_base_100(ppc_val, ticker=tk)
             elif vf_base_100:
                 precio_spot_base_100 = vf_base_100
             else:
@@ -992,14 +992,14 @@ def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
 
 
         if ppc_val is not None and ppc_val > 0:
-            ppc_unit = normalize_fixed_income_price(ppc_val)
-            ppc_base_100 = to_base_100(ppc_unit)
+            ppc_unit = normalize_fixed_income_price(ppc_val, ticker=tk)
+            ppc_base_100 = to_base_100(ppc_unit, ticker=tk)
         else:
             ppc_base_100 = precio_spot_base_100
-            ppc_unit = normalize_fixed_income_price(precio_spot_base_100) if precio_spot_base_100 else 1.0
+            ppc_unit = normalize_fixed_income_price(precio_spot_base_100, ticker=tk) if precio_spot_base_100 else 1.0
 
-        spot_unit = normalize_fixed_income_price(precio_spot_base_100) if precio_spot_base_100 else ppc_unit
-        vf_unit = normalize_fixed_income_price(vf_base_100) if vf_base_100 else spot_unit
+        spot_unit = normalize_fixed_income_price(precio_spot_base_100, ticker=tk) if precio_spot_base_100 else ppc_unit
+        vf_unit = normalize_fixed_income_price(vf_base_100, ticker=tk) if vf_base_100 else spot_unit
 
         invested_capital = round(nominals * ppc_unit, 2)
         current_market_value = round(nominals * spot_unit, 2)
