@@ -334,44 +334,52 @@ class MarketCacheStore:
         Actualiza el timestamp de último acceso para política LRU.
         """
         current_time = time.time() if now is None else now
-        conn = self._engine.get_connection()
-        cur = conn.execute(
-            "SELECT data_json, expires_at FROM market_cache WHERE cache_key = ?;",
-            (cache_key,)
-        )
-        row = cur.fetchone()
-        if not row:
-            return None
-
-        data_json, expires_at = row["data_json"], row["expires_at"]
-        if expires_at < current_time:
-            return None  # Registro vencido
-
-        # Actualización ligera de LRU
         try:
-            conn.execute(
-                "UPDATE market_cache SET last_accessed_at = ? WHERE cache_key = ?;",
-                (current_time, cache_key)
+            conn = self._engine.get_connection()
+            cur = conn.execute(
+                "SELECT data_json, expires_at FROM market_cache WHERE cache_key = ?;",
+                (cache_key,)
             )
-        except Exception:
-            pass
+            row = cur.fetchone()
+            if not row:
+                return None
 
-        val = _deserialize_value(data_json)
-        return val, expires_at
+            data_json, expires_at = row["data_json"], row["expires_at"]
+            if expires_at < current_time:
+                return None  # Registro vencido
+
+            # Actualización ligera de LRU
+            try:
+                conn.execute(
+                    "UPDATE market_cache SET last_accessed_at = ? WHERE cache_key = ?;",
+                    (current_time, cache_key)
+                )
+            except Exception:
+                pass
+
+            val = _deserialize_value(data_json)
+            return val, expires_at
+        except Exception as e:
+            logger.warning("Cache L2.get falló para '%s' (se tratará como miss): %s", cache_key, e)
+            return None
 
     def get_stale(self, cache_key: str) -> Optional[Any]:
         """
         Recupera el último valor conocido sin importar su expiración (fallback ante fallas upstream).
         """
-        conn = self._engine.get_connection()
-        cur = conn.execute(
-            "SELECT data_json FROM market_cache WHERE cache_key = ?;",
-            (cache_key,)
-        )
-        row = cur.fetchone()
-        if not row:
+        try:
+            conn = self._engine.get_connection()
+            cur = conn.execute(
+                "SELECT data_json FROM market_cache WHERE cache_key = ?;",
+                (cache_key,)
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            return _deserialize_value(row["data_json"])
+        except Exception as e:
+            logger.warning("Cache L2.get_stale falló para '%s': %s", cache_key, e)
             return None
-        return _deserialize_value(row["data_json"])
 
     def set(
         self,
@@ -390,19 +398,22 @@ class MarketCacheStore:
         expires_at = current_time + ttl
         serialized = _serialize_value(val)
 
-        with self._engine.transaction() as conn:
-            conn.execute("""
-                INSERT INTO market_cache (
-                    cache_key, func_name, category, data_json, created_at, expires_at, last_accessed_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(cache_key) DO UPDATE SET
-                    func_name = excluded.func_name,
-                    category = excluded.category,
-                    data_json = excluded.data_json,
-                    created_at = excluded.created_at,
-                    expires_at = excluded.expires_at,
-                    last_accessed_at = excluded.last_accessed_at;
-            """, (cache_key, func_name, category, serialized, current_time, expires_at, current_time))
+        try:
+            with self._engine.transaction() as conn:
+                conn.execute("""
+                    INSERT INTO market_cache (
+                        cache_key, func_name, category, data_json, created_at, expires_at, last_accessed_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(cache_key) DO UPDATE SET
+                        func_name = excluded.func_name,
+                        category = excluded.category,
+                        data_json = excluded.data_json,
+                        created_at = excluded.created_at,
+                        expires_at = excluded.expires_at,
+                        last_accessed_at = excluded.last_accessed_at;
+                """, (cache_key, func_name, category, serialized, current_time, expires_at, current_time))
+        except Exception as e:
+            logger.warning("Cache L2.set falló para '%s': %s", cache_key, e)
 
     def purge_expired(self, now: Optional[float] = None) -> int:
         """
@@ -410,9 +421,13 @@ class MarketCacheStore:
         Retorna la cantidad de registros eliminados.
         """
         current_time = time.time() if now is None else now
-        with self._engine.transaction() as conn:
-            cur = conn.execute("DELETE FROM market_cache WHERE expires_at < ?;", (current_time,))
-            return cur.rowcount
+        try:
+            with self._engine.transaction() as conn:
+                cur = conn.execute("DELETE FROM market_cache WHERE expires_at < ?;", (current_time,))
+                return cur.rowcount
+        except Exception as e:
+            logger.warning("Cache L2.purge_expired falló: %s", e)
+            return 0
 
     def enforce_lru(self, max_entries: Optional[int] = None) -> int:
         """
@@ -420,20 +435,24 @@ class MarketCacheStore:
         Retorna la cantidad de filas desalojadas.
         """
         limit = max_entries or self.max_rows
-        conn = self._engine.get_connection()
-        cur = conn.execute("SELECT COUNT(*) FROM market_cache;")
-        count = cur.fetchone()[0]
-        if count <= limit:
-            return 0
+        try:
+            conn = self._engine.get_connection()
+            cur = conn.execute("SELECT COUNT(*) FROM market_cache;")
+            count = cur.fetchone()[0]
+            if count <= limit:
+                return 0
 
-        excess = count - limit
-        with self._engine.transaction() as conn:
-            cur = conn.execute("""
-                DELETE FROM market_cache WHERE cache_key IN (
-                    SELECT cache_key FROM market_cache ORDER BY last_accessed_at ASC LIMIT ?
-                );
-            """, (excess,))
-            return cur.rowcount
+            excess = count - limit
+            with self._engine.transaction() as conn:
+                cur = conn.execute("""
+                    DELETE FROM market_cache WHERE cache_key IN (
+                        SELECT cache_key FROM market_cache ORDER BY last_accessed_at ASC LIMIT ?
+                    );
+                """, (excess,))
+                return cur.rowcount
+        except Exception as e:
+            logger.warning("Cache L2.enforce_lru falló: %s", e)
+            return 0
 
     def clear(self, func_name: Optional[str] = None, category: Optional[str] = None) -> int:
         """Limpia registros de caché opcionalmente filtrados por función o categoría."""
@@ -446,33 +465,48 @@ class MarketCacheStore:
             query += " AND category = ?"
             params.append(category)
 
-        with self._engine.transaction() as conn:
-            cur = conn.execute(query, params)
-            return cur.rowcount
+        try:
+            with self._engine.transaction() as conn:
+                cur = conn.execute(query, params)
+                return cur.rowcount
+        except Exception as e:
+            logger.warning("Cache L2.clear falló: %s", e)
+            return 0
 
     def stats(self, now: Optional[float] = None) -> dict:
         """Devuelve métricas diagnósticas del subsistema de caché en SQLite."""
         current_time = time.time() if now is None else now
-        conn = self._engine.get_connection()
+        try:
+            conn = self._engine.get_connection()
 
-        cur = conn.execute("SELECT COUNT(*) FROM market_cache;")
-        total = cur.fetchone()[0]
+            cur = conn.execute("SELECT COUNT(*) FROM market_cache;")
+            total = cur.fetchone()[0]
 
-        cur = conn.execute("SELECT COUNT(*) FROM market_cache WHERE expires_at >= ?;", (current_time,))
-        active = cur.fetchone()[0]
+            cur = conn.execute("SELECT COUNT(*) FROM market_cache WHERE expires_at >= ?;", (current_time,))
+            active = cur.fetchone()[0]
 
-        expired = total - active
+            expired = total - active
 
-        cur = conn.execute("SELECT category, COUNT(*) as c FROM market_cache GROUP BY category;")
-        categories = {row["category"]: row["c"] for row in cur.fetchall()}
+            cur = conn.execute("SELECT category, COUNT(*) as c FROM market_cache GROUP BY category;")
+            categories = {row["category"]: row["c"] for row in cur.fetchall()}
 
-        return {
-            "total_entries": total,
-            "active_entries": active,
-            "expired_entries": expired,
-            "categories": categories,
-            "db_path": str(self.db_path)
-        }
+            return {
+                "total_entries": total,
+                "active_entries": active,
+                "expired_entries": expired,
+                "categories": categories,
+                "db_path": str(self.db_path)
+            }
+        except Exception as e:
+            logger.warning("Cache L2.stats falló: %s", e)
+            return {
+                "total_entries": 0,
+                "active_entries": 0,
+                "expired_entries": 0,
+                "categories": {},
+                "db_path": str(self.db_path),
+                "error": str(e)
+            }
 
 
 # Instancia singleton del almacén de caché de mercado
@@ -598,7 +632,11 @@ def smart_cache(category: Union[str, int] = "realtime", maxsize: int = 256):
 
             # 2. Nivel L2: Verificar SQLite (si no está bajo mock de disco)
             if not is_mocked_disk:
-                l2_item = store.get(key, now=now)
+                try:
+                    l2_item = store.get(key, now=now)
+                except Exception as e:
+                    logger.warning("Cache L2 inesperadamente falló: %s", e)
+                    l2_item = None
                 if l2_item is not None:
                     val, expires_at = l2_item
                     with l1_lock:
@@ -625,10 +663,18 @@ def smart_cache(category: Union[str, int] = "realtime", maxsize: int = 256):
                     if key in l1_cache:
                         return _safe_copy(l1_cache[key][0])
                 if not is_mocked_disk:
-                    l2_res = store.get(key)
+                    try:
+                        l2_res = store.get(key)
+                    except Exception as e:
+                        logger.warning("Cache L2 inesperadamente falló: %s", e)
+                        l2_res = None
                     if l2_res is not None:
                         return _safe_copy(l2_res[0])
-                    stale = store.get_stale(key)
+                    try:
+                        stale = store.get_stale(key)
+                    except Exception as e:
+                        logger.warning("Cache L2 stale inesperadamente falló: %s", e)
+                        stale = None
                     if stale is not None:
                         return _safe_copy(stale)
 
@@ -668,7 +714,11 @@ def smart_cache(category: Union[str, int] = "realtime", maxsize: int = 256):
                             logger.info(f"Fallback L1 activado para '{key}'")
                             return _safe_copy(l1_cache[key][0])
 
-                    stale_l2 = store.get_stale(key)
+                    try:
+                        stale_l2 = store.get_stale(key)
+                    except Exception as e:
+                        logger.warning("Cache L2 stale inesperadamente falló: %s", e)
+                        stale_l2 = None
                     if stale_l2 is not None:
                         logger.info(f"Fallback L2 activado para '{key}'")
                         return _safe_copy(stale_l2)
