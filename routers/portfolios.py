@@ -230,6 +230,11 @@ def get_rebalance_data_json(
         rotation_analysis = {}
         rotation_trades = []
 
+    total_real_value = sum(
+        (item.get("actual_qty", 0) or 0) * (item.get("price", 0) or 0) for item in (result or [])
+    )
+    user_cash = load_user_holdings(pf_clean).get("cash_ars", 0.0)
+
     return JSONResponse({
         "pf_type": pf_clean,
         "mode": mode,
@@ -246,6 +251,8 @@ def get_rebalance_data_json(
         "alpha_metrics": alpha_metrics,
         "summary": {
             "total_portfolio_value": round(total_portfolio_value, 2),
+            "total_real_value": round(total_real_value, 2),
+            "cash_ars": round(float(user_cash or 0.0), 2),
             "total_portfolio_qty": total_portfolio_qty,
             "total_consolidated_value": total_consolidated_value,
             "base_anchor_qty": base_anchor_qty,

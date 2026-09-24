@@ -559,6 +559,15 @@ class TestAPIEndpoints(unittest.TestCase):
         resp_invalid = self.client.get("/api/cedears/quote_json/!INVALID@")
         self.assertEqual(resp_invalid.status_code, 400)
 
+    def test_summary_expone_valor_real_y_coherente(self):
+        data = self.client.get("/api/portfolios/rebalance_json/min_drawdown_15").json()
+        s = data["summary"]
+        self.assertIn("total_real_value", s)
+        self.assertGreaterEqual(s["total_real_value"], 0)
+        self.assertIn("cash_ars", s)
+        self.assertGreaterEqual(s["cash_ars"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
 

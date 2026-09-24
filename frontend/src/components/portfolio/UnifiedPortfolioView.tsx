@@ -103,13 +103,13 @@ export const UnifiedPortfolioView: React.FC = () => {
   }, [selectedPf, portfolioMetadata, fetchAllData]);
 
   // Derived dashboard metrics
-  const totalEq = rebalanceData?.summary?.total_portfolio_value || 0;
+  const totalEq = rebalanceData?.summary?.total_real_value ?? 0;
   const totalFixed = rebalanceData?.fixed_income_summary?.total_market_value || 0;
-  const totalPatrimony = totalEq + totalFixed;
+  const totalCash = rebalanceData?.summary?.cash_ars ?? 0;
+  const totalPatrimony = totalEq + totalFixed + totalCash;
   const eqPct = totalPatrimony > 0 ? (totalEq / totalPatrimony) * 100 : 0;
   const fixedPct = totalPatrimony > 0 ? (totalFixed / totalPatrimony) * 100 : 0;
-  const totalCash = 0; // Efectivo no está en la respuesta de la API actualmente
-  const cashPct = 0;
+  const cashPct = totalPatrimony > 0 ? (totalCash / totalPatrimony) * 100 : 0;
 
   // Calcular Costo Invertido y PnL de Renta Variable
   let totalEqCost = 0;
