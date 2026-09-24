@@ -10,7 +10,13 @@ from services.cedear_service import get_ticker_data, get_multiple_tickers_data, 
 from services.portfolio_service import load_portfolios
 from services.fair_value_service import load_fair_values, evaluate_fair_value_signal
 from services.pfcf_service import load_pfcf_values, evaluate_fcf_rsi_state
-from services.financial_units import normalize_fixed_income_price, to_base_100
+from services.financial_units import (
+    normalize_fixed_income_price,
+    to_base_100,
+    is_fixed_income_ticker,
+    to_unit_price,
+    to_market_quote
+)
 
 logger = logging.getLogger("RotationService")
 
@@ -207,7 +213,10 @@ def save_user_holdings(data: Dict[str, Any], portfolio_key: Optional[str] = None
                 if ppc_val and float(ppc_val) > 0:
                     save_ppc_value(clean_tk, ppc_val)
 
-        cash = max(0.0, float(data.get("cash_ars", all_data.get(target_pf, {}).get("cash_ars", 0.0))))
+        if "cash_ars" in data and data["cash_ars"] is not None:
+            cash = max(0.0, float(data["cash_ars"]))
+        else:
+            cash = float(all_data.get(target_pf, {}).get("cash_ars", 0.0))
         all_data[target_pf] = {
             "holdings": clean_holdings,
             "fixed_income_holdings": clean_fi,
@@ -249,7 +258,10 @@ def save_user_holdings(data: Dict[str, Any], portfolio_key: Optional[str] = None
                     if ppc_val and float(ppc_val) > 0:
                         save_ppc_value(clean_tk, ppc_val)
 
-            cash = max(0.0, float(pf_v.get("cash_ars", 0.0)))
+            if "cash_ars" in pf_v and pf_v["cash_ars"] is not None:
+                cash = max(0.0, float(pf_v["cash_ars"]))
+            else:
+                cash = float(all_data.get(pf_k, {}).get("cash_ars", 0.0))
             all_data[pf_k] = {
                 "holdings": clean_holdings,
                 "fixed_income_holdings": clean_fi,
@@ -333,21 +345,49 @@ def analyze_rotation(
     Utiliza el MCM discreto para calcular nominales objetivo enteros proporcionales.
     """
     user_data = load_user_holdings(target_pf_key)
-    holdings = user_data.get("holdings", {})
-    fixed_income = user_data.get("fixed_income_holdings", {})
+    raw_holdings = user_data.get("holdings", {})
+    raw_fi = user_data.get("fixed_income_holdings", {})
     cash_ars = user_data.get("cash_ars", 0.0)
     effective_cash = float(cash_budget) if cash_budget is not None else cash_ars
+    
+    # Saneamiento canónico: si un bono fue guardado erróneamente en holdings, reclasificarlo
+    from services.financial_units import is_fixed_income_ticker, to_unit_price, to_market_quote
+    holdings = {}
+    fixed_income = dict(raw_fi)
+    for tk, val in raw_holdings.items():
+        if is_fixed_income_ticker(tk):
+            if tk not in fixed_income:
+                fixed_income[tk] = val
+        else:
+            holdings[tk] = val
     
     portfolios = load_portfolios()
     target_pf = portfolio_data or portfolios.get(target_pf_key, portfolios.get("min_drawdown_15", {}))
     pf_mode = target_pf.get("mode", "weights")
     target_weights = target_pf.get("weights") or target_pf.get("assets", {})
-    
-    # Universo total de tickers de renta variable (Tenencia Real + Cartera Objetivo)
+    target_alloc = target_pf.get("asset_allocation", {}) if isinstance(target_pf, dict) else {}
+    fi_assets = target_pf.get("fixed_income_assets", {})
+
+    # REGLA CANÓNICA: La cartera objetivo define si hay renta fija o no
+    has_explicit_fi = bool(
+        target_alloc.get("fixed_income_weight") is not None and 
+        float(target_alloc.get("fixed_income_weight", 0)) > 0 and 
+        bool(fi_assets)
+    )
+
     equity_tickers = sorted(list(set(list(holdings.keys()) + list(target_weights.keys()))))
-    all_tickers = sorted(list(set(equity_tickers + list(fixed_income.keys()))))
     
-    # Cargar cotizaciones y señales (solo renta variable para Yahoo, renta fija usa ppc o mock)
+    if has_explicit_fi:
+        # Cartera con Renta Fija: incluir bonos del usuario y del objetivo
+        fi_tickers = sorted(list(set(list(fixed_income.keys()) + list(fi_assets.keys()))))
+        all_tickers = sorted(list(set(equity_tickers + fi_tickers)))
+    else:
+        # REGLA DE INVISIBILIDAD: Cartera 100% Renta Variable
+        # La renta fija permanece COMPLETAMENTE INVISIBLE. No se agrega a la tabla ni a las órdenes.
+        fi_tickers = []
+        all_tickers = equity_tickers
+    
+    # Cargar cotizaciones spot de Renta Variable
     if hasattr(get_ticker_data, "mock_calls"):
         fetched = {tk: get_ticker_data(tk) for tk in equity_tickers}
     else:
@@ -356,77 +396,73 @@ def analyze_rotation(
     gf_map = load_fair_values()
     pfcf_map = load_pfcf_values()
     
-    for tk in all_tickers:
+    for tk in equity_tickers:
         d = fetched.get(tk)
         if d and d.get("local"):
             market_data[tk] = d
         else:
             market_data[tk] = {
-                "local": 0.0,
-                "adr": None,
-                "ratio": CEDEAR_RATIOS.get(tk, 1.0),
-                "rsi": None
+                "local": 0.0, "adr": None, "ratio": CEDEAR_RATIOS.get(tk, 1.0), "rsi": None
             }
-            
-    # 1. Calcular Valor Real de Mercado y Costo Total
-    total_real_stock_value = 0.0
-    total_cost_invested = 0.0
-    total_fi_value = 0.0
 
-    for tk, fi in fixed_income.items():
-        noms = fi.get("nominals", 0)
-        raw_price = fi.get("ppc") or 0.0
-        unit_price = normalize_fixed_income_price(raw_price)
-        val = noms * unit_price
-        total_fi_value += val
-        total_cost_invested += val
-        market_data[tk] = {"local": unit_price, "adr": None, "ratio": 1.0, "rsi": None}
-    
+    # Cómputo de Renta Variable
+    total_real_stock_value = 0.0
+    total_equity_cost = 0.0
     for tk, h in holdings.items():
         price = market_data.get(tk, {}).get("local", 0.0) or 0.0
         noms = h.get("nominals", 0)
         val = noms * price
-        
-        if noms > 0:
-            if price > 0:
-                total_real_stock_value += val
-                cost = h.get("ppc") or price
-                total_cost_invested += noms * cost
-            
-    total_pnl_ars = total_real_stock_value - (total_cost_invested - total_fi_value) if (total_cost_invested - total_fi_value) > 0 else 0.0
-    cost_equity = (total_cost_invested - total_fi_value)
-    total_pnl_pct = (total_pnl_ars / cost_equity * 100.0) if cost_equity > 0 else 0.0
-    
+        if noms > 0 and price > 0:
+            total_real_stock_value += val
+            cost = h.get("ppc") or price
+            total_equity_cost += noms * cost
+
     total_real_equity = total_real_stock_value + cash_ars
-    
-    # Resumen de Renta Fija y Asignación Macro
+
+    # Cómputo de Renta Fija (solo si la cartera objetivo tiene Renta Fija)
     from services.portfolio_service import get_portfolio_fixed_income_summary, calculate_portfolio_mcm
-    fixed_income_summary = get_portfolio_fixed_income_summary(target_pf_key)
-    fi_market_val = fixed_income_summary.get("total_market_value", 0.0) if fixed_income_summary else total_fi_value
-    if fi_market_val == 0.0 and total_fi_value > 0.0:
-        fi_market_val = total_fi_value
-    total_consolidated_equity = round(total_real_equity + fi_market_val, 2)
-    
-    # DEC-01: Target de Renta Fija explícito vs. implícito actual
-    target_alloc = target_pf.get("asset_allocation", {}) if isinstance(target_pf, dict) else {}
-    has_explicit_fi = ("fixed_income_weight" in target_alloc and target_alloc.get("fixed_income_weight") is not None)
-    
-    real_equity_pct = round((total_real_stock_value / total_consolidated_equity * 100.0), 2) if total_consolidated_equity > 0 else 0.0
-    real_fi_pct = round((fi_market_val / total_consolidated_equity * 100.0), 2) if total_consolidated_equity > 0 else 0.0
-    real_cash_pct = round((cash_ars / total_consolidated_equity * 100.0), 2) if total_consolidated_equity > 0 else 0.0
     
     if has_explicit_fi:
+        fixed_income_summary = get_portfolio_fixed_income_summary(target_pf_key)
+        fi_market_val = fixed_income_summary.get("total_market_value", 0.0) if fixed_income_summary else 0.0
+        fi_invested_val = fixed_income_summary.get("total_invested", 0.0) if fixed_income_summary else 0.0
+        
+        # Registrar cotizaciones spot unitarias para el motor
+        for tk in fi_tickers:
+            fi_item = next((it for it in (fixed_income_summary.get("items") or []) if it["ticker"] == tk), None)
+            if fi_item:
+                unit_p = fi_item["precio_spot_unit"]
+            else:
+                raw_p = fixed_income.get(tk, {}).get("ppc") or 0.0
+                unit_p = to_unit_price(raw_p, ticker=tk)
+            market_data[tk] = {"local": unit_p, "adr": None, "ratio": 1.0, "rsi": None}
+            
+        total_consolidated_equity = round(total_real_equity + fi_market_val, 2)
+        total_cost_invested = round(total_equity_cost + fi_invested_val, 2)
         target_fi_pct = float(target_alloc["fixed_income_weight"])
         target_equity_pct = float(target_alloc.get("equity_weight", round(100.0 - target_fi_pct, 2)))
         fi_target_source = "explicit"
+        real_fi_pct = round((fi_market_val / total_consolidated_equity * 100.0), 2) if total_consolidated_equity > 0 else 0.0
         fi_gap_pct = round(real_fi_pct - target_fi_pct, 2)
-        eq_gap_pct = round(real_equity_pct - target_equity_pct, 2)
     else:
-        target_fi_pct = real_fi_pct
-        target_equity_pct = round(100.0 - target_fi_pct, 2)
+        # Cartera 100% Renta Variable: Renta Fija completamente excluida
+        fixed_income_summary = None
+        fi_market_val = 0.0
+        fi_invested_val = 0.0
+        total_consolidated_equity = round(total_real_equity, 2)
+        total_cost_invested = round(total_equity_cost, 2)
+        target_fi_pct = 0.0
+        target_equity_pct = 100.0
         fi_target_source = "implicit_current"
+        real_fi_pct = 0.0
         fi_gap_pct = 0.0
-        eq_gap_pct = 0.0
+
+    real_equity_pct = round((total_real_stock_value / total_consolidated_equity * 100.0), 2) if total_consolidated_equity > 0 else 0.0
+    real_cash_pct = round((cash_ars / total_consolidated_equity * 100.0), 2) if total_consolidated_equity > 0 else 0.0
+    eq_gap_pct = round(real_equity_pct - target_equity_pct, 2)
+
+    total_pnl_ars = total_real_stock_value - total_equity_cost if total_equity_cost > 0 else 0.0
+    total_pnl_pct = (total_pnl_ars / total_equity_cost * 100.0) if total_equity_cost > 0 else 0.0
 
     asset_allocation_status = {
         "target_equity_pct": target_equity_pct,
@@ -447,29 +483,20 @@ def analyze_rotation(
         for t, w in target_weights.items():
             norm_target_weights[t] = (w / total_tw) * target_equity_pct
             
-    fi_assets = target_pf.get("fixed_income_assets", {})
     if has_explicit_fi and fi_assets:
         for t, data in fi_assets.items():
             norm_target_weights[t] = data.get("target_weight_portfolio", 0.0)
-    else:
-        for t, fi in fixed_income.items():
-            raw_p = fi.get("ppc") or 0.0
-            u_p = normalize_fixed_income_price(raw_p)
-            n = fi.get("nominals", 0)
-            norm_target_weights[t] = round((n * u_p / total_consolidated_equity * 100.0), 2) if total_consolidated_equity > 0 else 0.0
 
     # 2. MCM y Nominales Objetivo para Renta Variable
     capital_base_for_target = total_real_equity if total_real_equity > 0 else 1000000.0
     
-    equity_weights_only = {tk: float(w) for tk, w in target_weights.items() if tk not in fixed_income and float(w) > 0}
+    equity_weights_only = {tk: float(w) for tk, w in target_weights.items() if not is_fixed_income_ticker(tk) and float(w) > 0}
     mcm_info = calculate_portfolio_mcm(equity_weights_only, market_data) if equity_weights_only else None
     
     mcm_base_nominals = mcm_info.get("base_nominals", {}) if mcm_info else {}
     mcm_base_capital = mcm_info.get("base_capital", 0.0) if mcm_info else 0.0
     
     # Multiplicador entero perseguido (DEC-08):
-    # Si se especifica explícitamente vía parámetro o en target_pf, se respeta ese múltiplo.
-    # Por defecto, la unidad estándar del sistema es la Cartera Base 1x (k = 1).
     if target_multiplier is not None and int(target_multiplier) >= 1:
         mcm_multiplier = int(target_multiplier)
     elif target_pf.get("target_multiplier"):
@@ -492,15 +519,14 @@ def analyze_rotation(
         ratio = m.get("ratio", CEDEAR_RATIOS.get(tk, 1.0))
         rsi = m.get("rsi")
         
-        is_fi = tk in fixed_income
-        h = fixed_income.get(tk) if is_fi else holdings.get(tk, {})
+        is_fi = is_fixed_income_ticker(tk)
+        h = fixed_income.get(tk, {}) if is_fi else holdings.get(tk, {})
         real_noms = h.get("nominals", 0)
         ppc = h.get("ppc")
         
         real_value = real_noms * price
-        real_weight = (real_value / capital_base_for_target * 100.0) if capital_base_for_target > 0 else 0.0
+        real_weight = (real_value / total_consolidated_equity * 100.0) if total_consolidated_equity > 0 else 0.0
         
-        # Manejo diferenciado de Renta Fija vs Renta Variable
         if is_fi:
             target_weight = norm_target_weights.get(tk, 0.0)
             target_noms = real_noms
@@ -511,6 +537,12 @@ def analyze_rotation(
             status = "preserved"
             missing_noms = 0
             is_in_tolerance = True
+            # Señal PPC simétrica en Base 100
+            market_quote_100 = to_market_quote(price, ticker=tk)
+            ppc_quote_100 = to_market_quote(ppc, ticker=tk) if ppc else None
+            ppc_signal = evaluate_ppc_return(tk, market_quote_100, ppc_quote_100) if (market_quote_100 > 0 and ppc_quote_100) else None
+            # Exponer siempre cotización Base 100 en el item para la UI
+            display_price = market_quote_100
         else:
             target_weight = norm_target_weights.get(tk, 0.0)
             if pf_mode == "nominals":
@@ -518,7 +550,8 @@ def analyze_rotation(
             elif mcm_info and tk in mcm_base_nominals:
                 target_noms = mcm_base_nominals.get(tk, 0) * mcm_multiplier
             elif price > 0 and target_weight > 0:
-                target_noms = max(0, int(round((capital_base_for_target * (target_weight / 100.0)) / price)))
+                capital_base_equity = total_consolidated_equity * (target_equity_pct / 100.0)
+                target_noms = max(0, int(round((capital_base_equity * (target_weight / target_equity_pct)) / price))) if target_equity_pct > 0 else 0
             else:
                 target_noms = 0
                 
@@ -529,16 +562,17 @@ def analyze_rotation(
             missing_noms = max(0, -delta_noms)
             is_in_tolerance = abs(weight_gap) <= tolerance_pct
             
-            # Clasificación de Brecha solo para Renta Variable
             if delta_noms > 0:
                 status = "surplus"
             elif delta_noms < 0:
                 status = "deficit"
             else:
                 status = "balanced"
+                
+            ppc_signal = evaluate_ppc_return(tk, price, ppc) if (price > 0 and ppc) else None
+            display_price = round(price, 2)
 
         # Señales Cuantitativas
-        ppc_signal = evaluate_ppc_return(tk, price, ppc) if (price > 0 and ppc) else None
         gf_signal = evaluate_fair_value_signal(tk, adr_price, gf_map) if adr_price else None
         pfcf_signal = evaluate_fcf_rsi_state(tk, pfcf_map.get(tk), rsi) if pfcf_map.get(tk) else None
 
@@ -581,7 +615,8 @@ def analyze_rotation(
         item_data = {
             "ticker": tk,
             "in_target": tk in norm_target_weights,
-            "price": round(price, 2),
+            "price": round(display_price, 2),
+            "price_unit": round(price, 6) if is_fi else round(price, 2),
             "ratio": ratio,
             "rsi": round(rsi, 1) if rsi is not None else None,
             "real_nominals": real_noms,
@@ -615,7 +650,8 @@ def analyze_rotation(
         }
         items.append(item_data)
         
-        # Candidato a VENTA (Exclusivo Renta Variable):
+        # Candidato a VENTA (ESTRICTO Y EXCLUSIVO RENTA VARIABLE):
+        # La renta fija JAMÁS califica como candidata a venta en rotación
         has_sell_signal = is_take_profit or is_deep_overbought or (not is_in_tolerance)
         is_sell_eligible = (not is_fi) and real_noms > 0 and (
             (tk not in norm_target_weights) or 

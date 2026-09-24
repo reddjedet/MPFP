@@ -47,23 +47,18 @@ class AtomicJsonDatabase:
 
     def _bootstrap_if_needed(self) -> None:
         """Si la tabla SQLite está vacía pero existe un archivo JSON local o .example, inicializar datos."""
+        is_empty = False
         try:
             current_data = self._store.load()
-            is_empty = (
-                not current_data 
-                or current_data == {} 
-                or current_data == [] 
-                or current_data == {"sectors": [], "profiles": {}}
-                or (isinstance(current_data, dict) and all(not v for v in current_data.values()))
-            )
+            is_empty = (current_data is None or current_data == {} or current_data == [])
             if is_empty and self._orig_file_path.exists() and self._orig_file_path.suffix == ".json":
                 with open(self._orig_file_path, "r", encoding="utf-8") as f:
                     file_data = json.load(f)
                 if file_data:
                     self._store.save(file_data)
                     return
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Bootstrap desde JSON legado falló para %s: %s", self.table_name, e)
 
         # Check for .example file
         if not self._orig_file_path.exists() or is_empty:

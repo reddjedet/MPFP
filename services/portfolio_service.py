@@ -105,8 +105,10 @@ def delete_permanently_from_trash(pf_clean: str) -> dict:
 def load_portfolios() -> dict:
     data = _db.load()
 
-    # Garantizar que el portfolio predeterminado exista si la base de datos está vacía
-    if not data and "bmb" not in data:
+    # Garantizar que el portfolio predeterminado exista si la base de datos está vacía o no tiene bmb
+    if not data or "bmb" not in data:
+        if not data:
+            data = {}
         data["bmb"] = {
             "mode": "weights",
             "assets": {
@@ -119,11 +121,14 @@ def load_portfolios() -> dict:
     for k, v in list(data.items()):
         if not isinstance(v, dict):
             data[k] = {"mode": "weights", "assets": {}}
-        elif "mode" not in v or "assets" not in v:
-            data[k] = {
-                "mode": "weights",
-                "assets": v
-            }
+        elif "assets" not in v:
+            # Formato plano legacy: todo el dict SON los assets
+            data[k] = {"mode": "weights", "assets": v}
+        elif "mode" not in v:
+            # Tiene assets pero falta mode: agregar mode SIN envolver el resto
+            new_v = dict(v)
+            new_v["mode"] = "weights"
+            data[k] = new_v
     return data
 
 def save_portfolios(data: dict):

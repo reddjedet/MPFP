@@ -136,12 +136,12 @@ class BulkHoldingsPayload(BaseModel):
     """Payload para importación o guardado en lote de tenencias físicas."""
     portfolio: Optional[str] = "bmb"
     holdings: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
-    cash_ars: Optional[float] = Field(0.0, ge=0.0, description="Saldo líquido en ARS.")
+    cash_ars: Optional[float] = Field(None, ge=0.0, description="Saldo líquido en ARS. Si se omite, se conserva el existente.")
 
     @field_validator("cash_ars")
     @classmethod
-    def check_cash(cls, v: Optional[float]) -> float:
-        return validate_cash_balance(v if v is not None else 0.0)
+    def check_cash(cls, v: Optional[float]) -> Optional[float]:
+        return None if v is None else validate_cash_balance(v)
 
 
 # ------------------------------------------------------------------------------
