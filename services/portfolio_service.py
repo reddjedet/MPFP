@@ -13,6 +13,8 @@ TRASH_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "portfolios_tr
 _trash_db = AtomicJsonDatabase(TRASH_DB_PATH)
 MAX_TRASH_CAPACITY = 7
 
+RESERVED_PORTFOLIO_NAMES = frozenset({"bmb", "bal"})
+
 def load_portfolios_trash() -> list[dict]:
     """Carga la lista de carteras en papelera de reciclaje."""
     data = _trash_db.load()
@@ -31,7 +33,7 @@ def move_portfolio_to_trash(pf_clean: str) -> dict:
     Traslada una cartera activa a la papelera de reciclaje.
     Si la papelera supera las 7 carteras, la más antigua se elimina definitivamente (FIFO).
     """
-    if pf_clean.lower() in ["bmb", "bal"]:
+    if pf_clean.lower() in RESERVED_PORTFOLIO_NAMES:
         return {"success": False, "error": "No se puede eliminar el portfolio predeterminado (BMB o BAL)."}
 
     portfolios_data = load_portfolios()

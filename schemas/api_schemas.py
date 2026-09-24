@@ -132,10 +132,26 @@ class FixedIncomeHoldingPayload(BaseModel):
         return validate_price_or_ppc(v, allow_none=True, field_name="PPC Renta Fija")
 
 
+class BulkHoldingItem(BaseModel):
+    """Entrada individual para el guardado en lote de tenencias."""
+    nominals: int = Field(..., ge=0)
+    ppc: Optional[float] = Field(None, ge=0.0)
+
+    @field_validator("nominals")
+    @classmethod
+    def check_nominals(cls, v: int) -> int:
+        return validate_holding_nominals(v, is_cedear=True)
+
+    @field_validator("ppc")
+    @classmethod
+    def check_ppc(cls, v: Optional[float]) -> Optional[float]:
+        return validate_price_or_ppc(v, allow_none=True, field_name="PPC")
+
+
 class BulkHoldingsPayload(BaseModel):
     """Payload para importación o guardado en lote de tenencias físicas."""
     portfolio: Optional[str] = "bmb"
-    holdings: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+    holdings: Dict[str, BulkHoldingItem] = Field(default_factory=dict)
     cash_ars: Optional[float] = Field(None, ge=0.0, description="Saldo líquido en ARS. Si se omite, se conserva el existente.")
 
     @field_validator("cash_ars")

@@ -164,6 +164,25 @@ def load_user_holdings(portfolio_key: Optional[str] = None) -> Dict[str, Any]:
     return res
 
 
+def _safe_int(val: Any, default: int = 0) -> int:
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return default
+
+
+def _safe_float(val: Any, default: Optional[float] = None) -> Optional[float]:
+    if val is None:
+        return default
+    try:
+        f = float(val)
+        if math.isnan(f) or math.isinf(f):
+            return default
+        return f
+    except (ValueError, TypeError):
+        return default
+
+
 def save_user_holdings(data: Dict[str, Any], portfolio_key: Optional[str] = None) -> None:
     """
     Guarda la estructura de tenencia real.
@@ -186,15 +205,16 @@ def save_user_holdings(data: Dict[str, Any], portfolio_key: Optional[str] = None
             clean_tk = sanitize_ticker(tk)
             if not clean_tk or not isinstance(val, dict):
                 continue
-            nom = max(0, int(val.get("nominals", 0)))
+            nom = max(0, _safe_int(val.get("nominals", 0)))
             ppc_val = val.get("ppc")
-            if nom > 0 or ppc_val is not None:
+            ppc_f = _safe_float(ppc_val)
+            if nom > 0 or ppc_f is not None:
                 clean_holdings[clean_tk] = {
                     "nominals": nom,
-                    "ppc": float(ppc_val) if ppc_val and float(ppc_val) > 0 else None
+                    "ppc": ppc_f if ppc_f and ppc_f > 0 else None
                 }
-                if ppc_val and float(ppc_val) > 0:
-                    save_ppc_value(clean_tk, ppc_val)
+                if ppc_f and ppc_f > 0:
+                    save_ppc_value(clean_tk, ppc_f)
 
         existing_fi = all_data.get(target_pf, {}).get("fixed_income_holdings", {})
         fi_dict = data.get("fixed_income_holdings", existing_fi)
@@ -203,18 +223,19 @@ def save_user_holdings(data: Dict[str, Any], portfolio_key: Optional[str] = None
             clean_tk = sanitize_ticker(tk)
             if not clean_tk or not isinstance(val, dict):
                 continue
-            nom = max(0, int(val.get("nominals", 0)))
+            nom = max(0, _safe_int(val.get("nominals", 0)))
             ppc_val = val.get("ppc")
-            if nom > 0 or ppc_val is not None:
+            ppc_f = _safe_float(ppc_val)
+            if nom > 0 or ppc_f is not None:
                 clean_fi[clean_tk] = {
                     "nominals": nom,
-                    "ppc": float(ppc_val) if ppc_val and float(ppc_val) > 0 else None
+                    "ppc": ppc_f if ppc_f and ppc_f > 0 else None
                 }
-                if ppc_val and float(ppc_val) > 0:
-                    save_ppc_value(clean_tk, ppc_val)
+                if ppc_f and ppc_f > 0:
+                    save_ppc_value(clean_tk, ppc_f)
 
         if "cash_ars" in data and data["cash_ars"] is not None:
-            cash = max(0.0, float(data["cash_ars"]))
+            cash = max(0.0, _safe_float(data["cash_ars"], default=0.0) or 0.0)
         else:
             cash = float(all_data.get(target_pf, {}).get("cash_ars", 0.0))
         all_data[target_pf] = {
@@ -231,15 +252,16 @@ def save_user_holdings(data: Dict[str, Any], portfolio_key: Optional[str] = None
                 clean_tk = sanitize_ticker(tk)
                 if not clean_tk or not isinstance(val, dict):
                     continue
-                nom = max(0, int(val.get("nominals", 0)))
+                nom = max(0, _safe_int(val.get("nominals", 0)))
                 ppc_val = val.get("ppc")
-                if nom > 0 or ppc_val is not None:
+                ppc_f = _safe_float(ppc_val)
+                if nom > 0 or ppc_f is not None:
                     clean_holdings[clean_tk] = {
                         "nominals": nom,
-                        "ppc": float(ppc_val) if ppc_val and float(ppc_val) > 0 else None
+                        "ppc": ppc_f if ppc_f and ppc_f > 0 else None
                     }
-                    if ppc_val and float(ppc_val) > 0:
-                        save_ppc_value(clean_tk, ppc_val)
+                    if ppc_f and ppc_f > 0:
+                        save_ppc_value(clean_tk, ppc_f)
 
             existing_fi = all_data.get(pf_k, {}).get("fixed_income_holdings", {})
             fi_dict = pf_v.get("fixed_income_holdings", existing_fi)
@@ -248,18 +270,19 @@ def save_user_holdings(data: Dict[str, Any], portfolio_key: Optional[str] = None
                 clean_tk = sanitize_ticker(tk)
                 if not clean_tk or not isinstance(val, dict):
                     continue
-                nom = max(0, int(val.get("nominals", 0)))
+                nom = max(0, _safe_int(val.get("nominals", 0)))
                 ppc_val = val.get("ppc")
-                if nom > 0 or ppc_val is not None:
+                ppc_f = _safe_float(ppc_val)
+                if nom > 0 or ppc_f is not None:
                     clean_fi[clean_tk] = {
                         "nominals": nom,
-                        "ppc": float(ppc_val) if ppc_val and float(ppc_val) > 0 else None
+                        "ppc": ppc_f if ppc_f and ppc_f > 0 else None
                     }
-                    if ppc_val and float(ppc_val) > 0:
-                        save_ppc_value(clean_tk, ppc_val)
+                    if ppc_f and ppc_f > 0:
+                        save_ppc_value(clean_tk, ppc_f)
 
             if "cash_ars" in pf_v and pf_v["cash_ars"] is not None:
-                cash = max(0.0, float(pf_v["cash_ars"]))
+                cash = max(0.0, _safe_float(pf_v["cash_ars"], default=0.0) or 0.0)
             else:
                 cash = float(all_data.get(pf_k, {}).get("cash_ars", 0.0))
             all_data[pf_k] = {

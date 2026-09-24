@@ -18,7 +18,8 @@ from services.portfolio_service import (
     load_portfolios_trash,
     restore_portfolio_from_trash,
     delete_permanently_from_trash,
-    MAX_TRASH_CAPACITY
+    MAX_TRASH_CAPACITY,
+    RESERVED_PORTFOLIO_NAMES
 )
 from services.security_service import (
     sanitize_ticker,
@@ -349,7 +350,7 @@ async def create_custom_portfolio(request: Request):
     if not name_clean:
         return JSONResponse({"success": False, "error": "Nombre de portfolio inválido. Solo letras minúsculas, números y guiones bajos (máx 30 caracteres)."})
         
-    if name_clean in ["bmb", "bal"]:
+    if name_clean in RESERVED_PORTFOLIO_NAMES:
         return JSONResponse({"success": False, "error": "No puedes sobreescribir el portfolio predeterminado (BMB o BAL)."})
         
     mode_clean = "nominals" if req_mode == "nominals" else "weights"
@@ -359,6 +360,12 @@ async def create_custom_portfolio(request: Request):
         return JSONResponse({"success": False, "error": err})
         
     portfolios_data = load_portfolios()
+    if name_clean in portfolios_data:
+        return JSONResponse({
+            "success": False,
+            "error": f"Ya existe un portfolio llamado '{name_clean}'. Usa otro nombre o renombra el existente."
+        }, status_code=409)
+
     portfolios_data[name_clean] = {
         "mode": mode_clean,
         "assets": new_weights
@@ -411,10 +418,10 @@ def rename_custom_portfolio(body: RenamePortfolioRequest):
     if not old_clean or not new_clean:
         return JSONResponse({"success": False, "error": "Nombre de portfolio no válido."}, status_code=400)
 
-    if old_clean in ["bmb", "bal"]:
+    if old_clean in RESERVED_PORTFOLIO_NAMES:
         return JSONResponse({"success": False, "error": "No se puede renombrar un portfolio predeterminado (BMB/BAL)."}, status_code=400)
 
-    if new_clean in ["bmb", "bal"]:
+    if new_clean in RESERVED_PORTFOLIO_NAMES:
         return JSONResponse({"success": False, "error": "No puedes usar nombres reservados (BMB/BAL)."}, status_code=400)
 
     portfolios_data = load_portfolios()
@@ -459,7 +466,7 @@ async def import_custom_portfolios(file: UploadFile = File(...)):
         sanitized_portfolios = {}
         for pf_name, data_item in imported_data.items():
             pf_name_clean = sanitize_portfolio_name(pf_name)
-            if not pf_name_clean or pf_name_clean in ["bmb"]:
+            if not pf_name_clean or pf_name_clean in RESERVED_PORTFOLIO_NAMES:
                 continue
                 
             if isinstance(data_item, dict) and "assets" in data_item:

@@ -60,7 +60,11 @@ def bulk_update_holdings(payload: BulkHoldingsPayload):
     """Actualiza la tenencia completa en lote para la cartera."""
     pf_key = payload.portfolio or "bmb"
     with HOLDINGS_LOCK:
-        payload_dict = {"holdings": payload.holdings}
+        holdings_dict = {
+            tk: item.model_dump() if hasattr(item, "model_dump") else item 
+            for tk, item in payload.holdings.items()
+        }
+        payload_dict = {"holdings": holdings_dict}
         if payload.cash_ars is not None:
             payload_dict["cash_ars"] = payload.cash_ars
         save_user_holdings(payload_dict, portfolio_key=pf_key)
