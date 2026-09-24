@@ -422,5 +422,128 @@ class TestRotationService(unittest.TestCase):
         self.assertIsNotNone(trade)
         self.assertEqual(trade["priority"], "Alta")
 
+    @patch("services.rotation_service.get_ticker_data")
+    def test_pure_equity_portfolio_makes_fixed_income_completely_invisible(self, mock_ticker_data):
+        """
+        P0.3: Si la cartera objetivo no tiene Renta Fija (ej. bdi_agresiva),
+        los bonos del usuario (S30S6) deben ser COMPLETAMENTE INVISIBLES en el análisis.
+        """
+        mock_ticker_data.side_effect = lambda tk: {
+            "MSFT": {"local": 25000.0, "adr": 400.0, "ratio": 10.0, "rsi": 50.0},
+            "NVDA": {"local": 15000.0, "adr": 120.0, "ratio": 1.0, "rsi": 50.0},
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+
+        # Usuario tiene S30S6 y acciones
+        save_user_holdings({
+            "holdings": {"MSFT": {"nominals": 5, "ppc": 25000.0}},
+            "fixed_income_holdings": {"S30S6": {"nominals": 300000, "ppc": 112.08}},
+            "cash_ars": 0.0
+        }, portfolio_key="bdi_agresiva")
+
+        res = analyze_rotation("bdi_agresiva")
+        item_tickers = [it["ticker"] for it in res["items"]]
+        
+        # S30S6 no debe existir en los items analizados
+        self.assertNotIn("S30S6", item_tickers)
+        self.assertIsNone(res.get("fixed_income_summary"))
+        
+        # Ningún trade debe mencionar S30S6
+        for t in res["rotation_trades"]:
+            if t.get("sell"):
+                self.assertNotEqual(t["sell"]["ticker"], "S30S6")
+            if t.get("buy"):
+                self.assertNotEqual(t["buy"]["ticker"], "S30S6")
+
+    @patch("services.fixed_income_service.fetch_lecaps")
+    @patch("services.rotation_service.get_ticker_data")
+    def test_fixed_income_quote_base_100_in_items(self, mock_ticker_data, mock_lecaps):
+        """
+        P0.1: En carteras con Renta Fija (ej. bmb), el precio del item debe mostrar
+        Base 100 VN (~112.08) y no valor unitario inflado o desfasado.
+        """
+        mock_lecaps.return_value = None
+        mock_ticker_data.side_effect = lambda tk: {
+            "CAT": {"local": 25000.0, "adr": 350.0, "ratio": 20.0, "rsi": 50.0}
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+
+        save_user_holdings({
+            "holdings": {},
+            "fixed_income_holdings": {"S30S6": {"nominals": 100000, "ppc": 112.08}},
+            "cash_ars": 0.0
+        }, portfolio_key="bmb")
+
+        res = analyze_rotation("bmb")
+        s30s6_item = next((it for it in res["items"] if it["ticker"] == "S30S6"), None)
+        self.assertIsNotNone(s30s6_item)
+        self.assertAlmostEqual(s30s6_item["price"], 112.08, places=1)
+        self.assertAlmostEqual(s30s6_item["real_value"], 112080.0, delta=100.0)
+
+    @patch("services.rotation_service.get_ticker_data")
+    def test_varias_ordenes_de_compra_no_superan_el_capital_disponible(self, mock_ticker_data):
+        mock_ticker_data.side_effect = lambda tk: {
+            "AAPL": {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0},
+            "MSFT": {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0},
+            "GOOGL": {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0},
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+
+        # Cartera con 15.000 ARS de cash (solo alcanza para 1 compra de 10.000)
+        save_user_holdings({
+            "holdings": {},
+            "cash_ars": 15000.0
+        }, portfolio_key="min_drawdown_15")
+
+        res = analyze_rotation("min_drawdown_15")
+        trades = res["rotation_trades"]
+        
+        # Verificar que el capital ejecutado no supere el efectivo disponible
+        total_executed = sum(
+            t["buy"]["recommended_nominals_now"] * t["buy"]["price"]
+            for t in trades if t.get("buy")
+        )
+        self.assertLessEqual(total_executed, 15000.0)
+
+        # Si hay más de un trade de compra, el disponible debe decrementar
+        buy_trades = [t for t in trades if t.get("buy")]
+        if len(buy_trades) >= 2:
+            self.assertGreaterEqual(
+                buy_trades[0]["capital_available"],
+                buy_trades[1]["capital_available"]
+            )
+
+    @patch("services.rotation_service.get_ticker_data")
+    def test_cartera_vacia_expone_nominales_objetivo_no_cero(self, mock_ticker_data):
+        mock_ticker_data.side_effect = lambda tk: {
+            "AAPL": {"local": 1000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0},
+            "MSFT": {"local": 1000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0},
+        }.get(tk, {"local": 1000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+
+        save_user_holdings({
+            "holdings": {},
+            "cash_ars": 0.0
+        }, portfolio_key="min_drawdown_15")
+
+        res = analyze_rotation("min_drawdown_15")
+        target_items = [it for it in res["items"] if it["in_target"]]
+        self.assertTrue(len(target_items) > 0)
+        # Al menos un activo objetivo debe tener nominales target > 0 gracias a capital_base_for_target
+        self.assertTrue(any(it["target_nominals"] > 0 for it in target_items))
+
+    def test_boncap_serie_letra_entra_como_renta_fija_en_rotacion(self):
+        save_user_holdings({
+            "holdings": {},
+            "fixed_income_holdings": {"TMF27": {"nominals": 1000, "ppc": 250.0}},
+            "cash_ars": 0.0
+        }, portfolio_key="bmb")
+
+        res = analyze_rotation("bmb")
+        # TMF27 no debe aparecer en sell_candidates
+        sell_tickers = [c["ticker"] for c in res.get("sell_candidates", [])]
+        self.assertNotIn("TMF27", sell_tickers)
+        for t in res["rotation_trades"]:
+            if t.get("sell"):
+                self.assertNotEqual(t["sell"]["ticker"], "TMF27")
+
+
 if __name__ == "__main__":
     unittest.main()
+

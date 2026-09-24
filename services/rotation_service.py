@@ -511,7 +511,14 @@ def analyze_rotation(
             norm_target_weights[t] = data.get("target_weight_portfolio", 0.0)
 
     # 2. MCM y Nominales Objetivo para Renta Variable
+    # DEC-xx: si la cartera todavía no tiene patrimonio, dimensionar el target
+    # sobre un capital hipotético para que el usuario vea un plan accionable.
     capital_base_for_target = total_real_equity if total_real_equity > 0 else 1000000.0
+    capital_base_equity = (
+        total_consolidated_equity * (target_equity_pct / 100.0)
+        if total_consolidated_equity > 0
+        else capital_base_for_target
+    )
     
     equity_weights_only = {tk: float(w) for tk, w in target_weights.items() if not is_fixed_income_ticker(tk) and float(w) > 0}
     mcm_info = calculate_portfolio_mcm(equity_weights_only, market_data) if equity_weights_only else None
@@ -573,7 +580,6 @@ def analyze_rotation(
             elif mcm_info and tk in mcm_base_nominals:
                 target_noms = mcm_base_nominals.get(tk, 0) * mcm_multiplier
             elif price > 0 and target_weight > 0:
-                capital_base_equity = total_consolidated_equity * (target_equity_pct / 100.0)
                 target_noms = max(0, int(round((capital_base_equity * (target_weight / target_equity_pct)) / price))) if target_equity_pct > 0 else 0
             else:
                 target_noms = 0
@@ -736,6 +742,7 @@ def analyze_rotation(
     
     # 3. Emparejamiento de Órdenes
     rotation_trades = []
+    running_capital = float(effective_cash)
     
     unpaired_buys = list(buy_candidates)
     unpaired_sells = list(sell_candidates)
@@ -795,6 +802,7 @@ def analyze_rotation(
             sell_p = s["price"]
             sell_noms = s["available_noms_to_sell"]
             sell_cash = sell_noms * sell_p
+            running_capital += sell_cash
             
             reasons = []
             if s["item"].get("is_take_profit"):
@@ -816,7 +824,7 @@ def analyze_rotation(
                 "reason": " • ".join(reasons)
             }
             
-        available_capital = sell_cash + effective_cash
+        available_capital = running_capital
         b_action = "execute"
         
         if b:
@@ -825,8 +833,13 @@ def analyze_rotation(
             capital_required = buy_noms * buy_p
             
             executable_noms = min(buy_noms, int(available_capital // buy_p)) if buy_p > 0 else 0
+            committed = executable_noms * buy_p if executable_noms > 0 else 0.0
+            running_capital -= committed
+
             if executable_noms > 0:
                 b_action = "buy"
+            elif buy_p <= 0:
+                b_action = "wait_price"
             elif available_capital < buy_p:
                 b_action = "wait_cash"
             else:
@@ -856,6 +869,7 @@ def analyze_rotation(
                 "total_cash": round(capital_required, 2),
                 "capital_required": round(capital_required, 2),
                 "capital_available": round(available_capital, 2),
+                "capital_after_trade": round(running_capital, 2),
                 "action": b_action,
                 "reason": " • ".join(buy_reasons)
             }
@@ -871,7 +885,9 @@ def analyze_rotation(
             "sell": sell_data,
             "buy": buy_data,
             "net_cash_ars": round(net_cash, 2),
-            "priority": priority
+            "priority": priority,
+            "capital_available": round(available_capital, 2),
+            "capital_after_trade": round(running_capital, 2)
         })
             
     # Calcular Tracking Error / Desvío promedio respecto al target
