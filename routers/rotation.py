@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
-from typing import Dict, Any, Optional
+from typing import Optional
 import threading
 
 from services.rotation_service import (
@@ -14,8 +14,7 @@ from services.rotation_service import (
     analyze_rotation
 )
 from services.security_service import sanitize_ticker
-from services.exceptions import InvalidTickerError
-from schemas.api_schemas import HoldingItemPayload, BulkHoldingsPayload, FixedIncomeHoldingPayload
+from schemas.api_schemas import HoldingItemPayload, BulkHoldingsPayload
 
 router = APIRouter()
 HOLDINGS_LOCK = threading.RLock()

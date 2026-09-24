@@ -1,6 +1,5 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from typing import Dict
 from services.valuation_service import (
     get_sectors_and_tickers, 
     get_profile_by_ticker, 
@@ -8,7 +7,7 @@ from services.valuation_service import (
 )
 from services.fair_value_service import save_fair_value
 from services.security_service import sanitize_ticker
-from services.exceptions import DomainValidationError, InvalidTickerError
+from services.exceptions import DomainValidationError
 from schemas.api_schemas import EvaluateValuationRequest, SyncGFRequest
 
 router = APIRouter()

@@ -10,7 +10,6 @@ from services.earnings_service import (
 )
 from services.security_service import sanitize_ticker
 from services.exceptions import DomainValidationError, InvalidTickerError
-from services.financial_validation import validate_ticker
 from datetime import datetime
 
 router = APIRouter()

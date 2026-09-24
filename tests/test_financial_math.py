@@ -70,12 +70,14 @@ class TestFinancialMath(unittest.TestCase):
         self.assertAlmostEqual(to_base_100(0.585), 58.50, places=2)
         self.assertAlmostEqual(to_base_100(112.08), 112.08, places=2)
 
+    @patch("services.fixed_income_service.fetch_lecaps")
     @patch("services.rotation_service.get_ticker_data")
-    def test_s30s6_valuation_no_inflation_factor(self, mock_ticker_data):
+    def test_s30s6_valuation_no_inflation_factor(self, mock_ticker_data, mock_lecaps):
         """
         DASH-01: 335.457 nominales de S30S6 a PPC 112.08 deben valuarse en
         ~375.979 ARS, NUNCA en ~37.597.000 ARS (error de factor 100x).
         """
+        mock_lecaps.return_value = None
         mock_ticker_data.side_effect = lambda tk: {
             "AMAT": {"local": 90000.0, "adr": 180.0, "ratio": 15.0, "rsi": 50.0},
             "GOOGL": {"local": 8000.0, "adr": 180.0, "ratio": 58.0, "rsi": 50.0},
@@ -348,7 +350,9 @@ class TestFinancialMath(unittest.TestCase):
             "CAT": {"local": 10000.0, "adr": 200.0, "ratio": 1.0, "rsi": 50.0},
         }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
 
-        # Cartera sin 'asset_allocation' o sin 'fixed_income_weight'
+        # Según la Regla Canónica de Invisibilidad Absoluta (arreglar.md), si la cartera
+        # NO tiene renta fija configurada, la renta fija del usuario debe permanecer COMPLETAMENTE INVISIBLE.
+        # Por lo tanto, el patrimonio analizado es 100% RV y no se agregan items de RF.
         custom_pf = {
             "mode": "weights",
             "assets": {"CAT": 100.0}
@@ -356,10 +360,10 @@ class TestFinancialMath(unittest.TestCase):
 
         save_user_holdings({
             "holdings": {
-                "CAT": {"nominals": 10, "ppc": 10000.0}  # $100.000 ARS (50%)
+                "CAT": {"nominals": 10, "ppc": 10000.0}  # $100.000 ARS
             },
             "fixed_income_holdings": {
-                "S30S6": {"nominals": 100000, "ppc": 1.0}  # $100.000 ARS (50%)
+                "S30S6": {"nominals": 100000, "ppc": 1.0}  # $100.000 ARS
             },
             "cash_ars": 0.0
         }, portfolio_key="test_fi_implicit")
@@ -367,14 +371,13 @@ class TestFinancialMath(unittest.TestCase):
         res = analyze_rotation("test_fi_implicit", portfolio_data=custom_pf)
         status = res["asset_allocation_status"]
         self.assertEqual(status["fixed_income_target_source"], "implicit_current")
-        self.assertEqual(status["real_fixed_income_pct"], 50.0)
-        self.assertEqual(status["target_fixed_income_pct"], 50.0)
+        self.assertEqual(status["real_fixed_income_pct"], 0.0)
+        self.assertEqual(status["target_fixed_income_pct"], 0.0)
         self.assertEqual(status["fixed_income_gap_pct"], 0.0)
         self.assertEqual(status["equity_gap_pct"], 0.0)
 
         s30s6_item = next((it for it in res["items"] if it["ticker"] == "S30S6"), None)
-        self.assertIsNotNone(s30s6_item)
-        self.assertEqual(s30s6_item["status"], "preserved")
+        self.assertIsNone(s30s6_item)
 
 
     @patch("services.fixed_income_service.fetch_lecaps")
@@ -426,6 +429,31 @@ class TestFinancialMath(unittest.TestCase):
         self.assertEqual(cat_trade["buy"]["action"], "buy")
         self.assertEqual(cat_trade["buy"]["capital_required"], 210000.0)
         self.assertEqual(cat_trade["buy"]["capital_available"], 50000.0)
+
+    def test_calculate_rsi_primeras_barras_son_nan(self):
+        """Bug 17: El RSI no está definido hasta tener `period` barras."""
+        import numpy as np
+        import pandas as pd
+        from services.cedear_service import calculate_rsi
+
+        prices = pd.Series([10.0 + i for i in range(30)])
+        rsi = calculate_rsi(prices, period=14)
+
+        # Las primeras 14 barras deben ser NaN
+        self.assertTrue(np.isnan(rsi.iloc[0]))
+        self.assertTrue(np.isnan(rsi.iloc[13]))
+        # A partir de period (14), debe haber un valor numérico válido
+        self.assertFalse(np.isnan(rsi.iloc[14]))
+        self.assertTrue(0.0 <= rsi.iloc[14] <= 100.0)
+
+    def test_calculate_rsi_converge_a_wilder(self):
+        """Bug 17: Validar que una serie constante de subidas converge hacia 100."""
+        import pandas as pd
+        from services.cedear_service import calculate_rsi
+
+        prices = pd.Series([100.0 + i * 2.0 for i in range(50)])
+        rsi = calculate_rsi(prices, period=14)
+        self.assertAlmostEqual(rsi.iloc[-1], 100.0, places=1)
 
 
 if __name__ == "__main__":

@@ -15,8 +15,6 @@ from routers import (
     indices
 )
 from services.portfolio_service import load_portfolios
-from services.cedear_service import get_multiple_tickers_data
-from services.tv_service import fetch_performance
 from services.security_service import get_cors_configuration
 from services.observability import (
     CorrelationIdMiddleware,
@@ -28,7 +26,6 @@ from services.exceptions import MPFPError
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import os
-import time
 import asyncio
 import logging
 from contextlib import asynccontextmanager

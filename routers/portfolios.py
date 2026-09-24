@@ -53,7 +53,6 @@ from services.rotation_service import load_user_holdings, analyze_rotation
 
 from services.exceptions import (
     DomainValidationError,
-    FinancialInvariantError,
     PortfolioNotFoundError,
     InvalidTickerError
 )
@@ -496,10 +495,47 @@ async def import_custom_portfolios(file: UploadFile = File(...)):
                             pass
                             
             if clean_assets:
-                sanitized_portfolios[pf_name_clean] = {
+                entry = {
                     "mode": mode,
                     "assets": clean_assets
                 }
+                if "anchor" in data_item:
+                    anc_clean = sanitize_ticker(str(data_item["anchor"]))
+                    if anc_clean:
+                        entry["anchor"] = anc_clean
+                if "qty" in data_item:
+                    try:
+                        q_val = int(data_item["qty"])
+                        if q_val > 0:
+                            entry["qty"] = q_val
+                    except (ValueError, TypeError):
+                        pass
+                if "asset_allocation" in data_item and isinstance(data_item["asset_allocation"], dict):
+                    aa = data_item["asset_allocation"]
+                    clean_aa = {}
+                    for k in ("equity_weight", "fixed_income_weight"):
+                        if k in aa:
+                            try:
+                                clean_aa[k] = max(0.0, min(100.0, float(aa[k])))
+                            except (ValueError, TypeError):
+                                pass
+                    if "fixed_income_policy" in aa:
+                        clean_aa["fixed_income_policy"] = str(aa["fixed_income_policy"])
+                    if clean_aa:
+                        entry["asset_allocation"] = clean_aa
+                if "fixed_income_assets" in data_item and isinstance(data_item["fixed_income_assets"], dict):
+                    clean_fia = {}
+                    for tk, fi_info in data_item["fixed_income_assets"].items():
+                        tk_c = sanitize_ticker(tk)
+                        if tk_c and isinstance(fi_info, dict):
+                            clean_fia[tk_c] = {
+                                "target_weight_portfolio": max(0.0, min(100.0, float(fi_info.get("target_weight_portfolio", 0.0)))),
+                                "target_weight_rf": max(0.0, min(100.0, float(fi_info.get("target_weight_rf", 0.0))))
+                            }
+                    if clean_fia:
+                        entry["fixed_income_assets"] = clean_fia
+
+                sanitized_portfolios[pf_name_clean] = entry
                 
         if not sanitized_portfolios:
             return JSONResponse({"success": False, "error": "No se encontraron portfolios válidos para importar en el archivo."})

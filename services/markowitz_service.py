@@ -389,7 +389,6 @@ def calculate_candidate_rsi(
             rsi_val = cedear_data[tk]["rsi"]
         elif daily_returns is not None and tk in daily_returns.columns and len(daily_returns[tk].dropna()) >= 15:
             try:
-                from services.cedear_service import calculate_rsi
                 price_proxy = (1.0 + daily_returns[tk].dropna()).cumprod()
                 rsi_series = calculate_rsi(price_proxy)
                 if not rsi_series.dropna().empty:

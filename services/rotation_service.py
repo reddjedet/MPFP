@@ -11,8 +11,6 @@ from services.portfolio_service import load_portfolios
 from services.fair_value_service import load_fair_values, evaluate_fair_value_signal
 from services.pfcf_service import load_pfcf_values, evaluate_fcf_rsi_state
 from services.financial_units import (
-    normalize_fixed_income_price,
-    to_base_100,
     is_fixed_income_ticker,
     to_unit_price,
     to_market_quote
@@ -374,7 +372,6 @@ def analyze_rotation(
     effective_cash = float(cash_budget) if cash_budget is not None else cash_ars
     
     # Saneamiento canónico: si un bono fue guardado erróneamente en holdings, reclasificarlo
-    from services.financial_units import is_fixed_income_ticker, to_unit_price, to_market_quote
     holdings = {}
     fixed_income = dict(raw_fi)
     for tk, val in raw_holdings.items():

@@ -4,18 +4,14 @@ Provee compatibilidad retroactiva con AtomicJsonDatabase sobre el motor robusto 
 Garantiza transacciones ACID, modo WAL y protección multi-proceso.
 """
 
-import copy
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 
 from services.sqlite_persistence import (
     DEFAULT_DB_PATH,
-    SQLiteTableStore,
     get_sqlite_store,
-    PersistenceError,
-    DatabaseCorruptionError
 )
 
 logger = logging.getLogger("AtomicPersistence")

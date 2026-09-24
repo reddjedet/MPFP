@@ -17,8 +17,7 @@ sys.path.insert(0, str(ROOT_DIR))
 from services.sqlite_persistence import (
     DEFAULT_DB_PATH,
     SQLiteEngine,
-    SQLiteTableStore,
-    get_sqlite_store
+    SQLiteTableStore
 )
 
 DATA_DIR = ROOT_DIR / "data"
@@ -113,7 +112,7 @@ def migrate_data() -> bool:
     
     create_backup()
     
-    engine = SQLiteEngine(DEFAULT_DB_PATH)
+    SQLiteEngine(DEFAULT_DB_PATH)
     print(f"\nConectado a SQLite: {DEFAULT_DB_PATH} (Modo WAL activo)")
     
     all_success = True

@@ -3,8 +3,8 @@ Esquemas Pydantic v2 Fuertemente Tipados para Contratos REST - MPFP (API-02)
 Define modelos de entrada y salida, serializadores y validadores de invariantes.
 """
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Any, Dict, Optional
+from pydantic import BaseModel, Field, field_validator
 
 from services.financial_validation import (
     validate_cash_balance,

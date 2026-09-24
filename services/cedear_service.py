@@ -68,6 +68,8 @@ def calculate_rsi(series: pd.Series, period: int = 14) -> pd.Series:
     # Si ambas fueron 0 (precio plano), RSI = 50.0
     rsi = rsi.where((avg_gain != 0) | (avg_loss != 0), 50.0)
     
+    # El RSI no está definido hasta tener `period` deltas válidos
+    rsi.iloc[:period] = np.nan
     return rsi
 
 from services.cache_service import smart_cache

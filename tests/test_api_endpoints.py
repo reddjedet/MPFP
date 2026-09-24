@@ -3,6 +3,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from main import app
 import io
+import json
 from services.earnings_service import load_earnings_calendar, _db as _earnings_db
 from services.fair_value_service import load_fair_values, _db as _gf_db
 from services.valuation_service import load_user_valuation_inputs, _user_inputs_db as _val_db
@@ -566,6 +567,41 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertGreaterEqual(s["total_real_value"], 0)
         self.assertIn("cash_ars", s)
         self.assertGreaterEqual(s["cash_ars"], 0)
+
+
+    def test_export_import_roundtrip_conserva_metadata(self):
+        payload = {
+            "roundtrip_pf": {
+                "mode": "weights",
+                "assets": {"GGAL": 40.0, "YPF": 60.0},
+                "anchor": "GGAL",
+                "qty": 5,
+                "asset_allocation": {
+                    "equity_weight": 70.0,
+                    "fixed_income_weight": 30.0,
+                    "fixed_income_policy": "preserve"
+                },
+                "fixed_income_assets": {
+                    "S30S6": {
+                        "target_weight_portfolio": 30.0,
+                        "target_weight_rf": 100.0
+                    }
+                }
+            }
+        }
+        content = json.dumps(payload).encode("utf-8")
+        files = {"file": ("portfolios.json", io.BytesIO(content), "application/json")}
+        resp = self.client.post("/api/portfolios/import_json", files=files)
+        self.assertEqual(resp.status_code, 200)
+        
+        # Ahora exportar y verificar que todas las claves se preservaron
+        exp_resp = self.client.get("/api/portfolios/export_json/roundtrip_pf")
+        self.assertEqual(exp_resp.status_code, 200)
+        exp_data = exp_resp.json().get("roundtrip_pf", {})
+        self.assertEqual(exp_data.get("anchor"), "GGAL")
+        self.assertEqual(exp_data.get("qty"), 5)
+        self.assertEqual(exp_data.get("asset_allocation", {}).get("equity_weight"), 70.0)
+        self.assertIn("S30S6", exp_data.get("fixed_income_assets", {}))
 
 
 if __name__ == "__main__":

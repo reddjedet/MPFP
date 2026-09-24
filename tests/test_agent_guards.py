@@ -137,6 +137,23 @@ class TestAgentGuards(unittest.TestCase):
         self.assertEqual(res.get("decision"), "deny")
         self.assertIn("Violación de Regla 1", res.get("reason", ""))
 
+    def test_command_guard_denies_remote_operations(self):
+        script = AGENTS_DIR / "guard_commands.py"
+        remote_commands = [
+            "git push origin main",
+            "git push --force",
+            "git remote add upstream https://github.com/foo/bar.git",
+            "gh pr create --title 'Fix'",
+            "gh release create v1.0",
+            "npm publish",
+            "twine upload dist/*"
+        ]
+        for cmd in remote_commands:
+            payload = {"toolCall": {"name": "run_command", "args": {"CommandLine": cmd}}}
+            res = self._run_script(script, payload)
+            self.assertEqual(res.get("decision"), "deny", f"Should have denied remote op: {cmd}")
+            self.assertIn("COMMAND GUARD", res.get("reason", ""))
+
     def test_command_guard_fail_closed_on_corrupt_json(self):
         script = AGENTS_DIR / "guard_commands.py"
         proc = subprocess.run(

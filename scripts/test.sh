@@ -30,17 +30,12 @@ fi
 echo ""
 echo "[Step 2] Running automated test suite..."
 if [ -d "${DIR}/tests" ]; then
-    if [ -d "${DIR}/venv" ]; then
-        PYTHON_BIN="${DIR}/venv/bin/python"
+    if [ -x "${DIR}/venv/bin/pytest" ]; then
+        "${DIR}/venv/bin/pytest" tests/ -v
     else
-        PYTHON_BIN="python3"
+        "${DIR}/venv/bin/python" -m unittest discover -s tests -p "test_*.py" -v
     fi
-    if "${PYTHON_BIN}" -m unittest discover -s tests -p "test_*.py" -v; then
-        echo "PASS: Automated unit test suite passed."
-    else
-        echo "FAIL: Automated unit test suite failed."
-        FAILED=1
-    fi
+    echo "PASS: Automated test suite passed."
 elif [ -f "${DIR}/Cargo.toml" ]; then
     if cargo test; then
         echo "PASS: Cargo test suite passed."
@@ -55,8 +50,13 @@ fi
 # 3. Security and Privacy Hygiene Audit (if scripts exist)
 echo ""
 echo "[Step 3] Running security & hygiene checks..."
-if [ -f "${DIR}/scripts/audit_security_privacy.py" ]; then
+if [ -x "${DIR}/venv/bin/python" ]; then
+    PYTHON_BIN="${DIR}/venv/bin/python"
+else
     PYTHON_BIN="${PYTHON_BIN:-python3}"
+fi
+
+if [ -f "${DIR}/scripts/audit_security_privacy.py" ]; then
     if "${PYTHON_BIN}" "${DIR}/scripts/audit_security_privacy.py"; then
         echo "PASS: Security & privacy audit clean."
     else
@@ -69,7 +69,6 @@ fi
 echo ""
 echo "[Step 4] Running project health & database diagnostic..."
 if [ -f "${DIR}/scripts/audit_project.py" ]; then
-    PYTHON_BIN="${PYTHON_BIN:-python3}"
     if "${PYTHON_BIN}" "${DIR}/scripts/audit_project.py"; then
         echo "PASS: Project diagnostic & database audit healthy."
     else

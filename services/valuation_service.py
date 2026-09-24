@@ -520,7 +520,7 @@ def evaluate_valuation(ticker: str, metrics: Dict[str, Any]) -> dict:
         action_plan = [
             f"Comprar con Margen de Seguridad por debajo de ${buy_below_price:.2f}.",
             "Ejecutar compra en 2 o 3 tramos: 40% inicial al precio actual, 30% ante caídas del 5-8%, 30% de reserva.",
-            f"Ponderación objetivo en cartera: 6.0% - 10.0% (Tier 1).",
+            "Ponderación objetivo en cartera: 6.0% - 10.0% (Tier 1).",
             "Disparadores de venta: Pérdida estructural de foso competitivo, deterioro permanente de rentabilidad o sobrevaluación extrema."
         ]
         target_weight = "6.0% - 10.0%"

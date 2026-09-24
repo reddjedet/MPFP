@@ -233,11 +233,11 @@ export const PortfolioFixedIncomeTable: React.FC<Props> = ({ summary, pfType, on
 
                 {/* 2. CÓMO ERA (AL COMPRAR) */}
                 <th className="px-2.5 py-2 text-right">Nominales</th>
-                <th className="px-2.5 py-2 text-right">PPC ($)</th>
+                <th className="px-2.5 py-2 text-right">PPC (Base 100)</th>
                 <th className="px-2.5 py-2 text-right border-r border-border">Costo Invertido</th>
 
                 {/* 3. CÓMO VA (SPOT) */}
-                <th className="px-2.5 py-2 text-right">Spot ($)</th>
+                <th className="px-2.5 py-2 text-right">Precio Spot (Base 100)</th>
                 <th className="px-2.5 py-2 text-right">Val. Mercado</th>
                 <th className="px-2.5 py-2 text-right">PnL Acum.</th>
                 <th className="px-2.5 py-2 text-center border-r border-border" title="Tasa Interna de Retorno del mercado actual (TEM / TNA)">TIR Mercado</th>

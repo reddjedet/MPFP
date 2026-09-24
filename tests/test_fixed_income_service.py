@@ -45,8 +45,16 @@ class TestFixedIncomeService(unittest.TestCase):
             self.assertIn("tipo", spec)
             self.assertGreater(spec["tem_emision"], 0)
 
-    def test_endpoint_lecap_curve_filters(self):
+    @patch("services.fixed_income_service.fetch_datos", return_value=[])
+    @patch("services.fixed_income_service.fetch_panel")
+    def test_endpoint_lecap_curve_filters(self, mock_panel, mock_datos):
         """Verifica filtros por tipo de instrumento (LECAP, BONCAP) en /api/renta_fija/curve_json."""
+        mock_panel.return_value = {
+            "data": [
+                {"symbol": "S30S6 24HS", "trade": 112.08, "volumeAmount": 5000000},
+                {"symbol": "T31Y7 24HS", "trade": 115.50, "volumeAmount": 3000000}
+            ]
+        }
         resp_all = self.client.get("/api/renta_fija/curve_json?category=lecap&tipo_inst=Todos")
         self.assertEqual(resp_all.status_code, 200)
         self.assertIn("S30S6", resp_all.text)
@@ -109,8 +117,15 @@ class TestFixedIncomeService(unittest.TestCase):
         self.assertEqual(res.loc[res["ticker"] == "GD30", "spread"].iloc[0], -0.8)
         self.assertEqual(res.loc[res["ticker"] == "AL35", "spread"].iloc[0], 1.5)
 
-    def test_endpoint_lecap_curve(self):
+    @patch("services.fixed_income_service.fetch_datos", return_value=[])
+    @patch("services.fixed_income_service.fetch_panel")
+    def test_endpoint_lecap_curve(self, mock_panel, mock_datos):
         """Verifica que el endpoint /api/renta_fija/curve_json responda datos válidos para LECAPs."""
+        mock_panel.return_value = {
+            "data": [
+                {"symbol": "S30S6 24HS", "trade": 112.08, "volumeAmount": 5000000}
+            ]
+        }
         resp = self.client.get("/api/renta_fija/curve_json?category=lecap")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("table_data", resp.text)
