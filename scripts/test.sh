@@ -76,9 +76,25 @@ else
     FAILED=1
 fi
 
-# 3. Security and Privacy Hygiene Audit (if scripts exist)
+# 3. Clean-checkout simulation: only tracked data files are available.
 echo ""
-echo "[Step 3] Running security & hygiene checks..."
+echo "[Step 3] Running clean-checkout simulation..."
+CLEAN_DATA_DIR="$(mktemp -d)"
+cleanup_clean_data() { rm -rf "${CLEAN_DATA_DIR}"; }
+trap cleanup_clean_data EXIT
+while IFS= read -r tracked_file; do
+    cp "${DIR}/${tracked_file}" "${CLEAN_DATA_DIR}/$(basename "${tracked_file}")"
+done < <(git -C "${DIR}" ls-files data)
+if MPFP_DATA_DIR="${CLEAN_DATA_DIR}" "${PYTHON_BIN:-${DIR}/venv/bin/python}" -m pytest tests/ -q; then
+    echo "PASS: Clean-checkout simulation passed."
+else
+    echo "FAIL: Clean-checkout simulation failed."
+    FAILED=1
+fi
+
+# 4. Security and Privacy Hygiene Audit (if scripts exist)
+echo ""
+echo "[Step 4] Running security & hygiene checks..."
 if [ -x "${DIR}/venv/bin/python" ]; then
     PYTHON_BIN="${DIR}/venv/bin/python"
 else

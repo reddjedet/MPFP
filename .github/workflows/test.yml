@@ -45,7 +45,7 @@ jobs:
 
       - name: Run Backend Unit & Integration Tests
         run: |
-          python -m unittest discover -s tests -p "test_*.py" -v
+          python -m pytest tests/ -q
 
       - name: Run Project Integrity & Security Audit
         run: |

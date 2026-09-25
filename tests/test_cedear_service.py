@@ -3,7 +3,11 @@ import pandas as pd
 from services.cedear_service import calculate_rsi, CEDEAR_RATIOS
 
 class TestCedearService(unittest.TestCase):
-    
+    @classmethod
+    def setUpClass(cls):
+        from tests.portfolio_fixtures import seed_required_portfolios
+        seed_required_portfolios()
+
     def test_calculate_rsi_wilder_math(self):
         # Escenario controlado: 14 días de subida constante de 1 unidad
         # Ganancia promedio = 1.0, Pérdida promedio = 0.0 -> RSI = 100

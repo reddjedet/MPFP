@@ -49,6 +49,8 @@ class TestAPIEndpoints(unittest.TestCase):
         initial_gf = dict(load_fair_values())
         initial_val = dict(load_user_valuation_inputs())
         initial_pf = dict(load_portfolios())
+        # Definitions are test fixtures, not an implicit dependency on developer-local data.
+        initial_pf.update({"min_drawdown_15": {"mode": "weights", "assets": {"COST": 25.0, "LLY": 25.0, "DE": 25.0, "GOOGL": 25.0}}})
         initial_ppc = dict(load_ppc_values())
         initial_pfcf = dict(load_pfcf_values())
         initial_holdings = dict(load_user_holdings())

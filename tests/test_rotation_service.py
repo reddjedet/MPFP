@@ -35,6 +35,8 @@ class TestRotationService(unittest.TestCase):
         _ppc_db._cache = None
         _ppc_db._cache_valid = False
         _ppc_db.save(initial_ppc)
+        from tests.portfolio_fixtures import seed_required_portfolios
+        seed_required_portfolios()
         
         cls.client = TestClient(app)
 
