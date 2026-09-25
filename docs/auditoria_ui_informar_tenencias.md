@@ -155,7 +155,7 @@ Orden recomendado: **A → B → C**, con **D** como decisión de producto que p
 ## 8. Anexo — artefactos de la auditoría
 
 Directorio de artefactos de los runs:  
-`/home/christian/.pi/agent/sessions/--run-media-christian-51cc8d45-50ef-4ae6-8f35-ecd9286e0c67-Documentos-Proyectos Antigravity-Streamlit-a-app-github--/subagent-artifacts/`
+Ruta local temporal del runtime de agentes (no versionada).
 
 - `5ecd1a49-47a0-42b1-acfe-428704238825_scout_output.md`
 - `63820349-5203-42e0-8b2a-0f2dff145218_reviewer_output.md`

@@ -46,7 +46,7 @@ This document tracks project evolution, session metrics, and seamless context ha
 - [x] Security & privacy audit: Limpio (0 anomalías detectadas).
 
 #### 2.3 Context Handoff Snapshot (Carry-over to Next Chat)
-- Documento guía: [FASE_4_Y_PENDIENTES.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/FASE_4_Y_PENDIENTES.md).
+- Documento guía: `FASE_4_Y_PENDIENTES.md` (archivo local del desarrollador, no versionado).
 - Status: Completado.
 
 ### Session 2026-09-23: Fase 4 — Persistencia y Migración a SQLite (DATA-01 a DATA-03)
@@ -91,6 +91,31 @@ This document tracks project evolution, session metrics, and seamless context ha
   - Actualizados `README.md`, `SECURITY.md`, `instructivo.md` y `docs/aprendizaje_de_errores.md` (INC-08).
 - Verification: 218/218 tests pasando al 100% en clon limpio y `./scripts/test.sh`.
 
+
+---
+
+### Session 2026-09-25: Evals, Aislamiento de Tests, Reparación de bmb y Leyenda del Treemap
+- Primary Goal: Establecer harness de evals, cerrar DEC-01 (tests contaminaban data/), reparar el portfolio bmb y mejorar la visualización de composición.
+- Changes Delivered:
+  - `EVALS-01`: Harness de evals en `specs/` (benchmarks/SCHEMA.md, EVALS-financial-core.md, verifications/e02s01-eval-report.md, state.yaml). 11 evals con pass@k=3; C5/R4 promovidas a ALWAYS_PASSES.
+  - `TEST-01` (DEC-01, resuelto): Aislamiento de tests vía `MPFP_DATA_DIR` (`services/data_paths.py` + `tests/conftest.py` con snapshot temporal) y guard de integridad en `scripts/test.sh`. 263/263 tests, data/ intacto.
+  - `DATA-01`: Reparación de `bmb` (contaminación por tests pre-fix): RV = CAT 24.4 / MRK 38.1 / GOOGL 16.9 / MA 2.3 / PM 8.5 / AMAT 9.8; split RV 46.56 / RF 53.44; S30S6 53.44% (100% del bloque RF). Limpieza de fixtures de test en tenencias (GGAL 10 nominales, cash_ars 1500). Verificación independiente vía subagentes + spot-check del padre.
+  - `FE-01`: Leyenda "Todos los activos" bajo el Treemap en `HoldingsManagerView.tsx` (ticker + sector + % ordenado por peso descendente, click abre ficha). Motivo: ECharts no renderiza labels en teselas chicas (MA 2.3%).
+  - `DOC-01`: script `typecheck` agregado a `frontend/package.json` (AGENTS.md lo referenciaba pero no existía).
+- Architectural Decisions & Edge Cases:
+  - `data/portfolios.db` es el store AUTORITATIVO de portfolios (`portfolio_service._db.file_path`); `data/mpfp.db` contiene tablas espejo y debe sincronizarse en cada reparación.
+  - Reparaciones de datos SIEMPRE con la app detenida (la caché en memoria del daemon pisó escrituras) + `PRAGMA wal_checkpoint(TRUNCATE)` para que la verdad quede en el .db principal, no solo en el -wal.
+  - Backups de SQLite deben copiar también `-wal`/`-shm` (un backup del .db solo puede leerse como estado viejo).
+  - Tests: prohibido hardcodear expectativas sobre datos vivos de producción (fixtures propios en el store aislado).
+- Verification:
+  - `./venv/bin/pytest tests/ -q` → 263/263; data/ sin mutación.
+  - `./scripts/test.sh` → 100% con "Test isolation verified (data/ untouched)".
+  - `npm --prefix frontend run build` (tsc -b && vite build) → OK.
+  - Verificación post-boot por API y servicios de todos los datos reparados.
+- Context Handoff Snapshot:
+  - Completed: evals, DEC-01, bmb (config + tenencias), leyenda del Treemap.
+  - Next Steps: usuario ajustará la RV de bmb por UI (variante con VIST anotada); promover R5/C6 en specs/state.yaml al acumular corridas limpias.
+  - Blockers: None.
 
 ---
 

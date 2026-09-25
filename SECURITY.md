@@ -16,7 +16,7 @@ Actualmente se brinda soporte de parches de seguridad a la última versión prin
 La seguridad y la integridad de los datos financieros son pilares fundamentales de este proyecto. Si descubres una vulnerabilidad o un problema de seguridad potencial, te solicitamos encarecidamente que **no abras un issue público**.
 
 ### Procedimiento:
-1. Contacta de forma privada mediante un [GitHub Security Advisory](https://github.com/) en este repositorio o enviando un correo al mantenedor.
+1. Contacta de forma privada mediante un [GitHub Security Advisory de este repositorio](https://github.com/reddjedet/MPFP/security/advisories/new) (Report Private Vulnerability).
 2. Proporciona:
    - Descripción detallada de la vulnerabilidad.
    - Pasos para reproducirla (Proof of Concept o vector de ataque).
