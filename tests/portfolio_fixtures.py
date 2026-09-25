@@ -1,4 +1,11 @@
 """Explicit portfolio definitions used by tests that exercise portfolio lookups."""
+
+# Garantiza el aislamiento ANTES de importar services (INC-09): estos fixtures
+# escriben definiciones de portfolio y jamás deben tocar data/ de producción.
+from tests._isolation import ensure_isolated_data_dir
+
+ensure_isolated_data_dir()
+
 from services.portfolio_service import load_portfolios, save_portfolios
 
 

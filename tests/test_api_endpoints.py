@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from main import app
@@ -169,6 +170,10 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(resp.headers.get("X-Frame-Options"), "DENY")
         self.assertIn("X-Process-Time", resp.headers)
 
+    @unittest.skipUnless(
+        (Path(__file__).resolve().parent.parent / "frontend" / "dist").is_dir(),
+        "frontend/dist no construido — ejecutar 'npm --prefix frontend run build'",
+    )
     def test_root_dashboard(self):
         resp = self.client.get("/")
         self.assertEqual(resp.status_code, 200)
