@@ -64,6 +64,10 @@ Streamlit-a-app-github/
 5. **Test Isolation**:
    - Tests must never mutate production `data/*.json` files; use `tempfile.TemporaryDirectory`.
    - Backend changes must pass `./venv/bin/pytest tests/` before completion.
+6. **Clean-Checkout & Data Invariants** (post-mortem INC-09/INC-10):
+   - Every test suite and audit must pass on a **clean checkout** (only tracked files) and leave `data/` byte-identical.
+   - CI and local verification must share the same canonical runner (`pytest`); no runner divergence.
+   - SQLite backups must include `-wal` and `-shm` sidecar files (a `.db` copy alone can read as stale state).
 
 ---
 
