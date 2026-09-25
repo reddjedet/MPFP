@@ -1,4 +1,5 @@
 import unittest
+from copy import deepcopy
 from unittest.mock import patch
 from services.portfolio_service import (
     calculate_portfolio, 
@@ -8,6 +9,8 @@ from services.portfolio_service import (
     calculate_portfolio_alpha,
     safe_float,
     get_portfolio_fixed_income_summary,
+    save_portfolios,
+    load_portfolios,
     get_ticker_sector,
     calculate_sector_breakdown
 )
@@ -15,11 +18,17 @@ from services.portfolio_service import (
 class TestPortfolioCalculations(unittest.TestCase):
     
     def setUp(self):
+        # Estos tests escriben portfolios deliberadamente; restaurar el snapshot
+        # evita contaminar otros tests que usan el store aislado compartido.
+        self._portfolios_before_test = deepcopy(load_portfolios())
         self.mock_data = {
             "AAPL": {"local": 1000.0, "rsi": 55.0},
             "MSFT": {"local": 2000.0, "rsi": 48.0},
             "GOOGL": {"local": 500.0, "rsi": 62.0}
         }
+
+    def tearDown(self):
+        save_portfolios(self._portfolios_before_test)
 
     def test_calculate_portfolio_rsi(self):
         # Cartera con 2 activos: AAPL ($10,000, RSI 55) y MSFT ($30,000, RSI 45)
@@ -93,6 +102,16 @@ class TestPortfolioCalculations(unittest.TestCase):
 
     @patch("services.rotation_service.load_user_holdings")
     def test_get_portfolio_fixed_income_summary_bmb(self, mock_holdings):
+        # Sembrar la cartera en el store aislado: no depender del bmb de data/,
+        # que puede cambiar legítimamente desde la UI.
+        save_portfolios({
+            "bmb": {
+                "mode": "weights",
+                "assets": {},
+                "fixed_income_assets": {"S30S6": {}},
+                "asset_allocation": {"equity_weight": 45.63, "fixed_income_weight": 54.37},
+            }
+        })
         mock_holdings.return_value = {
             "fixed_income_holdings": {
                 "S30S6": {"nominals": 1000, "ppc": 110.0}
@@ -116,6 +135,16 @@ class TestPortfolioCalculations(unittest.TestCase):
 
     @patch("services.rotation_service.load_user_holdings")
     def test_get_portfolio_fixed_income_summary_min_drawdown_15(self, mock_holdings):
+        # También se siembra esta cartera para que el assert de asignación no
+        # dependa del snapshot vivo de data/.
+        save_portfolios({
+            "min_drawdown_15": {
+                "mode": "weights",
+                "assets": {},
+                "fixed_income_assets": {"S30S6": {}, "T31Y7": {}},
+                "asset_allocation": {"equity_weight": 69.53, "fixed_income_weight": 30.47},
+            }
+        })
         mock_holdings.return_value = {
             "fixed_income_holdings": {
                 "S30S6": {"nominals": 1000, "ppc": 1.10},
