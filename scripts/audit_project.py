@@ -7,7 +7,7 @@ Ejecuta un diagnóstico integral de salud, ciberseguridad, datos y pruebas del p
 import sys
 import json
 import time
-import unittest
+import subprocess
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -20,7 +20,24 @@ def print_header(title: str):
 
 def check_database():
     print_header("1. Verificación de Base de Datos Local (SQLite & Resguardos)")
-    sqlite_db_path = ROOT_DIR / "data" / "mpfp.db"
+    from services.data_paths import get_data_dir
+    data_dir = get_data_dir()
+    sqlite_db_path = data_dir / "mpfp.db"
+
+    # Entornos limpios (CI / fresh checkout): la persistencia aún no existe y solo
+    # hay seeds .example. Se dispara el bootstrap real (mismo camino que usa la app)
+    # para poder verificar la integridad de lo recién generado. Ver INC-08 / INC-09.
+    if not sqlite_db_path.exists() and not (data_dir / "portfolios.json").exists():
+        seeds = sorted(data_dir.glob("*.json.example"))
+        if seeds:
+            print(f"  ℹ️ Entorno limpio detectado ({len(seeds)} seeds .example). Ejecutando bootstrap de persistencia...")
+            try:
+                from services.portfolio_service import load_portfolios
+                from services.ppc_service import load_ppc_values
+                load_portfolios()
+                load_ppc_values()
+            except Exception as e:
+                print(f"  ⚠️ Bootstrap parcial: {e}")
     
     if sqlite_db_path.exists():
         import sqlite3
@@ -72,8 +89,8 @@ def check_database():
     else:
         print(f"  ⚠️ Base de datos SQLite '{sqlite_db_path}' aún no generada.")
 
-    db_path = ROOT_DIR / "data" / "portfolios.json"
-    if not db_path.exists() and not sqlite_db_path.exists():
+    db_path = data_dir / "portfolios.json"
+    if not db_path.exists() and not sqlite_db_path.exists() and not list(data_dir.glob("*.db")):
         print(f"  ❌ Ni base de datos SQLite ni archivo {db_path} encontrados.")
         return False
     try:
@@ -229,16 +246,26 @@ def check_security():
 
 def run_test_suite():
     print_header("3. Ejecución de la Suite de Pruebas Automatizadas")
-    loader = unittest.TestLoader()
-    suite = loader.discover(str(ROOT_DIR / "tests"), pattern="test_*.py")
-    runner = unittest.TextTestRunner(verbosity=1)
-    result = runner.run(suite)
-    
-    if result.wasSuccessful():
-        print(f"\n  ✅ Todos los {result.testsRun} tests pasaron satisfactoriamente.")
+    # Subproceso obligatorio (INC-09): en un intérprete limpio, tests/__init__.py
+    # activa el aislamiento de persistencia ANTES de importar services. En proceso,
+    # services ya tendría las rutas de producción ligadas y los fixtures escribirían
+    # sobre datos reales. '-t .' garantiza importar tests como paquete.
+    proc = subprocess.run(
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", ".", "-p", "test_*.py"],
+        cwd=str(ROOT_DIR),
+        capture_output=True,
+        text=True,
+    )
+    output = (proc.stderr or "") + (proc.stdout or "")
+    tail = "\n".join(output.splitlines()[-6:])
+
+    if proc.returncode == 0:
+        ran_line = next((l for l in output.splitlines() if l.startswith("Ran ")), "")
+        print(f"\n  ✅ Suite de pruebas en subproceso aislado: {ran_line or 'OK'}")
         return True
     else:
-        print(f"\n  ❌ Fallaron {len(result.failures)} tests y hubo {len(result.errors)} errores.")
+        print("\n  ❌ La suite de pruebas falló (subproceso aislado):")
+        print(tail)
         return False
 
 def main():
