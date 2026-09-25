@@ -29,13 +29,35 @@ fi
 # 2. Automated Test Suite (Python, Go, Rust, or custom)
 echo ""
 echo "[Step 2] Running automated test suite..."
+
+# Test Isolation invariant: tests must never mutate production data/
+# La comparación corre SIEMPRE (incluso si el suite falla) y con baseline vacío
+# si data/ no existía al inicio: todo archivo posterior cuenta como mutación.
+snapshot_data() {
+    if [ -d "${DIR}/data" ]; then
+        find "${DIR}/data" -type f -exec md5sum {} + | sort -k2
+    fi
+}
+DATA_SNAPSHOT="$(mktemp)"
+trap 'rm -f "${DATA_SNAPSHOT}"' EXIT
+snapshot_data > "${DATA_SNAPSHOT}"
+
 if [ -d "${DIR}/tests" ]; then
     if [ -x "${DIR}/venv/bin/pytest" ]; then
-        "${DIR}/venv/bin/pytest" tests/ -v
+        if "${DIR}/venv/bin/pytest" tests/ -v; then
+            echo "PASS: Automated test suite passed."
+        else
+            echo "FAIL: Automated test suite failed."
+            FAILED=1
+        fi
     else
-        "${DIR}/venv/bin/python" -m unittest discover -s tests -p "test_*.py" -v
+        if "${DIR}/venv/bin/python" -m unittest discover -s tests -p "test_*.py" -v; then
+            echo "PASS: Automated test suite passed."
+        else
+            echo "FAIL: Automated test suite failed."
+            FAILED=1
+        fi
     fi
-    echo "PASS: Automated test suite passed."
 elif [ -f "${DIR}/Cargo.toml" ]; then
     if cargo test; then
         echo "PASS: Cargo test suite passed."
@@ -45,6 +67,13 @@ elif [ -f "${DIR}/Cargo.toml" ]; then
     fi
 else
     echo "INFO: No tests/ directory detected; skipping unit test discovery."
+fi
+
+if snapshot_data | diff -q "${DATA_SNAPSHOT}" - > /dev/null; then
+    echo "PASS: Test isolation verified (data/ untouched)."
+else
+    echo "FAIL: Test suite mutated production data/ (Test Isolation violation)."
+    FAILED=1
 fi
 
 # 3. Security and Privacy Hygiene Audit (if scripts exist)

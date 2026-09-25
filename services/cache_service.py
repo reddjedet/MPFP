@@ -23,6 +23,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 
+from services.data_paths import data_file
 from services.sqlite_persistence import DEFAULT_DB_PATH, SQLiteEngine
 
 logger = logging.getLogger("MarketCache")
@@ -31,7 +32,7 @@ ART_TZ = ZoneInfo("America/Argentina/Buenos_Aires")
 DEFAULT_MAX_SQLITE_ROWS = 5000
 
 # Archivo de compatibilidad legacy (CACHE-01 migrado a SQLite)
-DISK_CACHE_FILE = Path(__file__).resolve().parent.parent / "data" / ".cache_market.json"
+DISK_CACHE_FILE = data_file(".cache_market.json")
 _disk_writer_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="cache_writer")
 
 

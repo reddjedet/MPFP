@@ -1,9 +1,9 @@
-from pathlib import Path
 from typing import Dict, Any, Optional
 from services.atomic_persistence import AtomicJsonDatabase
+from services.data_paths import data_file
 from services.security_service import sanitize_ticker
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "pfcf_values.json"
+DB_PATH = data_file("pfcf_values.json")
 _db = AtomicJsonDatabase(DB_PATH)
 
 

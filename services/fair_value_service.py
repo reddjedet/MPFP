@@ -1,10 +1,10 @@
-from pathlib import Path
 from typing import Dict, Any, Optional
 from services.atomic_persistence import AtomicJsonDatabase
+from services.data_paths import data_file
 from services.security_service import sanitize_ticker
 from services.utils import parse_price_input
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "fair_values.json"
+DB_PATH = data_file("fair_values.json")
 _db = AtomicJsonDatabase(DB_PATH)
 
 # Conjunto de tickers correspondientes a mercados emergentes (LATAM, Asia Emergente, etc.)

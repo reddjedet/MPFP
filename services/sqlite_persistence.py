@@ -13,9 +13,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from services.data_paths import data_file
+
 logger = logging.getLogger("SQLitePersistence")
 
-DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "mpfp.db"
+DEFAULT_DB_PATH = data_file("mpfp.db")
 
 
 class PersistenceError(Exception):

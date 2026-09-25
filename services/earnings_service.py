@@ -2,11 +2,11 @@ import logging
 logger = logging.getLogger(__name__)
 from datetime import datetime, date
 from typing import List, Optional
-from pathlib import Path
 from services.atomic_persistence import AtomicJsonDatabase
+from services.data_paths import data_file
 from services.security_service import sanitize_ticker
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "earnings_calendar.json"
+DB_PATH = data_file("earnings_calendar.json")
 _db = AtomicJsonDatabase(DB_PATH)
 
 MESES_ES = {

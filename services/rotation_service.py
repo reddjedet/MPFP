@@ -1,8 +1,8 @@
-from pathlib import Path
 from typing import Dict, Any, Optional
 import logging
 import math
 
+from services.data_paths import data_file
 from services.sqlite_persistence import SQLiteTableStore
 from services.security_service import sanitize_ticker
 from services.ppc_service import load_ppc_values, save_ppc_value, evaluate_ppc_return
@@ -18,7 +18,7 @@ from services.financial_units import (
 
 logger = logging.getLogger("RotationService")
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "user_holdings.json"
+DB_PATH = data_file("user_holdings.json")
 
 DEFAULT_HOLDINGS = {
     "bmb": {

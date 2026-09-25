@@ -6,10 +6,10 @@ import numpy as np
 
 MIN_CANDLES = 20
 
-from pathlib import Path
 from services.atomic_persistence import AtomicJsonDatabase
+from services.data_paths import data_file
 
-RATIOS_FILE = Path(__file__).resolve().parent.parent / "data" / "cedear_ratios.json"
+RATIOS_FILE = data_file("cedear_ratios.json")
 _ratios_db = AtomicJsonDatabase(RATIOS_FILE)
 
 def load_cedear_ratios() -> dict[str, float]:

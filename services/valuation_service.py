@@ -1,15 +1,15 @@
 import logging
-from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 import copy
 from services.atomic_persistence import AtomicJsonDatabase
+from services.data_paths import data_file
 from services.utils import clamp
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "valuation_profiles.json"
-USER_INPUTS_PATH = Path(__file__).resolve().parent.parent / "data" / "user_valuation_inputs.json"
+DB_PATH = data_file("valuation_profiles.json")
+USER_INPUTS_PATH = data_file("user_valuation_inputs.json")
 _user_inputs_db = AtomicJsonDatabase(USER_INPUTS_PATH)
 
 _val_db = AtomicJsonDatabase(DB_PATH)

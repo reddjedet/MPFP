@@ -1,7 +1,7 @@
 import math
-from pathlib import Path
 from typing import Any, Optional
 import logging
+from services.data_paths import data_file
 from services.sqlite_persistence import SQLiteTableStore
 
 logger = logging.getLogger(__name__)
@@ -9,10 +9,10 @@ from services.financial_units import normalize_fixed_income_price, to_base_100, 
 
 from datetime import datetime
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "portfolios.json"
+DB_PATH = data_file("portfolios.json")
 _db = SQLiteTableStore("portfolios", DB_PATH)
 
-TRASH_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "portfolios_trash.json"
+TRASH_DB_PATH = data_file("portfolios_trash.json")
 _trash_db = SQLiteTableStore("portfolios_trash", TRASH_DB_PATH)
 MAX_TRASH_CAPACITY = 7
 

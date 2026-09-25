@@ -6,15 +6,15 @@ y superposición de mandatos presidenciales e hitos electorales.
 """
 
 import json
-from pathlib import Path
 from typing import Dict, Any
 import numpy as np
 import pandas as pd
 from datetime import timedelta
 
 from services.cache_service import smart_cache
+from services.data_paths import data_file
 
-DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "historical_indices.json"
+DATA_FILE = data_file("historical_indices.json")
 
 REGIONS_METADATA = [
     {
