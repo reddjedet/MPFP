@@ -1,16 +1,19 @@
 import math
 from pathlib import Path
 from typing import Any, Optional
-from services.atomic_persistence import AtomicJsonDatabase
+import logging
+from services.sqlite_persistence import SQLiteTableStore
+
+logger = logging.getLogger(__name__)
 from services.financial_units import normalize_fixed_income_price, to_base_100, normalize_quote_to_base_100
 
 from datetime import datetime
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "portfolios.json"
-_db = AtomicJsonDatabase(DB_PATH)
+_db = SQLiteTableStore("portfolios", DB_PATH)
 
 TRASH_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "portfolios_trash.json"
-_trash_db = AtomicJsonDatabase(TRASH_DB_PATH)
+_trash_db = SQLiteTableStore("portfolios_trash", TRASH_DB_PATH)
 MAX_TRASH_CAPACITY = 7
 
 RESERVED_PORTFOLIO_NAMES = frozenset({"bmb", "bal"})
@@ -891,8 +894,8 @@ def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
     df_lecaps = None
     try:
         df_lecaps = fetch_lecaps()
-    except Exception:
-        pass
+    except (ValueError, ConnectionError, RuntimeError, KeyError, TypeError) as e:
+        logger.warning("Error en portfolio_service: %s", e)
 
     market_lookup = {}
     if df_lecaps is not None and not df_lecaps.empty:
@@ -1147,8 +1150,8 @@ def calculate_portfolio_alpha(weights: dict) -> dict:
                         "class": "txt-success" if diff > 0 else "txt-danger"
                     }
             alpha_metrics = summary_perf
-    except Exception:
-        pass
+    except (ValueError, ConnectionError, RuntimeError, KeyError, TypeError) as e:
+        logger.warning("Error en portfolio_service: %s", e)
     return alpha_metrics
 
 

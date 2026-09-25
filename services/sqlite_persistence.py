@@ -691,7 +691,8 @@ class SQLiteTableStore:
 
                     for tk, h_info in pf_data.get("holdings", {}).items():
                         qty = float(h_info.get("nominals", 0)) if isinstance(h_info, dict) else 0.0
-                        ppc = float(h_info.get("ppc", 0.0)) if isinstance(h_info, dict) else 0.0
+                        # Nunca float(None): un ppc ausente o nulo se persiste como 0.0 (columna NOT NULL)
+                        ppc = float(h_info.get("ppc") or 0.0) if isinstance(h_info, dict) else 0.0
                         conn.execute("""
                             INSERT INTO user_holdings (portfolio_id, ticker, asset_type, quantity, ppc, currency, updated_at)
                             VALUES (?, ?, 'cedear', ?, ?, 'ARS', ?);
@@ -699,7 +700,8 @@ class SQLiteTableStore:
 
                     for tk, fi_info in pf_data.get("fixed_income_holdings", {}).items():
                         qty = float(fi_info.get("nominals", 0)) if isinstance(fi_info, dict) else 0.0
-                        ppc = float(fi_info.get("ppc", 0.0)) if isinstance(fi_info, dict) else 0.0
+                        # Nunca float(None): un ppc ausente o nulo se persiste como 0.0 (columna NOT NULL)
+                        ppc = float(fi_info.get("ppc") or 0.0) if isinstance(fi_info, dict) else 0.0
                         conn.execute("""
                             INSERT INTO user_holdings (portfolio_id, ticker, asset_type, quantity, ppc, currency, updated_at)
                             VALUES (?, ?, 'fixed_income', ?, ?, 'ARS', ?);

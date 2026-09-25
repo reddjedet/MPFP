@@ -59,6 +59,7 @@ from services.exceptions import (
 from schemas.api_schemas import (
     QuickUpdateAssetRequest,
     PortfolioSettingsRequest,
+    PortfolioWeightsRequest,
     PortfolioCreateRequest
 )
 
@@ -335,6 +336,39 @@ def update_portfolio_settings_json(pf_type: str, body: PortfolioSettingsRequest)
         "anchor": pf_data.get("anchor"), 
         "qty": pf_data.get("qty")
     })
+
+@router.post("/weights_json/{pf_type}", response_class=JSONResponse)
+def update_portfolio_weights_json(pf_type: str, body: PortfolioWeightsRequest):
+    """Actualiza los pesos objetivo de una cartera existente preservando el resto de sus metadatos.
+
+    create_json solo crea carteras nuevas: no puede usarse para editar pesos porque
+    devuelve 409 si el nombre ya existe y rechaza los nombres reservados (bmb/bal).
+    """
+    pf_clean = sanitize_portfolio_name(pf_type)
+    if not pf_clean:
+        return JSONResponse({"success": False, "error": "Nombre de portfolio no válido."}, status_code=400)
+
+    portfolios_data = load_portfolios()
+    if pf_clean not in portfolios_data:
+        raise PortfolioNotFoundError(f"La cartera '{pf_clean}' no existe.")
+
+    new_weights, err = parse_weights_string(body.weights_str or "")
+    if err:
+        return JSONResponse({"success": False, "error": err}, status_code=400)
+
+    pf_data = portfolios_data[pf_clean]
+    pf_data["assets"] = new_weights
+    pf_data["mode"] = "nominals" if body.mode == "nominals" else "weights"
+    portfolios_data[pf_clean] = pf_data
+    save_portfolios(portfolios_data)
+
+    return JSONResponse({
+        "success": True,
+        "pf_type": pf_clean,
+        "assets": pf_data["assets"],
+        "mode": pf_data["mode"]
+    })
+
 
 @router.post("/create_json", response_class=JSONResponse)
 async def create_custom_portfolio(request: Request):

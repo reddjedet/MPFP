@@ -543,7 +543,91 @@ class TestRotationService(unittest.TestCase):
             if t.get("sell"):
                 self.assertNotEqual(t["sell"]["ticker"], "TMF27")
 
+    def test_holding_sin_ppc_no_rompe_la_persistencia(self):
+        """Regresión: nominales > 0 sin PPC no debe persistir None (columna NOT NULL)."""
+        save_user_holdings({"holdings": {"GOOGL": {"nominals": 50}}}, portfolio_key="bmb")
+        guardada = load_user_holdings("bmb")
+        self.assertIn("GOOGL", guardada["holdings"])
+        self.assertEqual(guardada["holdings"]["GOOGL"]["nominals"], 50)
+        # Nunca None: al leer puede caer al PPC global, pero siempre debe ser numérico
+        self.assertIsNotNone(guardada["holdings"]["GOOGL"]["ppc"])
+        self.assertIsInstance(guardada["holdings"]["GOOGL"]["ppc"], (int, float))
+
+    def test_bulk_update_acepta_holding_sin_ppc(self):
+        """Regresión HTTP 500: la UI informa nominales antes que el PPC."""
+        resp = self.client.post(
+            "/api/rotation/holdings/bulk_update",
+            json={"portfolio": "bmb", "holdings": {"GOOGL": {"nominals": 12}}},
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
+        self.assertEqual(resp.json()["data"]["holdings"]["GOOGL"]["nominals"], 12)
+
+    def test_actualizar_pesos_de_cartera_existente(self):
+        """Los pesos objetivo se actualizan con weights_json (create_json devuelve 409)."""
+        resp = self.client.post(
+            "/api/portfolios/weights_json/bmb",
+            json={"weights_str": "CAT:50,GOOGL:50", "mode": "weights"},
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
+        body = resp.json()
+        self.assertTrue(body["success"])
+        self.assertEqual(body["assets"], {"CAT": 50.0, "GOOGL": 50.0})
+
+    def test_fixed_income_sin_ppc_no_rompe_la_persistencia(self):
+        """Regresión: renta fija con nominales > 0 sin PPC no debe persistir None (columna NOT NULL)."""
+        save_user_holdings({
+            "holdings": {},
+            "fixed_income_holdings": {"AL30": {"nominals": 100}},
+            "cash_ars": 0.0
+        }, portfolio_key="bmb")
+        guardada = load_user_holdings("bmb")
+        self.assertIn("AL30", guardada["fixed_income_holdings"])
+        self.assertEqual(guardada["fixed_income_holdings"]["AL30"]["nominals"], 100)
+        self.assertIsNotNone(guardada["fixed_income_holdings"]["AL30"]["ppc"])
+        self.assertIsInstance(guardada["fixed_income_holdings"]["AL30"]["ppc"], (int, float))
+
+    def test_fixed_income_update_sin_ppc_responde_ok(self):
+        """Regresión HTTP 500: informar renta fija sin PPC no debe tumbar el guardado."""
+        resp = self.client.post(
+            "/api/rotation/fixed_income/update",
+            json={"portfolio": "bmb", "ticker": "AL30", "nominals": 100},
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
+        data = resp.json()["data"]
+        self.assertEqual(data["fixed_income_holdings"]["AL30"]["nominals"], 100)
+        self.assertIsInstance(data["fixed_income_holdings"]["AL30"]["ppc"], (int, float))
+
+    def test_save_multicartera_sin_ppc_no_rompe(self):
+        """Regresión: el formato multi-cartera legacy debe normalizar PPC ausente a 0.0, no a None."""
+        save_user_holdings({
+            "bmb": {
+                "holdings": {"GOOGL": {"nominals": 5}},
+                "fixed_income_holdings": {"AL30": {"nominals": 100}},
+                "cash_ars": 0.0
+            },
+            "min_drawdown_15": {
+                "holdings": {"AAPL": {"nominals": 3}},
+                "cash_ars": 0.0
+            }
+        })
+        bmb = load_user_holdings("bmb")
+        self.assertIsInstance(bmb["holdings"]["GOOGL"]["ppc"], (int, float))
+        self.assertIsInstance(bmb["fixed_income_holdings"]["AL30"]["ppc"], (int, float))
+        mdd = load_user_holdings("min_drawdown_15")
+        self.assertIsInstance(mdd["holdings"]["AAPL"]["ppc"], (int, float))
+
+    def test_load_all_nunca_normaliza_ppc_a_none(self):
+        """Regresión: load_all_user_holdings no puede devolver ppc None (arrastrado a _db.save → float(None))."""
+        save_user_holdings({
+            "holdings": {"MSFT": {"nominals": 2}},
+            "cash_ars": 0.0
+        }, portfolio_key="min_drawdown_15")
+        all_data = load_all_user_holdings()
+        for pf_k, pf_v in all_data.items():
+            for grupo in ("holdings", "fixed_income_holdings"):
+                for tk, h in pf_v.get(grupo, {}).items():
+                    self.assertIsNotNone(h.get("ppc"), f"{pf_k}/{grupo}/{tk} normalizó ppc a None")
+
 
 if __name__ == "__main__":
     unittest.main()
-

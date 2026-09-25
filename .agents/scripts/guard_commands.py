@@ -10,7 +10,13 @@ FORBIDDEN_PATTERNS = [
     (r"\bmkfs\b", "Comando de formateo de disco no permitido."),
     (r"\bdd\b.*if=", "Comando dd de bajo nivel peligroso no permitido."),
     (r":\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;", "Fork bomb no permitida."),
-    (r"\bshutdown\b|\breboot\b|\binit\s+0\b", "Comandos de apagado/reinicio del sistema no permitidos.")
+    (r"\bshutdown\b|\breboot\b|\binit\s+0\b", "Comandos de apagado/reinicio del sistema no permitidos."),
+    # Bloqueo duro de operaciones remotas y exfiltración / publicación
+    (r"\bgit\s+push\b", "Operación remota 'git push' estrictamente prohibida por política del harness."),
+    (r"\bgit\s+remote\s+(add|set-url|rename|remove)\b", "Alteración de remotos de Git no autorizada."),
+    (r"\bgh\s+(pr\s+create|release\s+create|repo\s+delete)\b", "Operaciones de publicación o alteración remota en GitHub no permitidas."),
+    (r"\b(npm|yarn|pnpm)\s+publish\b", "Publicación de paquetes en registro externo no permitida."),
+    (r"\btwine\s+upload\b", "Publicación de paquetes Python en PyPI no permitida.")
 ]
 
 def main():

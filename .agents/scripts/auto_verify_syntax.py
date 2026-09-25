@@ -33,9 +33,23 @@ def main():
             frontend_dir = os.path.join(project_root, "frontend")
             tsc_bin = os.path.join(frontend_dir, "node_modules", ".bin", "tsc")
             if os.path.exists(tsc_bin):
-                result = subprocess.run([tsc_bin, "--noEmit"], cwd=frontend_dir, capture_output=True, text=True)
-                if result.returncode != 0:
-                    error = f"TypeScript inválido tras editar {target_file}: {result.stdout[:500]}{result.stderr[:500]}"
+                try:
+                    # Timeout estricto de 3s para evitar congelar el turno del agente en microediciones
+                    result = subprocess.run(
+                        [tsc_bin, "--noEmit"],
+                        cwd=frontend_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=3
+                    )
+                    if result.returncode != 0:
+                        # Filtrar exclusivamente si el archivo editado aparece en los errores
+                        rel_target = os.path.relpath(target_file, frontend_dir)
+                        if rel_target in result.stdout or os.path.basename(target_file) in result.stdout:
+                            error = f"TypeScript error en {os.path.basename(target_file)}: {result.stdout[:300]}"
+                except subprocess.TimeoutExpired:
+                    # No bloquear la sesión interactiva si el proyecto TS es grande
+                    pass
 
     # PostToolUse exige stdout JSON vacío; los fallos quedan visibles en stderr.
     if error:

@@ -349,6 +349,29 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(default_data.get("anchor"), "COST")
         self.assertEqual(default_data.get("qty"), 5)
 
+    def test_quotes_json_expose_sector_metadata(self):
+        """Contrato: cada quote expone sector_id/sector_name/subsector para que el front
+        agrupe por sector sin mapas hardcodeados en el cliente."""
+        resp = self.client.get("/api/cedears/quotes_json", params={"tickers": "AAPL,GOOGL,ZZZZ"})
+        self.assertEqual(resp.status_code, 200)
+        quotes = resp.json().get("quotes", [])
+        self.assertEqual(len(quotes), 3)
+
+        for q in quotes:
+            self.assertIn("sector_id", q)
+            self.assertIn("sector_name", q)
+            self.assertIn("subsector", q)
+            self.assertIsInstance(q["sector_id"], str)
+            self.assertIsInstance(q["sector_name"], str)
+
+        by_symbol = {q["symbol"]: q for q in quotes}
+        self.assertEqual(by_symbol["AAPL"]["sector_id"], "tech")
+        self.assertEqual(by_symbol["AAPL"]["sector_name"], "Tecnología & Cloud")
+
+        # Ticker fuera del catálogo cae al sector por defecto (nunca nulo)
+        self.assertEqual(by_symbol["ZZZZ"]["sector_id"], "other")
+        self.assertEqual(by_symbol["ZZZZ"]["sector_name"], "Otros Activos")
+
     def test_react_json_endpoints_contracts(self):
         """Verifica los contratos de datos REST JSON que alimentan a la SPA en React 19."""
         # 1. CEDEARs quotes y tickers

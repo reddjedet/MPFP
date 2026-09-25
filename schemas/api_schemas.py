@@ -72,6 +72,12 @@ class PortfolioCreateRequest(BaseModel):
         return clean
 
 
+class PortfolioWeightsRequest(BaseModel):
+    """Petición para actualizar los pesos objetivo de una cartera existente."""
+    weights_str: Optional[str] = None
+    mode: Optional[str] = "weights"
+
+
 class PortfolioSettingsRequest(BaseModel):
     """Petición para configurar ancla, cantidades y asignación fija/variable."""
     anchor: Optional[str] = None
