@@ -915,24 +915,52 @@ export function HoldingsManagerView() {
 
             <div className="mt-4 flex flex-col lg:flex-row gap-6">
             {/* Chart */}
-            <div className="flex-1 min-w-0 h-[420px] lg:h-[520px] relative">
-              {chartOption ? (
-                <ReactECharts
-                  echarts={echarts}
-                  option={chartOption}
-                  style={{ height: '100%', width: '100%' }}
-                  opts={{ renderer: 'svg' }}
-                  notMerge
-                  onEvents={{ click: handleChartClick }}
-                />
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground gap-2 px-4">
-                  <Layers className="w-6 h-6 opacity-50" />
-                  <p className="text-xs">
-                    {chartMode === 'real'
-                      ? 'Todavía no informaste tenencias. Cargá los nominales que poseés para ver el avance y el valor de mercado.'
-                      : 'Este portafolio no tiene activos con peso objetivo.'}
-                  </p>
+            <div className="flex-1 min-w-0">
+              <div className="h-[420px] lg:h-[520px] relative">
+                {chartOption ? (
+                  <ReactECharts
+                    echarts={echarts}
+                    option={chartOption}
+                    style={{ height: '100%', width: '100%' }}
+                    opts={{ renderer: 'svg' }}
+                    notMerge
+                    onEvents={{ click: handleChartClick }}
+                  />
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground gap-2 px-4">
+                    <Layers className="w-6 h-6 opacity-50" />
+                    <p className="text-xs">
+                      {chartMode === 'real'
+                        ? 'Todavía no informaste tenencias. Cargá los nominales que poseés para ver el avance y el valor de mercado.'
+                        : 'Este portafolio no tiene activos con peso objetivo.'}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {composition.active.length > 0 && (
+                <div className="mt-4 border-t border-border pt-3" aria-label="Detalle de activos de la composición">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">
+                    Todos los activos · {chartMode === 'real' ? 'valor de mercado' : 'peso objetivo'}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                    {composition.sectors
+                      .flatMap((sector) => sector.items)
+                      .sort((a, b) => b.pct - a.pct)
+                      .map((item) => (
+                      <button
+                        key={item.row.ticker}
+                        type="button"
+                        onClick={() => handleChartClick({ data: { meta: { kind: 'ticker', row: item.row } } })}
+                        title={`Abrir ficha de ${item.row.ticker}`}
+                        className="min-w-0 flex items-center gap-2 rounded px-2 py-1 text-left hover:bg-secondary/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      >
+                        <span className="min-w-0 truncate font-bold text-xs text-foreground">{item.row.ticker}</span>
+                        <span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground">{item.row.sector}</span>
+                        <span className="shrink-0 font-mono text-xs text-foreground">{fmtPct(item.pct, 1)}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
