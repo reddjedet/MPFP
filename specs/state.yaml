@@ -1,0 +1,50 @@
+# specs/state.yaml — Eval promotion counters, flakes, and open decisions
+# Schema: specs/benchmarks/SCHEMA.md
+
+story: e02s01
+feature: financial-core
+eval_file: specs/EVALS-financial-core.md
+agreed_k: 3
+last_run: 2026-09-25
+
+promotions:
+  # consecutive_pass_streak = consecutive passes since last failure or tier change.
+  # Promotion: EXPERIMENTAL -> USUALLY_PASSES at 3; USUALLY_PASSES -> ALWAYS_PASSES at 5
+  # with zero flakes documented here.
+  C1: { tier: ALWAYS_PASSES, streak: 6, flakes: 0 }
+  C2: { tier: ALWAYS_PASSES, streak: 6, flakes: 0 }
+  C3: { tier: ALWAYS_PASSES, streak: 6, flakes: 0 }
+  C4: { tier: ALWAYS_PASSES, streak: 6, flakes: 0 }
+  C5: { tier: ALWAYS_PASSES, streak: 6, flakes: 0 }   # PROMOTED 2026-09-25: 6 consecutive clean runs, zero flakes
+  C6: { tier: USUALLY_PASSES, streak: 1, flakes: 0 }  # model grader; promote on 2 more clean rubric passes
+  R1: { tier: ALWAYS_PASSES, streak: 6, flakes: 0 }
+  R2: { tier: ALWAYS_PASSES, streak: 6, flakes: 0 }
+  R3: { tier: ALWAYS_PASSES, streak: 6, flakes: 0 }
+  R4: { tier: ALWAYS_PASSES, streak: 6, flakes: 0 }   # PROMOTED 2026-09-25: 6 consecutive clean runs, zero flakes
+  R5: { tier: USUALLY_PASSES, streak: 3, flakes: 0 }  # 3 clean runs since DEC-01 fix; needs 5 for promotion
+
+handoff:
+  open_decisions:
+    - id: DEC-01
+      title: "Test isolation violated — pytest runs mutate production data/*.db"
+      severity: high
+      eval: R5
+      status: resolved
+      resolved_on: 2026-09-25
+      resolution: >-
+        Injectable data directory via env var MPFP_DATA_DIR (services/data_paths.py);
+        11 services resolve persistence through data_file(); tests/conftest.py redirects
+        tests to a tempfile snapshot seeded from data/ (excludes backups/, *-wal, *-shm);
+        scripts/test.sh now fails the pipeline if tests mutate data/ (guard hardened after
+        independent review: comparison always runs even when pytest fails, and any file
+        created when data/ was absent at baseline counts as mutation).
+      verification: "R5 3/3 clean runs at k=3; 263/263 tests pass; ./scripts/test.sh 100% green."
+      residual_risks:
+        - "Path constants are import-time; an externally installed pytest plugin importing services.* before conftest would capture production paths (none found in repo)."
+        - "Snapshot temp dir is cleaned at pytest_sessionfinish; SIGKILL can leak it (no production data impact)."
+
+  known_flakes: []  # none documented
+
+  next_steps:
+    - "Promote R5 to ALWAYS_PASSES after 2 more clean runs (streak 3/5)."
+    - "Promote C6 after 2 more clean rubric evaluations."
