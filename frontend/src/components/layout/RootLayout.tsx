@@ -68,8 +68,9 @@ export function RootLayout() {
     switch (currentSubTab) {
       case 'dashboard':
       case 'portfolios':
+        return <UnifiedPortfolioView />;
       case 'tenencias':
-        return <ConsolidatedDashboardView />;
+        return <HoldingsManagerView />;
       
       case 'screener':
       case 'cedears':

@@ -158,20 +158,15 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
       <div className="flex-none p-4 pb-0 space-y-4">
         
         {/* Superior: Título y Selector Rápido */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center border border-blue-500/20 shadow-inner">
-              <Wallet className="w-5 h-5 text-blue-400" />
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 pb-4 border-b border-white/10">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-black tracking-tight text-white">Centro de Cartera</h1>
+              <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-blue-600/20 text-blue-300 border border-blue-500/30">
+                COCKPIT V5
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black tracking-tight text-white">Centro de Cartera</h1>
-                <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-blue-600/20 text-blue-300 border border-blue-500/30">
-                  COCKPIT V4
-                </span>
-              </div>
-              <p className="text-xs text-zinc-400 mt-0.5">Gestión patrimonial consolidada: tenencias reales, objetivos teóricos y KPIs.</p>
-            </div>
+            <p className="text-xs text-zinc-400 mt-0.5">Gestión patrimonial consolidada: tenencias reales, objetivos teóricos y rendimiento histórico.</p>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -208,107 +203,13 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
           </div>
         </div>
 
-        {/* Tarjetas de Dashboard Consolidado */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          
-          {/* Patrimonio Total */}
-          <div className="col-span-2 md:col-span-1 p-3.5 rounded-xl bg-zinc-900 border border-white/5 flex flex-col gap-0.5 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-2 opacity-10">
-              <Wallet className="w-12 h-12" />
-            </div>
-            <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Patrimonio Total</span>
-            <span className="text-lg font-black text-white font-mono tabular-nums">
-              ${totalPatrimony.toLocaleString('es-AR', {maximumFractionDigits:0})}
-            </span>
-            <span className="text-[10px] text-zinc-500 font-mono">Consolidado ARS</span>
-          </div>
-
-          {/* Renta Variable */}
-          <div className="p-3.5 rounded-xl bg-zinc-900 border border-white/5 flex flex-col gap-0.5">
-            <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">En CEDEARs</span>
-            <span className="text-base font-black text-blue-400 font-mono tabular-nums">
-              ${totalEq.toLocaleString('es-AR', {maximumFractionDigits:0})}
-            </span>
-            <span className="text-[10px] text-zinc-500 font-mono">{eqPct.toFixed(1)}%</span>
-          </div>
-
-          {/* Renta Fija */}
-          <div className="p-3.5 rounded-xl bg-zinc-900 border border-white/5 flex flex-col gap-0.5">
-            <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Renta Fija</span>
-            <span className="text-base font-black text-amber-400 font-mono tabular-nums">
-              ${totalFixed.toLocaleString('es-AR', {maximumFractionDigits:0})}
-            </span>
-            <span className="text-[10px] text-zinc-500 font-mono">{fixedPct.toFixed(1)}%</span>
-          </div>
-
-          {/* Caja */}
-          <div className="p-3.5 rounded-xl bg-zinc-900 border border-white/5 flex flex-col gap-0.5">
-            <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Saldo en Caja</span>
-            <span className="text-base font-black text-emerald-400 font-mono tabular-nums">
-              ${totalCash.toLocaleString('es-AR', {maximumFractionDigits:0})}
-            </span>
-            <span className="text-[10px] text-zinc-500 font-mono">Disponible ARS</span>
-          </div>
-
-          {/* PnL Histórico */}
-          <div className="p-3.5 rounded-xl bg-zinc-900 border border-white/5 flex flex-col gap-0.5 group relative cursor-help">
-            <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Rendimiento LAT</span>
-            <span className={`text-base font-black font-mono tabular-nums ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {totalPnl >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%
-            </span>
-            <span className={`text-[10px] font-mono ${totalPnl >= 0 ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
-              {totalPnl >= 0 ? '+' : ''}${totalPnl.toLocaleString('es-AR', {maximumFractionDigits:0})}
-            </span>
-
-            {/* Tooltip Hover */}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-3 bg-zinc-800 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
-              <p className="text-xs text-white font-bold mb-1">Rendimiento Latente</p>
-              <p className="text-[10px] text-zinc-400 mb-2 leading-relaxed">
-                Ganancia o pérdida virtual acumulada. Se calcula cruzando tus cantidades con los Precios Promedio de Compra (PPC) informados vs la cotización actual.
-              </p>
-              <div className="flex flex-col gap-1 pt-2 border-t border-white/5 mt-1">
-                <div className="flex justify-between items-center text-[10px]">
-                  <span className="text-zinc-500 uppercase font-bold">Costo Informado:</span>
-                  <span className="font-mono text-zinc-300">${totalCost.toLocaleString('es-AR', {maximumFractionDigits:0})}</span>
-                </div>
-                {rebalanceData?.fixed_income_summary?.has_fixed_income && (
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-zinc-500 uppercase font-bold">TNA Ponderada (Renta Fija):</span>
-                    <span className="font-mono text-emerald-400 font-bold">{rebalanceData.fixed_income_summary.weighted_tna_compra?.toFixed(1)}%</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Termómetro RSI y Error de Tracking */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-6">
-          {rsiSummary && (
-            <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-zinc-400 uppercase font-bold text-[10px] tracking-wider">Termómetro RSI Cartera:</span>
-                <span className={`font-mono font-bold px-2 py-0.5 rounded text-xs border ${
-                  rsiSummary.weighted <= 35 
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' 
-                    : rsiSummary.weighted >= 65 
-                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' 
-                      : 'bg-sky-500/15 text-sky-300 border-sky-500/30'
-                }`}>
-                  Ponderado {rsiSummary.weighted.toFixed(1)} — {rsiSummary.status}
-                </span>
-              </div>
-            </div>
-          )}
-
-          <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 flex flex-row items-center gap-4">
-            <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Tracking Error:</span>
-            <span className="text-sm font-black text-purple-400 font-mono tabular-nums">
-              {trackingError.toFixed(2)}%
-            </span>
-            <span className="text-[10px] text-zinc-500 font-mono">Desvío vs Modelo Teórico</span>
-          </div>
+        {/* Tarjetas de Dashboard Consolidado (Nuevas Cards) */}
+        <div className="mb-6">
+           <PortfolioSummaryCards 
+              pfKey={selectedPf} 
+              title={portfolioMetadata?.portfolios?.[selectedPf]?.name || selectedPf} 
+              totalValue={totalPatrimony} 
+           />
         </div>
         
         {/* Sugerencias de Rotación Táctica */}
