@@ -14,7 +14,7 @@ from services.rotation_service import (
     analyze_rotation
 )
 from services.security_service import sanitize_ticker
-from schemas.api_schemas import HoldingItemPayload, BulkHoldingsPayload
+from schemas.api_schemas import HoldingItemPayload, BulkHoldingsPayload, FixedIncomeHoldingPayload
 
 router = APIRouter()
 HOLDINGS_LOCK = threading.RLock()
@@ -84,7 +84,7 @@ def remove_holding(ticker: str, portfolio: Optional[str] = Query("bmb")):
 
 
 @router.post("/fixed_income/update", response_class=JSONResponse)
-def update_single_fixed_income_holding(payload: HoldingItemPayload):
+def update_single_fixed_income_holding(payload: FixedIncomeHoldingPayload):
     """Actualiza o agrega un activo de renta fija a la tenencia real de la cartera."""
     clean_tk = sanitize_ticker(payload.ticker)
     if not clean_tk:

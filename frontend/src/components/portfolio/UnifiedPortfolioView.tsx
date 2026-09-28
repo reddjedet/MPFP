@@ -13,13 +13,8 @@ import { FixedIncomePortfolioCard } from './FixedIncomePortfolioCard';
 
 export const UnifiedPortfolioView: React.FC = () => {
 
-  const [selectedPf, setSelectedPf] = useState<string>(() => {
-    try {
-      return localStorage.getItem('finapp_active_portfolio') || 'min_drawdown_15';
-    } catch {
-      return 'min_drawdown_15';
-    }
-  });
+  const selectedPf = useAppStore((s) => s.selectedPf);
+  const setSelectedPf = useAppStore((s) => s.setSelectedPf);
 
   const [portfolioMetadata, setPortfolioMetadata] = useState<any>(() => {
     return getCachedData('portfolios-list');

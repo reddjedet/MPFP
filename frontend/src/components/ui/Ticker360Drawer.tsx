@@ -26,13 +26,8 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = () => {
 
   const [loading, setLoading] = useState<boolean>(false);
   const [data, setData] = useState<any>(null);
-  const [activePortfolio, setActivePortfolio] = useState<string>(() => {
-    try {
-      return localStorage.getItem('finapp_active_portfolio') || 'min_drawdown_15';
-    } catch {
-      return 'min_drawdown_15';
-    }
-  });
+  const activePortfolio = useAppStore(s => s.selectedPf);
+  const setActivePortfolio = useAppStore(s => s.setSelectedPf);
 
   // Calculadora rápida embebida
   const [showCalculator, setShowCalculator] = useState<boolean>(false);

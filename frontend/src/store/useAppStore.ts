@@ -59,6 +59,10 @@ interface AppState {
   // Ticker360 Actions
   openTickerDrawer: (ticker: string, initialData?: Ticker360InitialData | null) => void;
   closeTickerDrawer: () => void;
+
+  // Global Portfolio Selection
+  selectedPf: string;
+  setSelectedPf: (pf: string) => void;
 }
 
 function loadFromStorage<T>(key: string, fallback: T): T {
@@ -149,4 +153,10 @@ export const useAppStore = create<AppState>((set) => ({
   },
 
   closeTickerDrawer: () => set({ isTicker360Open: false }),
+
+  selectedPf: loadFromStorage<string>('finapp_selected_pf', 'bmb'),
+  setSelectedPf: (pf) => {
+    set({ selectedPf: pf });
+    saveToStorage('finapp_selected_pf', pf);
+  },
 }));

@@ -168,14 +168,14 @@ export const PortfolioWizardModal: React.FC<PortfolioWizardModalProps> = ({
   // Pre-cargar datos de RSI de CEDEARs si están disponibles
   useEffect(() => {
     if (isOpen) {
-      fetch('/api/cedears/market_data_json')
+      fetch('/api/cedears/quotes_json')
         .then(res => res.ok ? res.json() : null)
         .then(data => {
-          if (data && Array.isArray(data.items)) {
+          if (data && Array.isArray(data.quotes)) {
             const map: Record<string, number> = {};
-            data.items.forEach((item: any) => {
-              if (item.ticker && typeof item.rsi === 'number') {
-                map[item.ticker.toUpperCase()] = Math.round(item.rsi);
+            data.quotes.forEach((item: any) => {
+              if (item.symbol && typeof item.rsi === 'number') {
+                map[item.symbol.toUpperCase()] = Math.round(item.rsi);
               }
             });
             setMarketRsiMap(map);

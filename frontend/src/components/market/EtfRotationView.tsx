@@ -98,7 +98,7 @@ export const EtfRotationView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [searchFilter, setSearchFilter] = useState<string>('');
-  const [universeFilter, setUniverseFilter] = useState<'all' | 'sectors'>('all');
+  const [universeFilter, setUniverseFilter] = useState<'all' | 'sectors'>('sectors');
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
 
   const fetchData = async (isManual = false) => {

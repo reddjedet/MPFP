@@ -1,6 +1,7 @@
 #!/bin/bash
 # ==============================================================================
-# Script de Apagado y Liberación de Puertos (stop.sh) - Máquina de Planes, Finanzas y Portfolios (MPFP)
+# Script de Apagado y Liberación de Puertos (stop.sh)
+# Máquina de Planes, Finanzas y Portfolios (MPFP)
 # ==============================================================================
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,17 +17,16 @@ graceful_stop_pid() {
     local pid=$1
     local name=$2
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-        echo "Enviando SIGTERM a $name (PID: $pid)..."
+        echo "   Enviando SIGTERM a $name (PID: $pid)..."
         kill -15 "$pid" 2>/dev/null || true
-        # Esperar hasta 2 segundos para cierre limpio
         for i in {1..20}; do
             if ! kill -0 "$pid" 2>/dev/null; then
-                echo "✓ $name terminado limpiamente."
+                echo "   ✓ $name terminado limpiamente."
                 return 0
             fi
             sleep 0.1
         done
-        echo "⚠️ $name no respondió a SIGTERM; forzando SIGKILL..."
+        echo "   ⚠️ $name no respondió a SIGTERM; forzando SIGKILL..."
         kill -9 "$pid" 2>/dev/null || true
     fi
 }
@@ -50,7 +50,7 @@ pkill -15 -f "uvicorn.*main:app" 2>/dev/null || true
 pkill -15 -f "vite" 2>/dev/null || true
 sleep 0.5
 
-# 4. Liberar puertos 8000 y 5173
+# 4. Liberar puertos
 lsof -ti:${BACKEND_PORT} | xargs -r kill -9 2>/dev/null || true
 lsof -ti:${FRONTEND_PORT} | xargs -r kill -9 2>/dev/null || true
 fuser -k -9 ${BACKEND_PORT}/tcp 2>/dev/null || true
@@ -58,5 +58,10 @@ fuser -k -9 ${FRONTEND_PORT}/tcp 2>/dev/null || true
 pkill -9 -f "uvicorn.*main:app" 2>/dev/null || true
 pkill -9 -f "vite" 2>/dev/null || true
 
+# 5. Limpiar logs de runtime (opcionales, no críticos)
+rm -f "$DIR/app.log" "$DIR/frontend.log"
 
-echo "✓ Todos los servicios (FastAPI en $BACKEND_PORT y React en $FRONTEND_PORT) fueron detenidos correctamente."
+echo ""
+echo "✓ Todos los servicios detenidos (FastAPI :$BACKEND_PORT / Vite :$FRONTEND_PORT)."
+echo "  Logs de runtime limpiados (app.log, frontend.log)."
+echo ""

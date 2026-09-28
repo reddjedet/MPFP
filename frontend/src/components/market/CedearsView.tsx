@@ -1,6 +1,6 @@
 import { EtfSectorThermometer } from "@/components/EtfSectorThermometer";
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useCachedFetch, getCachedData, setCachedData, cachedFetch } from '@/lib/queryCache';
+import { useCachedFetch, getCachedData, setCachedData, cachedFetch, invalidateCache } from '@/lib/queryCache';
 import { 
   createColumnHelper, 
   flexRender, 
@@ -96,7 +96,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [newTicker, setNewTicker] = useState<string>('');
   const [searchFilter, setSearchFilter] = useState<string>('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'in_portfolio' | 'rsi_alerts' | 'valuation_signals' | 'earnings'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'in_portfolio' | 'rsi_alerts' | 'valuation_signals' | 'earnings'>('rsi_alerts');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -159,7 +159,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
     fetchPortfolioTickers();
   }, []);
 
-  const fetchQuotes = async (tickersToFetch = watchlist) => {
+  const fetchQuotes = async (tickersToFetch = watchlist, force = false) => {
     if (tickersToFetch.length === 0) {
       setQuotes([]);
       setLoading(false);
@@ -169,6 +169,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
     setErrorMsg(null);
     try {
       const cacheKey = `cedears-quotes:${tickersToFetch.slice().sort().join(',')}`;
+      if (force) invalidateCache(cacheKey);
       const { data } = await cachedFetch<any>(
         cacheKey,
         async () => {
@@ -331,7 +332,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
 
   // TanStack Table columns
   const columnHelper = createColumnHelper<CedearQuote>();
-  const columns = useMemo(() => [
+  const columns = [
     columnHelper.accessor('symbol', {
       header: 'ACTIVO',
       cell: info => {
@@ -375,7 +376,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
       cell: info => {
         const val = info.getValue();
         return (
-          <span className="font-mono font-bold text-slate-900 dark:text-foreground tabular-nums text-xs">
+          <span className="font-mono font-bold text-positive tabular-nums text-xs">
             {typeof val === 'number' ? `A$ ${val.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : '—'}
           </span>
         );
@@ -387,7 +388,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
         const val = info.getValue();
         return (
           <span 
-            className="font-mono font-bold text-positive tabular-nums text-xs"
+            className="font-mono font-bold text-slate-900 dark:text-foreground tabular-nums text-xs"
             title="Precio implícito de 1 CEDEAR en USD (ADR / Ratio)"
           >
             {typeof val === 'number' ? `U$ ${val.toFixed(2)}` : '—'}
@@ -493,7 +494,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
         </button>
       ),
     }),
-  ], []);
+  ];
 
   const table = useReactTable({
     data: filteredQuotes,
@@ -842,8 +843,19 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map(header => (
-                      <th key={header.id} className="px-2.5 py-2 font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground select-none">
-                        {flexRender(header.column.columnDef.header, header.getContext())}
+                      <th 
+                        key={header.id} 
+                        className="px-2.5 py-2 font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground select-none"
+                        onClick={header.column.getToggleSortingHandler()}
+                        style={{ cursor: header.column.getCanSort() ? 'pointer' : 'default' }}
+                      >
+                        <div className="flex items-center gap-1">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {{
+                            asc: ' 🔼',
+                            desc: ' 🔽',
+                          }[header.column.getIsSorted() as string] ?? null}
+                        </div>
                       </th>
                     ))}
                   </tr>

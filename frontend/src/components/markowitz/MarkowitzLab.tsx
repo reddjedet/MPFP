@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { cachedFetch, invalidateCache } from '@/lib/queryCache';
+import { useAppStore } from '@/store/useAppStore';
 import { 
   TrendingUp, 
   AlertTriangle, 
@@ -29,7 +30,6 @@ const PERIOD_OPTIONS = [
 
 const REBALANCE_OPTIONS = [
   { value: 'annual', label: 'Rebalanceo Anual (Estándar PV)' },
-  { value: 'daily', label: 'Rebalanceo Diario Constante' },
   { value: 'none', label: 'Buy & Hold (Sin Rebalanceo)' },
 ];
 
@@ -114,7 +114,8 @@ export const MarkowitzLab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Form parameters
-  const [selectedPf, setSelectedPf] = useState<string>('bal');
+  const selectedPf = useAppStore((s) => s.selectedPf);
+  const setSelectedPf = useAppStore((s) => s.setSelectedPf);
   const [basketTickers, setBasketTickers] = useState<string[]>([]);
   const [originalTickers, setOriginalTickers] = useState<string[]>([]);
   const [portfolioAssetsMap, setPortfolioAssetsMap] = useState<Record<string, string[]>>({});

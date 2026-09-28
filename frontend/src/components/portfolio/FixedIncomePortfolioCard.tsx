@@ -75,7 +75,7 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
       const [resLecap, resSob, resCer] = await Promise.all([
         fetch('/api/renta_fija/curve_json?category=lecap&tipo_inst=Todos'),
         fetch('/api/renta_fija/curve_json?category=soberanos&ley=Ambas'),
-        fetch('/api/renta_fija/curve_json?category=bonceres'),
+        fetch('/api/renta_fija/curve_json?category=bopreal'),
       ]);
 
       if (resLecap.ok) {

@@ -5,8 +5,9 @@ import { useAppStore } from '@/store/useAppStore';
 
 export function SellerModeView() {
   const { toggleSellerMode } = useAppStore();
+  const selectedPf = useAppStore(s => s.selectedPf);
+  const setSelectedPf = useAppStore(s => s.setSelectedPf);
   const [portfolios, setPortfolios] = useState<Record<string, any>>({});
-  const [activePortfolio, setActivePortfolio] = useState<string>('');
   const [quotes, setQuotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,9 +27,9 @@ export function SellerModeView() {
           
           setPortfolios(pfData.portfolios || {});
           if (pfData.selected_pf) {
-            setActivePortfolio(pfData.selected_pf);
+            setSelectedPf(pfData.selected_pf);
           } else if (Object.keys(pfData.portfolios || {}).length > 0) {
-            setActivePortfolio(Object.keys(pfData.portfolios)[0]);
+            setSelectedPf(Object.keys(pfData.portfolios)[0]);
           }
           
           setQuotes(qData.quotes || []);
@@ -47,8 +48,8 @@ export function SellerModeView() {
   
   // Calculate taking profit targets from current portfolio (RSI > 65)
   const takeProfitCandidates = (() => {
-    if (!activePortfolio || !portfolios[activePortfolio]) return [];
-    const assets = portfolios[activePortfolio].assets || {};
+    if (!selectedPf || !portfolios[selectedPf]) return [];
+    const assets = portfolios[selectedPf].assets || {};
     const cands = [];
     for (const [tk, weight] of Object.entries(assets)) {
       const q = quotes.find(q => q.symbol === tk);
@@ -109,9 +110,9 @@ export function SellerModeView() {
             {pfNames.map(pf => (
               <button
                 key={pf}
-                onClick={() => setActivePortfolio(pf)}
+                onClick={() => setSelectedPf(pf)}
                 className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
-                  activePortfolio === pf 
+                  selectedPf === pf 
                     ? 'bg-foreground text-background border-foreground shadow-md' 
                     : 'bg-card text-muted-foreground border-border hover:bg-secondary'
                 }`}
@@ -126,7 +127,7 @@ export function SellerModeView() {
             {/* Tactical Opportunities in Portfolio */}
             <section className="bg-card border border-border rounded-2xl p-5">
               <h3 className="text-sm font-bold text-foreground mb-4">
-                Toma de Ganancias en {activePortfolio || 'Cartera'}
+                Toma de Ganancias en {selectedPf || 'Cartera'}
               </h3>
               <p className="text-xs text-muted-foreground mb-4">Activos de la cartera seleccionada que superaron el umbral de sobrecompra técnico (RSI &gt;= 65).</p>
               

@@ -2,6 +2,11 @@
 # ==============================================================================
 # Script de Arranque Local (start.sh) - Máquina de Planes, Finanzas y Portfolios
 # Monograma: MPFP
+#
+# Uso:
+#   ./start.sh            Arranca normalmente (recompila si detecta cambios)
+#   ./start.sh --build    Fuerza recompilación del frontend
+#   ./start.sh --skip     Salta la compilación (usa el build existente tal cual)
 # ==============================================================================
 
 set -e
@@ -28,19 +33,49 @@ pkill -9 -f "uvicorn.*main:app" 2>/dev/null || true
 pkill -9 -f "vite" 2>/dev/null || true
 sleep 1
 
-# 2. Compilar Frontend React SOLO si no existe dist/index.html o si se fuerza con --build
+# 2. Compilar Frontend React — detección inteligente de cambios
 FORCE_BUILD=false
+SKIP_BUILD=false
 for arg in "$@"; do
     if [ "$arg" == "--build" ] || [ "$arg" == "-b" ]; then
         FORCE_BUILD=true
     fi
+    if [ "$arg" == "--skip" ] || [ "$arg" == "-s" ]; then
+        SKIP_BUILD=true
+    fi
 done
 
-if [ ! -f "$DIR/frontend/dist/index.html" ] || [ "$FORCE_BUILD" = true ]; then
-    echo "📦 Compilando versión de producción de React (npm run build)..."
+DIST_INDEX="$DIR/frontend/dist/index.html"
+SRC_DIR="$DIR/frontend/src"
+
+needs_build() {
+    # Si no existe el build, siempre compilar
+    if [ ! -f "$DIST_INDEX" ]; then
+        return 0
+    fi
+
+    # Comparar: ¿hay algún archivo en frontend/src/ más nuevo que dist/index.html?
+    NEWER_FILES=$(find "$SRC_DIR" -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.css' -o -name '*.json' \) -newer "$DIST_INDEX" 2>/dev/null | head -5)
+    if [ -n "$NEWER_FILES" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
+if [ "$SKIP_BUILD" = true ]; then
+    echo "⏭️  Saltando compilación del frontend (flag --skip)."
+elif [ "$FORCE_BUILD" = true ]; then
+    echo "📦 Recompilando frontend (flag --build forzado)..."
     (cd "$DIR/frontend" && npm run build)
+    echo "✅ Frontend compilado exitosamente."
+elif needs_build; then
+    echo "🔍 Cambios detectados en frontend/src/ desde el último build."
+    echo "📦 Recompilando frontend automáticamente..."
+    (cd "$DIR/frontend" && npm run build)
+    echo "✅ Frontend compilado exitosamente."
 else
-    echo "⚡ Usando build existente de React en frontend/dist (ejecuta './start.sh --build' para recompilar)."
+    echo "⚡ Frontend al día — sin cambios en src/ desde el último build."
 fi
 
 echo "================================================================================"

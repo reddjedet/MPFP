@@ -96,13 +96,13 @@ const ActionDrawer: React.FC<ActionDrawerProps> = ({ row, pfType, onRefresh, onC
     try {
       const payload: Record<string, any> = { ticker: row.ticker };
       if (ppc !== (row.ppc?.toString() || '')) {
-        payload.ppc = ppc;
+        payload.ppc = ppc === '' ? null : parseFloat(ppc);
       }
       if (gfValue !== (row.gf_value?.toString() || '')) {
-        payload.gf_value = gfValue;
+        payload.gf_value = gfValue === '' ? null : parseFloat(gfValue);
       }
       if (pfcfValue !== (row.pfcf?.toString() || '')) {
-        payload.pfcf = pfcfValue;
+        payload.pfcf = pfcfValue === '' ? null : parseFloat(pfcfValue);
       }
 
       if (Object.keys(payload).length > 1) {

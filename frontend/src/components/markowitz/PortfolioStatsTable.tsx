@@ -58,8 +58,9 @@ export const PortfolioStatsTable: React.FC<PortfolioStatsTableProps> = ({ data }
 
   const formatPct = (val?: number | null, isPlus = true) => {
     if (val === undefined || val === null || isNaN(val)) return '—';
-    const sign = val > 0 && isPlus ? '+' : '';
-    return `${sign}${val.toFixed(2).replace('.', ',')}%`;
+    const pctVal = val * 100;
+    const sign = pctVal > 0 && isPlus ? '+' : '';
+    return `${sign}${pctVal.toFixed(2).replace('.', ',')}%`;
   };
 
   const formatNum = (val?: number | null) => {

@@ -5,8 +5,9 @@ import { useAppStore } from '@/store/useAppStore';
 
 export function BuyerModeView() {
   const { toggleBuyerMode } = useAppStore();
+  const selectedPf = useAppStore(s => s.selectedPf);
+  const setSelectedPf = useAppStore(s => s.setSelectedPf);
   const [portfolios, setPortfolios] = useState<Record<string, any>>({});
-  const [activePortfolio, setActivePortfolio] = useState<string>('');
   const [quotes, setQuotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,9 +27,9 @@ export function BuyerModeView() {
           
           setPortfolios(pfData.portfolios || {});
           if (pfData.selected_pf) {
-            setActivePortfolio(pfData.selected_pf);
+            setSelectedPf(pfData.selected_pf);
           } else if (Object.keys(pfData.portfolios || {}).length > 0) {
-            setActivePortfolio(Object.keys(pfData.portfolios)[0]);
+            setSelectedPf(Object.keys(pfData.portfolios)[0]);
           }
           
           setQuotes(qData.quotes || []);
@@ -47,8 +48,8 @@ export function BuyerModeView() {
   
   // Calculate excess liquidity sources based on current portfolio's RSI > 60 or simply high weights
   const liquidSources = (() => {
-    if (!activePortfolio || !portfolios[activePortfolio]) return [];
-    const assets = portfolios[activePortfolio].assets || {};
+    if (!selectedPf || !portfolios[selectedPf]) return [];
+    const assets = portfolios[selectedPf].assets || {};
     const sources = [];
     for (const [tk, weight] of Object.entries(assets)) {
       const q = quotes.find(q => q.symbol === tk);
@@ -103,9 +104,9 @@ export function BuyerModeView() {
             {pfNames.map(pf => (
               <button
                 key={pf}
-                onClick={() => setActivePortfolio(pf)}
+                onClick={() => setSelectedPf(pf)}
                 className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
-                  activePortfolio === pf 
+                  selectedPf === pf 
                     ? 'bg-foreground text-background border-foreground shadow-md' 
                     : 'bg-card text-muted-foreground border-border hover:bg-secondary'
                 }`}
@@ -129,7 +130,7 @@ export function BuyerModeView() {
                   <AlertCircle className="w-4 h-4 text-negative" />
                   Activos Sobrecomprados (RSI &gt; 60)
                 </h3>
-                <p className="text-xs text-muted-foreground mb-4">Activos en {activePortfolio || 'tu cartera'} que se encuentran en zona alta y podrían ser reducidos para tomar ganancias.</p>
+                <p className="text-xs text-muted-foreground mb-4">Activos en {selectedPf || 'tu cartera'} que se encuentran en zona alta y podrían ser reducidos para tomar ganancias.</p>
                 
                 <div className="space-y-3">
                   {liquidSources.length === 0 && <p className="text-sm text-muted-foreground">No hay activos sobrecomprados en esta cartera.</p>}

@@ -84,10 +84,8 @@ export function HoldingsManagerView() {
   const [quotes, setQuotes] = useState<Record<string, any>>({});
   const [realHoldings, setRealHoldings] = useState<Record<string, RealHolding>>({});
   const [cashArs, setCashArs] = useState<number>(0);
-  const [selectedPf, setSelectedPf] = useState<string>(() => {
-    const cached = getCachedData<any>('portfolios-list');
-    return cached?.selected_pf || Object.keys(cached?.portfolios || {})[0] || '';
-  });
+  const selectedPf = useAppStore((s) => s.selectedPf);
+  const setSelectedPf = useAppStore((s) => s.setSelectedPf);
   const [loading, setLoading] = useState(() => {
     return !getCachedData('portfolios-list');
   });

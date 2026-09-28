@@ -575,8 +575,10 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
       {data.corr_matrix && (
         <div className="glass-panel p-6 rounded-2xl flex flex-col relative overflow-hidden mb-6">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 relative z-10">Matriz de Correlación Cruzada</h3>
-          <div className="flex-1 min-h-[360px] relative z-10">
-            <ReactECharts echarts={echarts} option={heatmapOption} style={{ height: '360px' }} />
+          <div className="flex-1 w-full overflow-x-auto relative z-10 pb-4 custom-scrollbar">
+            <div style={{ minWidth: `${Math.max(800, Object.keys(data.corr_matrix).length * 65 + 150)}px`, height: '450px' }}>
+              <ReactECharts echarts={echarts} option={heatmapOption} style={{ height: '100%', width: '100%' }} notMerge={true} opts={{ renderer: 'svg' }} />
+            </div>
           </div>
         </div>
       )}
