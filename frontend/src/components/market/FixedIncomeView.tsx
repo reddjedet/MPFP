@@ -54,6 +54,9 @@ interface BondRow {
   teorica?: number | null;
   vf?: number | null;
   cupones?: number | null;
+  impacto_rp?: number | null;
+  precio_simulado?: number | null;
+  tir_simulada?: number | null;
 }
 
 interface ScatterPoint {
@@ -118,21 +121,37 @@ export const FixedIncomeView: React.FC = () => {
     fetchCurveData();
   }, [category, ley, tipoInst]);
 
-  // Filtered rows for TanStack Table
+  // Filtered and enriched rows for TanStack Table
   const filteredRows = useMemo(() => {
     if (!data?.table_data) return [];
-    return data.table_data.filter(row => {
-      const q = searchFilter.toLowerCase().trim();
-      if (!q) return true;
-      return (
-        (row.ticker && row.ticker.toLowerCase().includes(q)) || 
-        (row.tipo && row.tipo.toLowerCase().includes(q)) ||
-        (row.ley && row.ley.toLowerCase().includes(q)) ||
-        (row.nombre && row.nombre.toLowerCase().includes(q)) ||
-        (row.descripcion && row.descripcion.toLowerCase().includes(q))
-      );
-    });
-  }, [data, searchFilter]);
+    const q = searchFilter.toLowerCase().trim();
+    return data.table_data
+      .filter(row => {
+        if (!q) return true;
+        return (
+          (row.ticker && row.ticker.toLowerCase().includes(q)) || 
+          (row.tipo && row.tipo.toLowerCase().includes(q)) ||
+          (row.ley && row.ley.toLowerCase().includes(q)) ||
+          (row.nombre && row.nombre.toLowerCase().includes(q)) ||
+          (row.descripcion && row.descripcion.toLowerCase().includes(q))
+        );
+      })
+      .map(row => {
+        const md = typeof row.md === 'number' ? row.md : null;
+        const impactoPct = md !== null && rpScenarioBps !== 0 ? -md * (rpScenarioBps / 100) : null;
+        const precio = typeof row.precio === 'number' ? row.precio : null;
+        const precioSimulado = precio !== null && impactoPct !== null ? precio * (1 + impactoPct / 100) : null;
+        const baseTir = typeof row.tir === 'number' ? row.tir : (typeof row.tir_real === 'number' ? row.tir_real : null);
+        const tirSimulada = baseTir !== null && rpScenarioBps !== 0 ? baseTir + (rpScenarioBps / 100) : null;
+
+        return {
+          ...row,
+          impacto_rp: impactoPct,
+          precio_simulado: precioSimulado,
+          tir_simulada: tirSimulada,
+        };
+      });
+  }, [data, searchFilter, rpScenarioBps]);
 
   // ECharts: Scatter Curve (TIR / TEA vs. Modified Duration)
   const chartOption = useMemo(() => {
@@ -263,13 +282,37 @@ export const FixedIncomeView: React.FC = () => {
           cell: info => {
             const val = info.getValue();
             if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
+            const precioSim = info.row.original.precio_simulado;
             return (
-              <span className="font-mono text-xs text-foreground font-bold tabular-nums">
-                A$ {val.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
+              <div className="flex flex-col">
+                <span className="font-mono text-xs text-foreground font-bold tabular-nums">
+                  A$ {val.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                {precioSim !== null && precioSim !== undefined && (
+                  <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+                    Sim: A$ {precioSim.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                )}
+              </div>
             );
           },
         }),
+        ...(rpScenarioBps !== 0 ? [
+          columnHelper.accessor('impacto_rp', {
+            id: 'impacto_rp',
+            header: `IMPACTO Δ${rpScenarioBps > 0 ? '+' : ''}${rpScenarioBps} bps`,
+            cell: info => {
+              const val = info.getValue();
+              if (val === null || val === undefined) return <span className="text-zinc-600 font-mono text-xs">—</span>;
+              const color = val > 0 ? 'text-positive bg-positive/10 border-positive/30' : 'text-negative bg-negative/10 border-negative/30';
+              return (
+                <span className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border tabular-nums ${color}`}>
+                  {val > 0 ? '+' : ''}{val.toFixed(2)}%
+                </span>
+              );
+            },
+          })
+        ] : []),
         columnHelper.accessor('tem_mkt', {
           header: 'TEM MENSUAL (%)',
           cell: info => {
@@ -287,10 +330,18 @@ export const FixedIncomeView: React.FC = () => {
           cell: info => {
             const val = info.getValue();
             if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
+            const tirSim = info.row.original.tir_simulada;
             return (
-              <span className="font-mono text-xs font-bold text-positive tabular-nums">
-                {val.toFixed(2)}%
-              </span>
+              <div className="flex flex-col">
+                <span className="font-mono text-xs font-bold text-positive tabular-nums">
+                  {val.toFixed(2)}%
+                </span>
+                {tirSim !== null && tirSim !== undefined && (
+                  <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+                    Sim: {tirSim.toFixed(2)}%
+                  </span>
+                )}
+              </div>
             );
           },
         }),
@@ -306,25 +357,6 @@ export const FixedIncomeView: React.FC = () => {
             );
           },
         }),
-        ...(rpScenarioBps !== 0 ? [
-          columnHelper.accessor(row => {
-            if (typeof row.md !== 'number') return null;
-            return -row.md * (rpScenarioBps / 100);
-          }, {
-            id: 'impacto_rp',
-            header: `IMPACTO Δ${rpScenarioBps > 0 ? '+' : ''}${rpScenarioBps} bps`,
-            cell: info => {
-              const val = info.getValue();
-              if (val === null) return <span className="text-zinc-600 font-mono text-xs">—</span>;
-              const color = val > 0 ? 'text-positive bg-positive/10 border-positive/30' : 'text-negative bg-negative/10 border-negative/30';
-              return (
-                <span className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border tabular-nums ${color}`}>
-                  {val > 0 ? '+' : ''}{val.toFixed(2)}%
-                </span>
-              );
-            },
-          })
-        ] : []),
 
         columnHelper.accessor('md', {
           header: 'MODIFIED DURATION',
@@ -398,23 +430,55 @@ export const FixedIncomeView: React.FC = () => {
         cell: info => {
           const val = info.getValue();
           if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
+          const precioSim = info.row.original.precio_simulado;
           return (
-            <span className="font-mono text-xs text-foreground font-bold tabular-nums">
-              U$ {val.toFixed(2)}
-            </span>
+            <div className="flex flex-col">
+              <span className="font-mono text-xs text-foreground font-bold tabular-nums">
+                U$ {val.toFixed(2)}
+              </span>
+              {precioSim !== null && precioSim !== undefined && (
+                <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+                  Sim: U$ {precioSim.toFixed(2)}
+                </span>
+              )}
+            </div>
           );
         },
       }),
+      ...(rpScenarioBps !== 0 ? [
+        columnHelper.accessor('impacto_rp', {
+          id: 'impacto_rp',
+          header: `IMPACTO Δ${rpScenarioBps > 0 ? '+' : ''}${rpScenarioBps} bps`,
+          cell: info => {
+            const val = info.getValue();
+            if (val === null || val === undefined) return <span className="text-zinc-600 font-mono text-xs">—</span>;
+            const color = val > 0 ? 'text-positive bg-positive/10 border-positive/30' : 'text-negative bg-negative/10 border-negative/30';
+            return (
+              <span className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border tabular-nums ${color}`}>
+                {val > 0 ? '+' : ''}{val.toFixed(2)}%
+              </span>
+            );
+          },
+        })
+      ] : []),
       columnHelper.accessor(row => row.tir ?? row.tir_real, {
         id: 'tir',
         header: 'TIR ANUAL (%)',
         cell: info => {
           const val = info.getValue();
           if (typeof val !== 'number') return <span className="text-zinc-600 font-mono text-xs">—</span>;
+          const tirSim = info.row.original.tir_simulada;
           return (
-            <span className="font-mono text-xs font-black text-positive tabular-nums">
-              {val.toFixed(2)}%
-            </span>
+            <div className="flex flex-col">
+              <span className="font-mono text-xs font-black text-positive tabular-nums">
+                {val.toFixed(2)}%
+              </span>
+              {tirSim !== null && tirSim !== undefined && (
+                <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+                  Sim: {tirSim.toFixed(2)}%
+                </span>
+              )}
+            </div>
           );
         },
       }),
@@ -457,25 +521,6 @@ export const FixedIncomeView: React.FC = () => {
           return <span className="font-mono text-xs text-muted-foreground tabular-nums">{val}</span>;
         },
       }),
-      ...(rpScenarioBps !== 0 ? [
-        columnHelper.accessor(row => {
-          if (typeof row.md !== 'number') return null;
-          return -row.md * (rpScenarioBps / 100);
-        }, {
-          id: 'impacto_rp',
-          header: `IMPACTO Δ${rpScenarioBps > 0 ? '+' : ''}${rpScenarioBps} bps`,
-          cell: info => {
-            const val = info.getValue();
-            if (val === null) return <span className="text-zinc-600 font-mono text-xs">—</span>;
-            const color = val > 0 ? 'text-positive bg-positive/10 border-positive/30' : 'text-negative bg-negative/10 border-negative/30';
-            return (
-              <span className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border tabular-nums ${color}`}>
-                {val > 0 ? '+' : ''}{val.toFixed(2)}%
-              </span>
-            );
-          },
-        })
-      ] : []),
 
     ];
   }, [isLecap, rpScenarioBps]);
@@ -715,11 +760,19 @@ export const FixedIncomeView: React.FC = () => {
                 />
               </div>
               
-              <div className="flex flex-col items-center justify-center min-w-[120px] bg-background border border-border p-3 rounded-xl shadow-sm">
+              <div className="flex flex-col items-center justify-center min-w-[130px] bg-background border border-border p-3 rounded-xl shadow-sm">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Escenario (Δ Yield)</span>
                 <span className={`text-lg font-black tabular-nums ${rpScenarioBps === 0 ? 'text-foreground' : rpScenarioBps > 0 ? 'text-negative' : 'text-positive'}`}>
                   {rpScenarioBps > 0 ? '+' : ''}{rpScenarioBps} bps
                 </span>
+                {rpScenarioBps !== 0 && (
+                  <button
+                    onClick={() => setRpScenarioBps(0)}
+                    className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold underline mt-1 transition-colors"
+                  >
+                    Restablecer (0 bps)
+                  </button>
+                )}
               </div>
             </div>
           </div>
