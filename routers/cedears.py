@@ -42,7 +42,20 @@ def get_portfolio_tickers_endpoint():
 def get_cedears_quotes_json(tickers: str = Query(None)):
     portfolio_tickers = get_all_portfolio_tickers()
 
-    if tickers:
+    if tickers == "ALL_BYMA":
+        from services.clients.byma_client import fetch_panel
+        byma_data = fetch_panel("cedears", fetch_all=True)
+        items = byma_data.get("data", []) if isinstance(byma_data, dict) else byma_data
+        
+        raw_list = []
+        for item in items:
+            vol = item.get("volume", 0) or item.get("tradeVolume", 0)
+            if vol > 0:
+                raw_list.append(item.get("symbol"))
+                
+        clean_list = [sanitize_ticker(t) for t in raw_list if t and sanitize_ticker(t)]
+        clean_list = sorted(list(dict.fromkeys(clean_list + DEFAULT_WATCHLIST)))
+    elif tickers:
         raw_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
         clean_list = [sanitize_ticker(t) for t in raw_list if sanitize_ticker(t)]
     else:

@@ -10,6 +10,7 @@ export function SellerModeView() {
   const [portfolios, setPortfolios] = useState<Record<string, any>>({});
   const [quotes, setQuotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDeepScanning, setIsDeepScanning] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -26,10 +27,15 @@ export function SellerModeView() {
           const qData = await qRes.json();
           
           setPortfolios(pfData.portfolios || {});
-          if (pfData.selected_pf) {
-            setSelectedPf(pfData.selected_pf);
-          } else if (Object.keys(pfData.portfolios || {}).length > 0) {
-            setSelectedPf(Object.keys(pfData.portfolios)[0]);
+          // Preservar la seleccion global
+          const currentSelected = useAppStore.getState().selectedPf;
+          const hasSelected = currentSelected && pfData.portfolios && pfData.portfolios[currentSelected];
+          if (!hasSelected) {
+            if (pfData.selected_pf && pfData.portfolios[pfData.selected_pf]) {
+              setSelectedPf(pfData.selected_pf);
+            } else if (Object.keys(pfData.portfolios || {}).length > 0) {
+              setSelectedPf(Object.keys(pfData.portfolios)[0]);
+            }
           }
           
           setQuotes(qData.quotes || []);
@@ -44,9 +50,30 @@ export function SellerModeView() {
     return () => { isMounted = false; };
   }, []);
 
+  const handleDeepScan = async () => {
+    setIsDeepScanning(true);
+    try {
+      const res = await fetch('/api/cedears/quotes_json?tickers=ALL_BYMA');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.quotes) {
+          setQuotes(prev => {
+            const existing = new Map(prev.map(q => [q.symbol, q]));
+            data.quotes.forEach((q: any) => existing.set(q.symbol, q));
+            return Array.from(existing.values());
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error deep scanning", err);
+    } finally {
+      setIsDeepScanning(false);
+    }
+  };
+
   const pfNames = Object.keys(portfolios);
   
-  // Calculate taking profit targets from current portfolio (RSI > 65)
+  // Calculate taking profit targets from current portfolio (RSI >= 65)
   const takeProfitCandidates = (() => {
     if (!selectedPf || !portfolios[selectedPf]) return [];
     const assets = portfolios[selectedPf].assets || {};
@@ -202,6 +229,20 @@ export function SellerModeView() {
                   </tbody>
                 </table>
               </div>
+              
+              {!isDeepScanning ? (
+                <button 
+                  onClick={handleDeepScan}
+                  className="w-full mt-4 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+                >
+                  Consultar el resto de cedears
+                </button>
+              ) : (
+                <div className="w-full mt-4 py-2 flex justify-center items-center gap-2 text-sm text-muted-foreground">
+                  <Zap className="w-4 h-4 animate-pulse" />
+                  Escaneando panel de BYMA...
+                </div>
+              )}
             </section>
             
           </div>
