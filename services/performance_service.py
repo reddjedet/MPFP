@@ -28,7 +28,7 @@ def calculate_backtest_performance(pf_type: str) -> Dict[str, Any]:
         
     fetch_tickers = tuple(list(set(tickers + [benchmark])))
     current_data = get_multiple_tickers_data(tickers)
-    current_prices = {tk: current_data[tk].get("price", 1.0) if tk in current_data else 1.0 for tk in tickers}
+    current_prices = {tk: current_data[tk].get("local", 1.0) if tk in current_data else 1.0 for tk in tickers}
     
     _, _, _, valid_tickers, daily_returns, spy_returns = fetch_historical_returns_and_cov(fetch_tickers, period="1y")
     

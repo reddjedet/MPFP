@@ -59,7 +59,7 @@ class ErrorBoundary extends Component<Props, State> {
 }
 
 export function RootLayout() {
-  const { currentArea, currentSubTab, setArea, setSubTab, toggleCommandPalette, isBuyerModeOpen, isSellerModeOpen, toggleBuyerMode, toggleSellerMode } = useAppStore();
+  const { currentArea, currentSubTab, setArea, setSubTab, toggleCommandPalette, isBuyerModeOpen, isSellerModeOpen } = useAppStore();
 
   const renderContent = () => {
     if (currentArea === 'hub') return <LauncherHub />;

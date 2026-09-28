@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { getCachedData, setCachedData, cachedFetch, invalidateCache } from '@/lib/queryCache';
 import { 
-  Wallet, 
   RefreshCw,
   ArrowLeftRight
 } from 'lucide-react';
@@ -16,6 +15,8 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
 
   const selectedPf = useAppStore((s) => s.selectedPf);
   const setSelectedPf = useAppStore((s) => s.setSelectedPf);
+  const anchorInputRef = useRef<HTMLSelectElement>(null);
+  const qtyInputRef = useRef<HTMLInputElement>(null);
 
   const [portfolioMetadata, setPortfolioMetadata] = useState<any>(() => {
     return getCachedData('portfolios-list');
@@ -105,54 +106,70 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
     return () => window.removeEventListener('refresh_portfolios', handleRefresh);
   }, [fetchAllData]);
 
-  // Derived dashboard metrics
-  const totalEq = rebalanceData?.summary?.total_real_value ?? 0;
-  const totalFixed = rebalanceData?.fixed_income_summary?.total_market_value || 0;
-  const totalCash = rebalanceData?.summary?.cash_ars ?? 0;
-  const totalPatrimony = totalEq + totalFixed + totalCash;
-  const eqPct = totalPatrimony > 0 ? (totalEq / totalPatrimony) * 100 : 0;
-  const fixedPct = totalPatrimony > 0 ? (totalFixed / totalPatrimony) * 100 : 0;
-  const cashPct = totalPatrimony > 0 ? (totalCash / totalPatrimony) * 100 : 0;
+  // Derived dashboard metrics (memoized to avoid recalc on every render)
+  const {
+    totalEq, totalFixed, totalCash, totalPatrimony,
+    eqPct, fixedPct, cashPct,
+    totalEqCost, totalEqPnl, totalFixedCost, totalFixedPnl,
+    totalCost, totalPnl, pnlPct, trackingError,
+    urgentTrades, rsiSummary
+  } = useMemo(() => {
+    const _totalEq = rebalanceData?.summary?.total_real_value ?? 0;
+    const _totalFixed = rebalanceData?.fixed_income_summary?.total_market_value || 0;
+    const _totalCash = rebalanceData?.summary?.cash_ars ?? 0;
+    const _totalPatrimony = _totalEq + _totalFixed + _totalCash;
+    const _eqPct = _totalPatrimony > 0 ? (_totalEq / _totalPatrimony) * 100 : 0;
+    const _fixedPct = _totalPatrimony > 0 ? (_totalFixed / _totalPatrimony) * 100 : 0;
+    const _cashPct = _totalPatrimony > 0 ? (_totalCash / _totalPatrimony) * 100 : 0;
 
-  // Calcular Costo Invertido y PnL de Renta Variable
-  let totalEqCost = 0;
-  let totalEqPnl = 0;
-  let sumTrackingError = 0;
-  let errorCount = 0;
+    // Calcular Costo Invertido y PnL de Renta Variable
+    let _totalEqCost = 0;
+    let _totalEqPnl = 0;
+    let _sumTrackingError = 0;
+    let _errorCount = 0;
 
-  if (rebalanceData?.result) {
-    rebalanceData.result.forEach((item: any) => {
-      const qty = item.actual_qty || item.qty || 0;
-      const price = item.price || 0;
-      const currentValue = qty * price;
-      
-      // Error de tracking (Renta variable)
-      if (typeof item.error === 'number') {
-        sumTrackingError += Math.abs(item.error);
-        errorCount++;
-      }
+    if (rebalanceData?.result) {
+      rebalanceData.result.forEach((item: any) => {
+        const qty = item.actual_qty || item.qty || 0;
+        const price = item.price || 0;
+        const currentValue = qty * price;
+        
+        // Error de tracking (Renta variable)
+        if (typeof item.error === 'number') {
+          _sumTrackingError += Math.abs(item.error);
+          _errorCount++;
+        }
 
-      if (item.ppc && item.ppc > 0) {
-        const invested = qty * item.ppc;
-        totalEqCost += invested;
-        totalEqPnl += (currentValue - invested);
-      } else {
-        totalEqCost += currentValue; // Si no hay PPC, se asume neutro
-      }
-    });
-  }
+        if (item.ppc && item.ppc > 0) {
+          const invested = qty * item.ppc;
+          _totalEqCost += invested;
+          _totalEqPnl += (currentValue - invested);
+        } else {
+          _totalEqCost += currentValue; // Si no hay PPC, se asume neutro
+        }
+      });
+    }
 
-  const totalFixedCost = rebalanceData?.fixed_income_summary?.total_invested || 0;
-  const totalFixedPnl = rebalanceData?.fixed_income_summary?.total_pnl_ars || 0;
+    const _totalFixedCost = rebalanceData?.fixed_income_summary?.total_invested || 0;
+    const _totalFixedPnl = rebalanceData?.fixed_income_summary?.total_pnl_ars || 0;
 
-  const totalCost = totalEqCost + totalFixedCost;
-  const totalPnl = totalEqPnl + totalFixedPnl;
-  const pnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
-  const trackingError = errorCount > 0 ? (sumTrackingError / errorCount) : 0;
-  
-  const urgentTrades = rebalanceData?.rotation_trades?.filter((t: any) => t.priority === 'Alta' || t.priority === 'Media') || [];
-  
-  const rsiSummary = rebalanceData?.summary?.portfolio_rsi || rebalanceData?.summary?.rsi_summary;
+    const _totalCost = _totalEqCost + _totalFixedCost;
+    const _totalPnl = _totalEqPnl + _totalFixedPnl;
+    const _pnlPct = _totalCost > 0 ? (_totalPnl / _totalCost) * 100 : 0;
+    const _trackingError = _errorCount > 0 ? (_sumTrackingError / _errorCount) : 0;
+    
+    const _urgentTrades = rebalanceData?.rotation_trades?.filter((t: any) => t.priority === 'Alta' || t.priority === 'Media') || [];
+    
+    const _rsiSummary = rebalanceData?.summary?.portfolio_rsi || rebalanceData?.summary?.rsi_summary;
+
+    return {
+      totalEq: _totalEq, totalFixed: _totalFixed, totalCash: _totalCash, totalPatrimony: _totalPatrimony,
+      eqPct: _eqPct, fixedPct: _fixedPct, cashPct: _cashPct,
+      totalEqCost: _totalEqCost, totalEqPnl: _totalEqPnl, totalFixedCost: _totalFixedCost, totalFixedPnl: _totalFixedPnl,
+      totalCost: _totalCost, totalPnl: _totalPnl, pnlPct: _pnlPct, trackingError: _trackingError,
+      urgentTrades: _urgentTrades, rsiSummary: _rsiSummary
+    };
+  }, [rebalanceData]);
 
   return (
     <div className="w-full h-full flex flex-col min-h-0 bg-background text-foreground overflow-y-auto">
@@ -293,6 +310,7 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
                 <div className="flex items-center gap-2 min-w-max">
                   <span className="text-[10px] text-zinc-500 font-bold uppercase">Ancla</span>
                   <select 
+                    ref={anchorInputRef}
                     id="anchorInput"
                     key={`anchor-${selectedPf}-${rebalanceData?.mcm_info?.most_expensive_ticker}`}
                     defaultValue={rebalanceData?.mcm_info?.most_expensive_ticker || ''}
@@ -311,6 +329,7 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
                   <input 
                     type="number" 
                     min="1"
+                    ref={qtyInputRef}
                     id="qtyInput"
                     key={`qty-${selectedPf}-${rebalanceData?.mcm_info?.most_expensive_qty}`}
                     defaultValue={rebalanceData?.mcm_info?.most_expensive_qty || 1}
@@ -320,8 +339,8 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
 
                 <button 
                   onClick={() => {
-                    const a = (document.getElementById('anchorInput') as HTMLInputElement).value;
-                    const q = parseInt((document.getElementById('qtyInput') as HTMLInputElement).value) || 1;
+                    const a = anchorInputRef.current?.value || '';
+                    const q = parseInt(qtyInputRef.current?.value || '1') || 1;
                     fetchAllData(selectedPf, a, q);
                   }}
                   className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-3 py-1.5 rounded transition-colors min-w-max"

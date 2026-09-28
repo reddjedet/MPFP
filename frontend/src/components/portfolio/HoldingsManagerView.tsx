@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import { TreemapChart } from 'echarts/charts';
@@ -495,7 +495,7 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
         }
       ]
     };
-  }, [composition, chartTheme]);
+  }, [composition, chartTheme, chartMode, mcmMultiplier]);
 
   const handleChartClick = (params: any) => {
     const meta = params?.data?.meta;
@@ -515,8 +515,11 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
   // Compute table draft state
   const [draftHoldings, setDraftHoldings] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const isEditingRef = useRef(false);
 
   useEffect(() => {
+    // Skip server sync while user is actively editing to preserve their changes
+    if (isEditingRef.current) return;
     const newDraft: Record<string, any> = {};
     holdings.forEach((h: any) => {
       newDraft[h.ticker] = { ...h };
@@ -525,6 +528,7 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
   }, [holdings]);
 
   const handleFieldChange = (ticker: string, field: string, value: string) => {
+    isEditingRef.current = true;
     setDraftHoldings(prev => ({
       ...prev,
       [ticker]: {
@@ -604,6 +608,7 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
       invalidateCache(`portfolio-rebalance:${selectedPf}`);
       invalidateCache(`rotation-holdings:${selectedPf}`);
       invalidateCache(`portfolio-mcm:${selectedPf}`);
+      isEditingRef.current = false;
       setDraftHoldings({});
       setFeedback({ kind: 'success', msg: 'Cambios guardados. Los nominales objetivo se recalcularon con los precios actuales.' });
       window.dispatchEvent(new Event('refresh_portfolios'));

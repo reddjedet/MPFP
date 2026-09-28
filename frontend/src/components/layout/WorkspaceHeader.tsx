@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Home, Wallet, TrendingUp, FlaskConical, ArrowLeftRight, Landmark, Calendar, Calculator, BarChart3, Globe, Compass, Search, LayoutGrid, Activity, Target, ChevronDown, ShoppingCart, Store
+  Home, Wallet, TrendingUp, FlaskConical, ArrowLeftRight, Landmark, Calendar, Calculator, BarChart3, Globe, Search, LayoutGrid, Activity, ShoppingCart, Store
 } from 'lucide-react';
 import { WorkspaceArea, useAppStore } from '@/store/useAppStore';
 
@@ -12,6 +12,47 @@ interface WorkspaceHeaderProps {
   onGoHome: () => void;
   onOpenCommandPalette: () => void;
 }
+
+
+const macroAreas = [
+  { id: 'portfolios', name: 'Portafolios', defaultSubTab: 'dashboard', icon: Wallet },
+  { id: 'renta_variable', name: 'Renta Variable', defaultSubTab: 'screener', icon: LayoutGrid },
+  { id: 'markowitz', name: 'Lab', defaultSubTab: 'frontera', icon: FlaskConical },
+  { id: 'renta_fija', name: 'Renta Fija', defaultSubTab: 'curvas', icon: Landmark }
+] as const;
+
+const areaConfigs = {
+  portfolios: {
+    name: 'Gestión de Portafolios',
+    tabs: [
+      { id: 'dashboard', label: 'Dashboard Consolidado', icon: Wallet },
+      { id: 'tenencias', label: 'Informar Tenencias', icon: ArrowLeftRight }
+    ]
+  },
+  renta_variable: {
+    name: 'Renta Variable',
+    tabs: [
+      { id: 'screener', label: 'Screener CEDEARs', icon: TrendingUp },
+      { id: 'seguimiento_etfs', label: 'Seguimiento Semanal ETFs vs SPY', icon: Activity },
+      { id: 'calendario_reportes', label: 'Calendario de Reportes', icon: Calendar },
+      { id: 'indices', label: 'Índices & Ciclos', icon: Globe }
+    ]
+  },
+  renta_fija: {
+    name: 'Renta Fija',
+    tabs: [
+      { id: 'curvas', label: 'Curvas de Rendimiento', icon: Landmark }
+    ]
+  },
+  markowitz: {
+    name: 'Lab',
+    tabs: [
+      { id: 'frontera', label: 'Frontera Eficiente', icon: FlaskConical },
+      { id: 'valuacion', label: 'Valuación', icon: Calculator },
+      { id: 'performance', label: 'Backtest Performance', icon: BarChart3 }
+    ]
+  }
+} as const;
 
 export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
   currentArea, currentSubTab, onSelectArea, onSelectSubTab, onGoHome, onOpenCommandPalette
@@ -29,46 +70,6 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const macroAreas = [
-    { id: 'portfolios', name: 'Portafolios', defaultSubTab: 'dashboard', icon: Wallet },
-    { id: 'renta_variable', name: 'Renta Variable', defaultSubTab: 'screener', icon: LayoutGrid },
-    { id: 'markowitz', name: 'Lab', defaultSubTab: 'frontera', icon: FlaskConical },
-    { id: 'renta_fija', name: 'Renta Fija', defaultSubTab: 'curvas', icon: Landmark }
-  ];
-
-  const areaConfigs = {
-    portfolios: {
-      name: 'Gestión de Portafolios',
-      tabs: [
-        { id: 'dashboard', label: 'Dashboard Consolidado', icon: Wallet },
-        { id: 'tenencias', label: 'Informar Tenencias', icon: ArrowLeftRight }
-      ]
-    },
-    renta_variable: {
-      name: 'Renta Variable',
-      tabs: [
-        { id: 'screener', label: 'Screener CEDEARs', icon: TrendingUp },
-        { id: 'seguimiento_etfs', label: 'Seguimiento Semanal ETFs vs SPY', icon: Activity },
-        { id: 'calendario_reportes', label: 'Calendario de Reportes', icon: Calendar },
-        { id: 'indices', label: 'Índices & Ciclos', icon: Globe }
-      ]
-    },
-    renta_fija: {
-      name: 'Renta Fija',
-      tabs: [
-        { id: 'curvas', label: 'Curvas de Rendimiento', icon: Landmark }
-      ]
-    },
-    markowitz: {
-      name: 'Lab',
-      tabs: [
-        { id: 'frontera', label: 'Frontera Eficiente', icon: FlaskConical },
-        { id: 'valuacion', label: 'Valuación', icon: Calculator },
-        { id: 'performance', label: 'Backtest Performance', icon: BarChart3 }
-      ]
-    }
-  };
 
   const currentConfig = areaConfigs[currentArea as keyof typeof areaConfigs];
 

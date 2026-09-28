@@ -5,29 +5,11 @@ from services.portfolio_service import (
     _sma_dist,
     _portfolio_agg,
     _portfolio_sma,
+    get_effective_weights
 )
 from services.tv_service import fetch_performance
 
 router = APIRouter()
-
-def get_effective_weights(pf_data: dict, lookup_prices: dict) -> dict:
-    mode = pf_data.get("mode", "weights")
-    assets = pf_data.get("assets", {})
-    if mode == "nominals":
-        vals = {}
-        for t, qty in assets.items():
-            r = lookup_prices.get(t.upper())
-            price = r.get("close") if r else None
-            if price is not None:
-                vals[t] = qty * price
-            else:
-                vals[t] = 0.0
-        total_v = sum(vals.values())
-        if total_v == 0:
-            return {t: 1.0 / len(assets) for t in assets}
-        return {t: val / total_v * 100 for t, val in vals.items()}
-    else:
-        return assets
 
 @router.get("/data_json", response_class=JSONResponse)
 def get_performance_data_json():

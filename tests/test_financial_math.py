@@ -73,18 +73,18 @@ class TestFinancialMath(unittest.TestCase):
         self.assertAlmostEqual(to_base_100(112.08), 112.08, places=2)
 
     @patch("services.fixed_income_service.fetch_lecaps")
-    @patch("services.rotation_service.get_ticker_data")
-    def test_s30s6_valuation_no_inflation_factor(self, mock_ticker_data, mock_lecaps):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_s30s6_valuation_no_inflation_factor(self, mock_multiple_data, mock_lecaps):
         """
         DASH-01: 335.457 nominales de S30S6 a PPC 112.08 deben valuarse en
         ~375.979 ARS, NUNCA en ~37.597.000 ARS (error de factor 100x).
         """
         mock_lecaps.return_value = None
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "AMAT": {"local": 90000.0, "adr": 180.0, "ratio": 15.0, "rsi": 50.0},
             "GOOGL": {"local": 8000.0, "adr": 180.0, "ratio": 58.0, "rsi": 50.0},
             "PM": {"local": 15000.0, "adr": 100.0, "ratio": 12.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         save_user_holdings({
             "holdings": {},
@@ -104,16 +104,16 @@ class TestFinancialMath(unittest.TestCase):
         self.assertLess(s30s6_item["real_value"], 1000000.0)  # Totalmente alejado de los 37 millones
 
     @patch("services.fixed_income_service.fetch_lecaps")
-    @patch("services.rotation_service.get_ticker_data")
-    def test_consolidated_equity_no_double_counting(self, mock_ticker_data, mock_lecaps):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_consolidated_equity_no_double_counting(self, mock_multiple_data, mock_lecaps):
         """
         DASH-02: El patrimonio consolidado debe ser exactamente igual a
         total_real_stock_value + fi_market_val + cash_ars sin sumar renta fija dos veces.
         """
         mock_lecaps.return_value = None
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "AMAT": {"local": 90000.0, "adr": 180.0, "ratio": 15.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         save_user_holdings({
             "holdings": {
@@ -136,16 +136,16 @@ class TestFinancialMath(unittest.TestCase):
         self.assertEqual(res["total_real_equity"], 230000.0)
         self.assertAlmostEqual(res["total_consolidated_equity"], 342000.0, delta=100.0)
 
-    @patch("services.rotation_service.get_ticker_data")
-    def test_fixed_income_not_sold_for_equity(self, mock_ticker_data):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_fixed_income_not_sold_for_equity(self, mock_multiple_data):
         """
         DASH-03 / DEC-03: Instrumentos de renta fija como S30S6 nunca deben aparecer
         en las sugerencias de venta ni emparejarse con compras de acciones (ej. VIST).
         """
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "VIST": {"local": 38000.0, "adr": 50.0, "ratio": 3.0, "rsi": 25.0}, # Déficit + RSI sobreventa
             "GOOGL": {"local": 8000.0, "adr": 180.0, "ratio": 58.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         save_user_holdings({
             "holdings": {},
@@ -184,17 +184,17 @@ class TestFinancialMath(unittest.TestCase):
 
 
     @patch("services.fixed_income_service.fetch_lecaps")
-    @patch("services.rotation_service.get_ticker_data")
-    def test_mcm_rotation_cat_target_8_real_3_buys_5(self, mock_ticker_data, mock_lecaps):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_mcm_rotation_cat_target_8_real_3_buys_5(self, mock_multiple_data, mock_lecaps):
         """
         DEC-07 / DASH-05: CAT actual 3, target MCM 8, RSI neutral:
         recomienda comprar exactamente 5 con prioridad Baja/Media, no una cantidad arbitraria.
         """
         mock_lecaps.return_value = None
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "CAT": {"local": 10000.0, "adr": 200.0, "ratio": 1.0, "rsi": 50.0},
             "VIST": {"local": 10000.0, "adr": 50.0, "ratio": 1.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         # CAT=80, VIST=10: Cuello de botella VIST(10), base MCM: CAT=8, VIST=1
         custom_pf = {
@@ -226,17 +226,17 @@ class TestFinancialMath(unittest.TestCase):
         self.assertNotEqual(cat_trade["priority"], "Alta")  # Neutral RSI -> No puede ser Alta
 
     @patch("services.fixed_income_service.fetch_lecaps")
-    @patch("services.rotation_service.get_ticker_data")
-    def test_mcm_rotation_overbought_triggers_wait_pullback(self, mock_ticker_data, mock_lecaps):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_mcm_rotation_overbought_triggers_wait_pullback(self, mock_multiple_data, mock_lecaps):
         """
         DEC-07 / DEC-05: CAT actual 3, target MCM 8, pero RSI en sobrecompra (72.0):
         conserva el target y faltante, pero veta la compra inmediata marcando wait_pullback.
         """
         mock_lecaps.return_value = None
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "CAT": {"local": 10000.0, "adr": 200.0, "ratio": 1.0, "rsi": 72.0},
             "VIST": {"local": 10000.0, "adr": 50.0, "ratio": 1.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         custom_pf = {
             "mode": "weights",
@@ -265,17 +265,17 @@ class TestFinancialMath(unittest.TestCase):
         self.assertNotIn("CAT", cat_buys)
 
     @patch("services.fixed_income_service.fetch_lecaps")
-    @patch("services.rotation_service.get_ticker_data")
-    def test_surplus_sells_only_excess_not_full_position(self, mock_ticker_data, mock_lecaps):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_surplus_sells_only_excess_not_full_position(self, mock_multiple_data, mock_lecaps):
         """
         DEC-07 / DEC-04: Activo en target con tenencia 12 y target 8 (excedente 4), con RSI alto (72.0):
         recomienda vender SOLO el excedente de 4 nominales, jamás la posición total de 12.
         """
         mock_lecaps.return_value = None
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "CAT": {"local": 10000.0, "adr": 200.0, "ratio": 1.0, "rsi": 72.0},
             "VIST": {"local": 10000.0, "adr": 50.0, "ratio": 1.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         custom_pf = {
             "mode": "weights",
@@ -303,17 +303,17 @@ class TestFinancialMath(unittest.TestCase):
         self.assertEqual(cat_sell["sell"]["nominals"], 4)  # Solo vende el excedente de 4, no 12!
 
     @patch("services.fixed_income_service.fetch_lecaps")
-    @patch("services.rotation_service.get_ticker_data")
-    def test_insufficient_cash_triggers_wait_cash_without_reducing_target(self, mock_ticker_data, mock_lecaps):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_insufficient_cash_triggers_wait_cash_without_reducing_target(self, mock_multiple_data, mock_lecaps):
         """
         DEC-09 / DASH-04: Activo con déficit de 5 nominales a $10.000 ($50.000 requeridos)
         con caja insuficiente ($5.000): action es 'wait_cash', preservando missing_nominals=5.
         """
         mock_lecaps.return_value = None
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "CAT": {"local": 10000.0, "adr": 200.0, "ratio": 1.0, "rsi": 50.0},
             "VIST": {"local": 10000.0, "adr": 50.0, "ratio": 1.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         custom_pf = {
             "mode": "weights",
@@ -340,17 +340,17 @@ class TestFinancialMath(unittest.TestCase):
         self.assertEqual(cat_trade["buy"]["capital_available"], 5000.0)
 
     @patch("services.fixed_income_service.fetch_lecaps")
-    @patch("services.rotation_service.get_ticker_data")
-    def test_fixed_income_implicit_target_no_gap(self, mock_ticker_data, mock_lecaps):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_fixed_income_implicit_target_no_gap(self, mock_multiple_data, mock_lecaps):
         """
         DEC-01 / DEC-07: Si la cartera no tiene configurada asignación de renta fija explícita,
         el objetivo implícito coincide con la asignación real actual, fixed_income_gap_pct es 0.0
         y la renta fija permanece preservada.
         """
         mock_lecaps.return_value = None
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "CAT": {"local": 10000.0, "adr": 200.0, "ratio": 1.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         # Según la Regla Canónica de Invisibilidad Absoluta (arreglar.md), si la cartera
         # NO tiene renta fija configurada, la renta fija del usuario debe permanecer COMPLETAMENTE INVISIBLE.
@@ -383,8 +383,8 @@ class TestFinancialMath(unittest.TestCase):
 
 
     @patch("services.fixed_income_service.fetch_lecaps")
-    @patch("services.rotation_service.get_ticker_data")
-    def test_mcm_multiplier_3x_structural_target_preserved_with_partial_budget(self, mock_ticker_data, mock_lecaps):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_mcm_multiplier_3x_structural_target_preserved_with_partial_budget(self, mock_multiple_data, mock_lecaps):
         """
         DEC-09: Cartera con multiplicador perseguido 3x:
         Base MCM de CAT es 8 -> Objetivo 3x es 24 nominales.
@@ -393,10 +393,10 @@ class TestFinancialMath(unittest.TestCase):
         Verifica que el presupuesto no altera el faltante estructural (21).
         """
         mock_lecaps.return_value = None
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "CAT": {"local": 10000.0, "adr": 200.0, "ratio": 1.0, "rsi": 50.0},
             "VIST": {"local": 10000.0, "adr": 50.0, "ratio": 1.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         custom_pf = {
             "mode": "weights",

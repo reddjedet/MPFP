@@ -44,9 +44,9 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
   const handleRowChange = (idx: number, field: 'ticker' | 'value', val: string) => {
     const updated = [...rows];
     if (field === 'ticker') {
-      updated[idx].ticker = val.toUpperCase().trim();
+      updated[idx] = { ...updated[idx], ticker: val.toUpperCase().trim() };
     } else {
-      updated[idx].value = parseFloat(val) || 0;
+      updated[idx] = { ...updated[idx], value: parseFloat(val) || 0 };
     }
     setRows(updated);
   };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 const ReactECharts = (ReactEChartsCore as any).default || ReactEChartsCore;
 import * as echarts from 'echarts/core';
@@ -27,7 +27,7 @@ export const PortfolioSummaryCards: React.FC<Props> = ({ title, pfKey, totalValu
   const alphaPp = (data.alpha_inception * 100).toFixed(1);
   const isAlphaPositive = data.alpha_inception >= 0;
 
-  const chartOptions = {
+  const chartOptions = useMemo(() => ({
     grid: { top: 5, bottom: 5, left: 0, right: 0 },
     xAxis: { type: 'category', show: false, data: data.sparkline.map(s => s.date) },
     yAxis: { type: 'value', show: false, min: 'dataMin' },
@@ -49,7 +49,7 @@ export const PortfolioSummaryCards: React.FC<Props> = ({ title, pfKey, totalValu
         showSymbol: false,
       }
     ]
-  };
+  }), [data.sparkline, data.benchmark]);
 
   const portReturn = data.portfolio_return_inception;
   const benchReturn = data.benchmark_return_inception;

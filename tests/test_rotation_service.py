@@ -76,13 +76,13 @@ class TestRotationService(unittest.TestCase):
         loaded_after = load_user_holdings()
         self.assertNotIn("VIST", loaded_after["holdings"])
 
-    @patch("services.rotation_service.get_ticker_data")
-    def test_analyze_rotation_math_and_gaps(self, mock_ticker_data):
-        mock_ticker_data.side_effect = lambda tk: {
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_analyze_rotation_math_and_gaps(self, mock_multiple_data):
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "COST": {"local": 30000.0, "adr": 900.0, "ratio": 48.0, "rsi": 70.0},
             "LLY": {"local": 25000.0, "adr": 850.0, "ratio": 56.0, "rsi": 35.0},
             "DE": {"local": 15000.0, "adr": 400.0, "ratio": 40.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         holdings = {
             "holdings": {
@@ -140,14 +140,14 @@ class TestRotationService(unittest.TestCase):
         self.assertEqual(analysis_resp.status_code, 200)
         self.assertIn("rotation_trades", analysis_resp.json())
 
-    @patch("services.rotation_service.get_ticker_data")
-    def test_tactical_veto_overbought_rsi(self, mock_ticker_data):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_tactical_veto_overbought_rsi(self, mock_multiple_data):
         # Configurar LLY en sobrecompra (RSI = 75.0) y DE en zona normal (RSI = 45.0)
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "COST": {"local": 30000.0, "adr": 900.0, "ratio": 48.0, "rsi": 72.0},
             "LLY": {"local": 25000.0, "adr": 850.0, "ratio": 56.0, "rsi": 75.0}, # En sobrecompra
             "DE": {"local": 15000.0, "adr": 400.0, "ratio": 40.0, "rsi": 45.0},  # Neutral/Oportuno
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         holdings = {
             "holdings": {
@@ -169,15 +169,15 @@ class TestRotationService(unittest.TestCase):
         buy_tickers = [t["buy"]["ticker"] for t in res["rotation_trades"] if t.get("buy")]
         self.assertNotIn("LLY", buy_tickers)
 
-    @patch("services.rotation_service.get_ticker_data")
-    def test_no_self_trading_and_no_deficit_selling(self, mock_ticker_data):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_no_self_trading_and_no_deficit_selling(self, mock_multiple_data):
         # Escenario: LLY tiene ganancia latente masiva (+50%) pero está en DEFICIT en la cartera
         # El sistema NUNCA debe sugerir vender LLY y comprar LLY a la vez.
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "COST": {"local": 30000.0, "adr": 900.0, "ratio": 48.0, "rsi": 50.0},
             "LLY": {"local": 33000.0, "adr": 950.0, "ratio": 56.0, "rsi": 55.0}, # En take profit pero en déficit
             "DE": {"local": 15000.0, "adr": 400.0, "ratio": 40.0, "rsi": 45.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         holdings = {
             "holdings": {
@@ -236,10 +236,10 @@ class TestRotationService(unittest.TestCase):
         self.assertIn("PM", load_user_holdings("bmb")["holdings"])
         self.assertNotIn("PM", load_user_holdings("min_drawdown_15")["holdings"])
 
-    @patch("services.rotation_service.get_ticker_data")
-    def test_bmb_rotation_does_not_suggest_selling_min_drawdown_assets(self, mock_ticker_data):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_bmb_rotation_does_not_suggest_selling_min_drawdown_assets(self, mock_multiple_data):
         """Verifica que al analizar BMB no aparezcan ni se vendan activos que solo existen en min_drawdown_15."""
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "CAT": {"local": 25000.0, "adr": 350.0, "ratio": 20.0, "rsi": 50.0},
             "MRK": {"local": 18000.0, "adr": 120.0, "ratio": 10.0, "rsi": 50.0},
             "GOOGL": {"local": 8000.0, "adr": 180.0, "ratio": 58.0, "rsi": 50.0},
@@ -249,7 +249,7 @@ class TestRotationService(unittest.TestCase):
             "VIST": {"local": 38000.0, "adr": 50.0, "ratio": 3.0, "rsi": 50.0},
             "DE": {"local": 15000.0, "adr": 400.0, "ratio": 40.0, "rsi": 50.0},
             "COST": {"local": 30000.0, "adr": 900.0, "ratio": 48.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         # min_drawdown_15 tiene DE y COST
         save_user_holdings({
@@ -322,17 +322,17 @@ class TestRotationService(unittest.TestCase):
         self.assertNotIn("S30S6", fi_del_resp.json().get("data", {}).get("fixed_income_holdings", {}))
 
     @patch("services.rotation_service.evaluate_fair_value_signal")
-    @patch("services.rotation_service.get_ticker_data")
-    def test_neutral_rsi_and_overvaluation_downgrades_to_low_priority(self, mock_ticker_data, mock_gf):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_neutral_rsi_and_overvaluation_downgrades_to_low_priority(self, mock_multiple_data, mock_gf):
         """
         Verifica que si el RSI está en rango neutral (35 <= RSI <= 65, ej 38.2) y el activo está
         sobrevalorado (ej +118%), la sugerencia NUNCA sea clasificada como 'Alta' sino 'Baja' (esperar).
         """
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "V": {"local": 33560.0, "adr": 300.0, "ratio": 1.0, "rsi": 55.1},    # PnL 0%, RSI neutral
             "COST": {"local": 30000.0, "adr": 900.0, "ratio": 48.0, "rsi": 38.2}, # RSI 38.2 (neutral)
             "LLY": {"local": 25000.0, "adr": 850.0, "ratio": 56.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         # Mockear COST como sobrevalorada (+118% sobre fair value)
         mock_gf.side_effect = lambda tk, price, gf_map: {
@@ -381,16 +381,16 @@ class TestRotationService(unittest.TestCase):
 
     @patch("services.rotation_service.evaluate_fcf_rsi_state")
     @patch("services.rotation_service.evaluate_fair_value_signal")
-    @patch("services.rotation_service.get_ticker_data")
-    def test_high_priority_requires_confluence(self, mock_ticker_data, mock_gf, mock_pfcf):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_high_priority_requires_confluence(self, mock_multiple_data, mock_gf, mock_pfcf):
         """
         Verifica que 'Prioridad Alta' solo se active cuando hay confluencia:
         RSI en umbral extremo (<= 30) y valuación saludable (subvaluada/fair), o Take Profit / Sobrecompra extrema.
         """
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "V": {"local": 45000.0, "adr": 300.0, "ratio": 1.0, "rsi": 72.0},     # Sobrecompra extrema (RSI 72)
             "COST": {"local": 25000.0, "adr": 800.0, "ratio": 48.0, "rsi": 28.0}, # Sobreventa extrema (RSI 28)
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         mock_gf.side_effect = lambda tk, price, gf_map: {
             "COST": {
@@ -424,16 +424,16 @@ class TestRotationService(unittest.TestCase):
         self.assertIsNotNone(trade)
         self.assertEqual(trade["priority"], "Alta")
 
-    @patch("services.rotation_service.get_ticker_data")
-    def test_pure_equity_portfolio_makes_fixed_income_completely_invisible(self, mock_ticker_data):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_pure_equity_portfolio_makes_fixed_income_completely_invisible(self, mock_multiple_data):
         """
         P0.3: Si la cartera objetivo no tiene Renta Fija (ej. bdi_agresiva),
         los bonos del usuario (S30S6) deben ser COMPLETAMENTE INVISIBLES en el análisis.
         """
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "MSFT": {"local": 25000.0, "adr": 400.0, "ratio": 10.0, "rsi": 50.0},
             "NVDA": {"local": 15000.0, "adr": 120.0, "ratio": 1.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         # Usuario tiene S30S6 y acciones
         save_user_holdings({
@@ -457,16 +457,16 @@ class TestRotationService(unittest.TestCase):
                 self.assertNotEqual(t["buy"]["ticker"], "S30S6")
 
     @patch("services.fixed_income_service.fetch_lecaps")
-    @patch("services.rotation_service.get_ticker_data")
-    def test_fixed_income_quote_base_100_in_items(self, mock_ticker_data, mock_lecaps):
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_fixed_income_quote_base_100_in_items(self, mock_multiple_data, mock_lecaps):
         """
         P0.1: En carteras con Renta Fija (ej. bmb), el precio del item debe mostrar
         Base 100 VN (~112.08) y no valor unitario inflado o desfasado.
         """
         mock_lecaps.return_value = None
-        mock_ticker_data.side_effect = lambda tk: {
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "CAT": {"local": 25000.0, "adr": 350.0, "ratio": 20.0, "rsi": 50.0}
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         save_user_holdings({
             "holdings": {},
@@ -480,13 +480,13 @@ class TestRotationService(unittest.TestCase):
         self.assertAlmostEqual(s30s6_item["price"], 112.08, places=1)
         self.assertAlmostEqual(s30s6_item["real_value"], 112080.0, delta=100.0)
 
-    @patch("services.rotation_service.get_ticker_data")
-    def test_varias_ordenes_de_compra_no_superan_el_capital_disponible(self, mock_ticker_data):
-        mock_ticker_data.side_effect = lambda tk: {
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_varias_ordenes_de_compra_no_superan_el_capital_disponible(self, mock_multiple_data):
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "AAPL": {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0},
             "MSFT": {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0},
             "GOOGL": {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0},
-        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 10000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         # Cartera con 15.000 ARS de cash (solo alcanza para 1 compra de 10.000)
         save_user_holdings({
@@ -512,12 +512,12 @@ class TestRotationService(unittest.TestCase):
                 buy_trades[1]["capital_available"]
             )
 
-    @patch("services.rotation_service.get_ticker_data")
-    def test_cartera_vacia_expone_nominales_objetivo_no_cero(self, mock_ticker_data):
-        mock_ticker_data.side_effect = lambda tk: {
+    @patch("services.rotation_service.get_multiple_tickers_data")
+    def test_cartera_vacia_expone_nominales_objetivo_no_cero(self, mock_multiple_data):
+        mock_multiple_data.side_effect = lambda tks: {tk: {
             "AAPL": {"local": 1000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0},
             "MSFT": {"local": 1000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0},
-        }.get(tk, {"local": 1000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0})
+        }.get(tk, {"local": 1000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}) for tk in tks}
 
         save_user_holdings({
             "holdings": {},

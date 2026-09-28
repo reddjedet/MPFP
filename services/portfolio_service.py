@@ -869,7 +869,6 @@ def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
     
     from services.rotation_service import load_user_holdings
     from services.fixed_income_service import fetch_lecaps, LECAP_BONCAP_SPECS
-    from datetime import datetime
 
     user_data = load_user_holdings(pf_name)
     user_fi = user_data.get("fixed_income_holdings", {})

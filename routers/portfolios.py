@@ -1,4 +1,6 @@
 import json
+import logging
+logger = logging.getLogger(__name__)
 from typing import Optional, Any, Dict, List
 from fastapi import APIRouter, Request, UploadFile, File
 from fastapi.responses import JSONResponse
@@ -227,7 +229,8 @@ def get_rebalance_data_json(
     try:
         rotation_analysis = analyze_rotation(pf_clean, cash_budget=cash_budget, tolerance_pct=tolerance_pct)
         rotation_trades = rotation_analysis.get("rotation_trades", [])
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Rotation analysis failed for {pf_clean}: {e}")
         rotation_analysis = {}
         rotation_trades = []
 
@@ -376,6 +379,7 @@ async def create_custom_portfolio(request: Request):
     req_name = None
     req_mode = "weights"
     req_weights_str = None
+    req_bench = None
     
     try:
         body = await request.json()
@@ -384,8 +388,9 @@ async def create_custom_portfolio(request: Request):
         req_weights_str = body.get("weights_str")
         if not req_weights_str and "assets" in body and isinstance(body["assets"], dict):
             req_weights_str = ", ".join([f"{k}:{v}" for k, v in body["assets"].items()])
+        req_bench = body.get("benchmark")
     except Exception:
-        pass
+        return JSONResponse({"success": False, "error": "Cuerpo del request inválido. Se requiere un JSON válido."}, status_code=400)
 
     name_clean = sanitize_portfolio_name(req_name or "")
     if not name_clean:
@@ -411,7 +416,6 @@ async def create_custom_portfolio(request: Request):
         "mode": mode_clean,
         "assets": new_weights
     }
-    req_bench = body.get("benchmark")
     if req_bench:
         
         portfolios_data[name_clean]["benchmark"] = sanitize_ticker(req_bench)
@@ -488,15 +492,15 @@ def rename_custom_portfolio(body: RenamePortfolioRequest):
         if old_clean in all_holdings:
             all_holdings[new_clean] = all_holdings.pop(old_clean)
             holdings_db.save(all_holdings)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Holdings migration failed during rename {old_clean} -> {new_clean}: {e}")
 
     return JSONResponse({"success": True, "old_name": old_clean, "new_name": new_clean})
 
 @router.post("/import_json", response_class=JSONResponse)
 async def import_custom_portfolios(file: UploadFile = File(...)):
     try:
-        content = await file.read()
+        content = await file.read(MAX_FILE_SIZE_BYTES + 1)
         if len(content) > MAX_FILE_SIZE_BYTES:
             return JSONResponse({"success": False, "error": "El archivo supera el tamaño máximo permitido (1 MB)."})
             

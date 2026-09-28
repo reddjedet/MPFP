@@ -156,7 +156,9 @@ def load_user_holdings(portfolio_key: Optional[str] = None) -> Dict[str, Any]:
     """
     all_holdings = load_all_user_holdings()
     target_key = portfolio_key or "bmb"
-    res = all_holdings.get(target_key, {"holdings": {}, "fixed_income_holdings": {}, "cash_ars": 0.0})
+    res = all_holdings.get(target_key)
+    if res is None:
+        return {"holdings": {}, "fixed_income_holdings": {}, "cash_ars": 0.0}
     if "fixed_income_holdings" not in res:
         res["fixed_income_holdings"] = {}
     return res
@@ -410,10 +412,7 @@ def analyze_rotation(
         all_tickers = equity_tickers
     
     # Cargar cotizaciones spot de Renta Variable
-    if hasattr(get_ticker_data, "mock_calls"):
-        fetched = {tk: get_ticker_data(tk) for tk in equity_tickers}
-    else:
-        fetched = get_multiple_tickers_data(equity_tickers)
+    fetched = get_multiple_tickers_data(equity_tickers)
     market_data = {}
     gf_map = load_fair_values()
     pfcf_map = load_pfcf_values()
