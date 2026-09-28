@@ -27,7 +27,8 @@ import {
 } from '@tanstack/react-table';
 import { 
   Search, 
-  RefreshCw
+  RefreshCw,
+  Activity
 } from 'lucide-react';
 
 interface BondRow {
@@ -89,6 +90,8 @@ export const FixedIncomeView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [rpScenarioBps, setRpScenarioBps] = useState<number>(0);
+
 
   const fetchCurveData = async () => {
     setRefreshing(true);
@@ -303,6 +306,26 @@ export const FixedIncomeView: React.FC = () => {
             );
           },
         }),
+        ...(rpScenarioBps !== 0 ? [
+          columnHelper.accessor(row => {
+            if (typeof row.md !== 'number') return null;
+            return -row.md * (rpScenarioBps / 100);
+          }, {
+            id: 'impacto_rp',
+            header: `IMPACTO Δ${rpScenarioBps > 0 ? '+' : ''}${rpScenarioBps} bps`,
+            cell: info => {
+              const val = info.getValue();
+              if (val === null) return <span className="text-zinc-600 font-mono text-xs">—</span>;
+              const color = val > 0 ? 'text-positive bg-positive/10 border-positive/30' : 'text-negative bg-negative/10 border-negative/30';
+              return (
+                <span className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border tabular-nums ${color}`}>
+                  {val > 0 ? '+' : ''}{val.toFixed(2)}%
+                </span>
+              );
+            },
+          })
+        ] : []),
+
         columnHelper.accessor('md', {
           header: 'MODIFIED DURATION',
           cell: info => {
@@ -434,8 +457,28 @@ export const FixedIncomeView: React.FC = () => {
           return <span className="font-mono text-xs text-muted-foreground tabular-nums">{val}</span>;
         },
       }),
+      ...(rpScenarioBps !== 0 ? [
+        columnHelper.accessor(row => {
+          if (typeof row.md !== 'number') return null;
+          return -row.md * (rpScenarioBps / 100);
+        }, {
+          id: 'impacto_rp',
+          header: `IMPACTO Δ${rpScenarioBps > 0 ? '+' : ''}${rpScenarioBps} bps`,
+          cell: info => {
+            const val = info.getValue();
+            if (val === null) return <span className="text-zinc-600 font-mono text-xs">—</span>;
+            const color = val > 0 ? 'text-positive bg-positive/10 border-positive/30' : 'text-negative bg-negative/10 border-negative/30';
+            return (
+              <span className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border tabular-nums ${color}`}>
+                {val > 0 ? '+' : ''}{val.toFixed(2)}%
+              </span>
+            );
+          },
+        })
+      ] : []),
+
     ];
-  }, [isLecap]);
+  }, [isLecap, rpScenarioBps]);
 
   const table = useReactTable({
     data: filteredRows,
@@ -591,6 +634,46 @@ export const FixedIncomeView: React.FC = () => {
               )}
             </div>
           )}
+
+          
+          {/* Sensibilidad al Riesgo País */}
+          <div className="bg-secondary/80 border border-border p-5 rounded-2xl flex flex-col gap-4 backdrop-blur-md">
+            <div className="flex flex-col gap-1 border-b border-border pb-3">
+              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                <Activity className="w-4 h-4 text-blue-500" />
+                Simulador de Sensibilidad (Riesgo País / Tasas)
+              </h3>
+              <p className="text-[11px] text-muted-foreground">
+                Estima el impacto porcentual en el precio de los bonos ante variaciones en la curva de rendimientos, utilizando la Modified Duration (Sensibilidad = -MD × ΔTasa).
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="flex-1 w-full">
+                <div className="flex justify-between text-[10px] font-bold text-muted-foreground mb-2">
+                  <span>-1000 bps (-10%)</span>
+                  <span className="text-foreground">0 bps</span>
+                  <span>+1000 bps (+10%)</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="-1000" 
+                  max="1000" 
+                  step="50" 
+                  value={rpScenarioBps} 
+                  onChange={(e) => setRpScenarioBps(Number(e.target.value))}
+                  className="w-full accent-blue-500 h-2 bg-background border border-border rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+              
+              <div className="flex flex-col items-center justify-center min-w-[120px] bg-background border border-border p-3 rounded-xl shadow-sm">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Escenario (Δ Yield)</span>
+                <span className={`text-lg font-black tabular-nums ${rpScenarioBps === 0 ? 'text-foreground' : rpScenarioBps > 0 ? 'text-negative' : 'text-positive'}`}>
+                  {rpScenarioBps > 0 ? '+' : ''}{rpScenarioBps} bps
+                </span>
+              </div>
+            </div>
+          </div>
 
           {/* Scatter Yield Curve Chart */}
           <div className="bg-secondary/80 border border-border p-5 rounded-2xl flex flex-col gap-3 backdrop-blur-md">
