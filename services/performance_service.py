@@ -15,12 +15,15 @@ def calculate_backtest_performance(pf_type: str) -> Dict[str, Any]:
     benchmark = pf_data.get("benchmark", "SPY")
     
     holdings = load_user_holdings(pf_type).get("holdings", {})
-    if not holdings:
-        # Fallback to weights if no holdings
-        holdings = {tk: {"nominals": 1} for tk in pf_data.get("assets", {})}
-        
-    tickers = list(holdings.keys())
-    if not tickers:
+    assets_target = pf_data.get("assets", {})
+    
+    use_target_weights = False
+    if not holdings and assets_target:
+        use_target_weights = True
+        tickers = list(assets_target.keys())
+    elif holdings:
+        tickers = list(holdings.keys())
+    else:
         return {"success": False, "error": "No holdings found"}
         
     fetch_tickers = tuple(list(set(tickers + [benchmark])))
@@ -50,11 +53,24 @@ def calculate_backtest_performance(pf_type: str) -> Dict[str, Any]:
     bench_series = cum_bench / cum_bench.iloc[0] * 100.0
 
     port_val = pd.Series(0.0, index=daily_returns.index)
-    for tk in valid_tickers:
-        if tk in tickers:
-            nominals = holdings[tk].get("nominals", 1)
-            if tk in prices_history:
-                port_val += prices_history[tk] * nominals
+    
+    if use_target_weights:
+        total_weight = sum([float(w) for w in assets_target.values()])
+        if total_weight == 0:
+            total_weight = 1.0
+        initial_capital = 10000.0
+        for tk in valid_tickers:
+            if tk in tickers:
+                w = float(assets_target[tk]) / total_weight
+                if tk in prices_history and prices_history[tk].iloc[0] > 0:
+                    fractional_nominals = (initial_capital * w) / prices_history[tk].iloc[0]
+                    port_val += prices_history[tk] * fractional_nominals
+    else:
+        for tk in valid_tickers:
+            if tk in tickers:
+                nominals = float(holdings[tk].get("nominals", 1.0))
+                if tk in prices_history:
+                    port_val += prices_history[tk] * nominals
             
     if port_val.iloc[0] > 0:
         port_series = port_val / port_val.iloc[0] * 100.0
