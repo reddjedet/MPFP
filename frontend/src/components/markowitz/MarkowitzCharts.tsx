@@ -108,7 +108,7 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
         data: [fd.max_sharpe_point],
         itemStyle: {
           color: chartTheme.sharpeOptimalColor,
-          borderColor: chartTheme.isDark ? '#ffffff' : '#0f172a',
+          borderColor: chartTheme.isDark ? '#ffffff' : '#323c41',
           borderWidth: 2,
           shadowBlur: 10,
           shadowColor: chartTheme.isDark ? '#ffd600' : 'rgba(217, 119, 6, 0.35)',
@@ -227,7 +227,7 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
               <div style="font-weight:bold;color:${chartTheme.textPrimary};margin-bottom:4px;">${seriesName}</div>
               <div style="display:flex;justify-content:space-between;gap:12px;color:${chartTheme.textMuted};"><span>Volatilidad anual:</span><b style="color:${chartTheme.textPrimary}">${val[0].toFixed(2)}%</b></div>
               <div style="display:flex;justify-content:space-between;gap:12px;color:${chartTheme.textMuted};"><span>Retorno anual:</span><b style="color:${chartTheme.textPrimary}">${val[1].toFixed(2)}%</b></div>
-              ${val[2] !== undefined ? `<div style="display:flex;justify-content:space-between;gap:12px;color:${chartTheme.isDark ? '#fbbf24' : '#b45309'};"><span>Ratio de Sharpe:</span><b>${val[2].toFixed(3)}</b></div>` : ''}
+              ${val[2] !== undefined ? `<div style="display:flex;justify-content:space-between;gap:12px;color:${chartTheme.isDark ? '#dbbc7f' : '#b45309'};"><span>Ratio de Sharpe:</span><b>${val[2].toFixed(3)}</b></div>` : ''}
               ${weightsHtml}
             </div>
           `;

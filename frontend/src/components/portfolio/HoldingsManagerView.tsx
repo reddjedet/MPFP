@@ -74,7 +74,7 @@ const fmtPct = (n: number, digits = 1) =>
   `${n.toLocaleString('es-AR', { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export function HoldingsManagerView() {
+export function HoldingsManagerView({ hideHeader = false, compact = false }: { hideHeader?: boolean, compact?: boolean } = {}) {
   const openTickerDrawer = useAppStore((s) => s.openTickerDrawer);
   const chartTheme = useChartTheme();
   const [portfolios, setPortfolios] = useState<Record<string, any>>(() => {
@@ -606,6 +606,7 @@ export function HoldingsManagerView() {
       invalidateCache(`portfolio-mcm:${selectedPf}`);
       setDraftHoldings({});
       setFeedback({ kind: 'success', msg: 'Cambios guardados. Los nominales objetivo se recalcularon con los precios actuales.' });
+      window.dispatchEvent(new Event('refresh_portfolios'));
       setRetryTick((t) => t + 1);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al guardar cambios.';
@@ -634,7 +635,7 @@ export function HoldingsManagerView() {
   const inputClasses = "w-full min-w-[64px] max-w-[86px] text-right bg-secondary/50 border border-border/50 rounded-md px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
+    <div className={compact ? "flex flex-col space-y-6 h-full p-2" : "p-6 md:p-8 max-w-7xl mx-auto space-y-8"}>
       {loadError && (
         <div role="alert" className="flex items-center justify-between gap-3 bg-negative/10 border border-negative/30 text-negative px-4 py-3 rounded-2xl text-sm">
           <span>{loadError}</span>

@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from services.cedear_service import get_multiple_tickers_data
+from services.performance_service import calculate_backtest_performance
 from services.portfolio_service import (
     load_portfolios, 
     save_portfolios, 
@@ -410,6 +411,10 @@ async def create_custom_portfolio(request: Request):
         "mode": mode_clean,
         "assets": new_weights
     }
+    req_bench = body.get("benchmark")
+    if req_bench:
+        
+        portfolios_data[name_clean]["benchmark"] = sanitize_ticker(req_bench)
     save_portfolios(portfolios_data)
     return JSONResponse({"success": True, "name": name_clean, "portfolio": portfolios_data[name_clean]})
 
@@ -537,6 +542,11 @@ async def import_custom_portfolios(file: UploadFile = File(...)):
                     anc_clean = sanitize_ticker(str(data_item["anchor"]))
                     if anc_clean:
                         entry["anchor"] = anc_clean
+                if "benchmark" in data_item:
+                    
+                    anc_clean = sanitize_ticker(str(data_item["benchmark"]))
+                    if anc_clean:
+                        entry["benchmark"] = anc_clean
                 if "qty" in data_item:
                     try:
                         q_val = int(data_item["qty"])
@@ -588,3 +598,9 @@ def export_custom_portfolio(pf_type: str):
     if not pf_clean or pf_clean not in portfolios:
         raise PortfolioNotFoundError("Portfolio no encontrado.")
     return JSONResponse({pf_clean: portfolios[pf_clean]})
+
+
+@router.get("/performance_json/{pf_type}", response_class=JSONResponse)
+def get_portfolio_performance(pf_type: str):
+    result = calculate_backtest_performance(pf_type)
+    return JSONResponse(result)

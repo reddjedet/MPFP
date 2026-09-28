@@ -18,26 +18,25 @@ export interface ChartThemeTokens {
 }
 
 export function useChartTheme(): ChartThemeTokens {
-  // For now, always return dark theme tokens.
-  // When light mode is fully implemented, this can read from
-  // document.documentElement.classList or a Zustand theme slice.
+  // Always returning Everforest Dark mode for charts for now.
+  // Can be expanded to read light/dark context later.
   return {
     isDark: true,
     theme: 'dark',
-    textPrimary: '#e9e9e2',
-    textMuted: '#8a8a98',
-    axisLine: 'rgba(255,255,255,0.1)',
-    splitLine: 'rgba(255,255,255,0.05)',
-    tooltipBg: '#1c1c24',
-    tooltipText: '#e9e9e2',
-    tooltipBorder: 'rgba(255,255,255,0.15)',
+    textPrimary: '#d3c6aa',
+    textMuted: '#9da9a0',
+    axisLine: 'rgba(211, 198, 170, 0.1)',
+    splitLine: 'rgba(211, 198, 170, 0.05)',
+    tooltipBg: '#323c41',
+    tooltipText: '#d3c6aa',
+    tooltipBorder: '#475258',
     tooltipShadow: 'none',
-    cardBorder: '#16161d',
-    calLineColor: '#f59e0b',
-    sharpeOptimalColor: '#ffd600',
-    benchmarkColor: '#ff9f0a',
-    scatterAssetLabelColor: '#e9e9e2',
-    scatterAssetLabelBorder: '#16161d',
+    cardBorder: '#475258',
+    calLineColor: '#dbbc7f',
+    sharpeOptimalColor: '#dbbc7f',
+    benchmarkColor: '#e69875',
+    scatterAssetLabelColor: '#d3c6aa',
+    scatterAssetLabelBorder: '#2d353b',
   };
 }
 

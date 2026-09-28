@@ -10,8 +10,9 @@ import { useAppStore } from '@/store/useAppStore';
 import { PortfolioTable } from './PortfolioTable';
 import { PortfolioFixedIncomeTable } from './PortfolioFixedIncomeTable';
 import { FixedIncomePortfolioCard } from './FixedIncomePortfolioCard';
+import { PortfolioSummaryCards } from './PortfolioSummaryCards';
 
-export const UnifiedPortfolioView: React.FC = () => {
+export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: boolean }> = ({ hideHeader, compact }) => {
 
   const selectedPf = useAppStore((s) => s.selectedPf);
   const setSelectedPf = useAppStore((s) => s.setSelectedPf);
@@ -96,6 +97,13 @@ export const UnifiedPortfolioView: React.FC = () => {
       fetchAllData(selectedPf);
     }
   }, [selectedPf, portfolioMetadata, fetchAllData]);
+
+  
+  useEffect(() => {
+    const handleRefresh = () => fetchAllData();
+    window.addEventListener('refresh_portfolios', handleRefresh);
+    return () => window.removeEventListener('refresh_portfolios', handleRefresh);
+  }, [fetchAllData]);
 
   // Derived dashboard metrics
   const totalEq = rebalanceData?.summary?.total_real_value ?? 0;

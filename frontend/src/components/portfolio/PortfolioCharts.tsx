@@ -38,7 +38,7 @@ export const SECTOR_COLOR_MAP: Record<string, { base: string; shades: string[] }
   },
   health: {
     base: '#10b981', // emerald-500
-    shades: ['#34d399', '#059669', '#6ee7b7', '#047857', '#a7f3d0']
+    shades: ['#a7c080', '#059669', '#6ee7b7', '#047857', '#a7f3d0']
   },
   staples: {
     base: '#14b8a6', // teal-500
@@ -46,7 +46,7 @@ export const SECTOR_COLOR_MAP: Record<string, { base: string; shades: string[] }
   },
   financials: {
     base: '#f59e0b', // amber-500
-    shades: ['#fbbf24', '#d97706', '#fcd34d', '#b45309', '#fde68a']
+    shades: ['#dbbc7f', '#d97706', '#fcd34d', '#b45309', '#fde68a']
   },
   industrials: {
     base: '#64748b', // slate-500

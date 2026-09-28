@@ -130,7 +130,7 @@ export const AnnualReturnsBarChart: React.FC<AnnualReturnsBarChartProps> = ({
 
           if (sharpeVal !== null && spyVal !== null) {
             const alpha = sharpeVal - spyVal;
-            const alphaColor = alpha >= 0 ? '#34d399' : '#f87171';
+            const alphaColor = alpha >= 0 ? '#a7c080' : '#e67e80';
             html += `<div style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 4px; padding-top: 4px; color: ${alphaColor}; font-weight: bold;">
               Alpha (Sharpe - SPY): ${alpha >= 0 ? '+' : ''}${alpha.toFixed(2)}%
             </div>`;

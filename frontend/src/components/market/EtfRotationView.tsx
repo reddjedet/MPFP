@@ -243,7 +243,7 @@ export const EtfRotationView: React.FC = () => {
         type: 'line',
         data: spyHistory,
         lineStyle: {
-          color: '#fbbf24',
+          color: '#dbbc7f',
           width: selectedTicker ? 3.5 : 4,
           type: 'solid',
           shadowColor: 'rgba(251, 191, 36, 0.75)',
@@ -251,7 +251,7 @@ export const EtfRotationView: React.FC = () => {
           shadowOffsetY: 0
         },
         itemStyle: {
-          color: '#fbbf24',
+          color: '#dbbc7f',
           borderColor: '#ffffff',
           borderWidth: 2
         },
@@ -266,12 +266,12 @@ export const EtfRotationView: React.FC = () => {
             const num = val !== undefined && val !== null ? Number(val).toFixed(1) : '0.0';
             return ` ★ SPY (${sign}${num}%)`;
           },
-          color: '#fbbf24',
+          color: '#dbbc7f',
           fontWeight: 'bolder',
           fontSize: 11,
           fontFamily: 'monospace',
-          backgroundColor: 'rgba(24, 25, 32, 0.95)',
-          borderColor: '#fbbf24',
+          backgroundColor: 'rgba(45, 53, 59, 0.95)',
+          borderColor: '#dbbc7f',
           borderWidth: 1.5,
           borderRadius: 4,
           padding: [3, 6],
@@ -357,7 +357,7 @@ export const EtfRotationView: React.FC = () => {
           fontWeight: 'bold',
           fontSize: 11,
           fontFamily: 'monospace',
-          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          backgroundColor: 'rgba(50, 60, 65, 0.9)',
           borderColor: st.color,
           borderWidth: 1,
           borderRadius: 4,
@@ -394,7 +394,7 @@ export const EtfRotationView: React.FC = () => {
           fontWeight: 'bold',
           fontSize: 11,
           fontFamily: 'monospace',
-          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          backgroundColor: 'rgba(50, 60, 65, 0.9)',
           borderColor: st.color,
           borderWidth: 1,
           borderRadius: 4,
@@ -431,7 +431,7 @@ export const EtfRotationView: React.FC = () => {
           fontWeight: 'bold',
           fontSize: 11,
           fontFamily: 'monospace',
-          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          backgroundColor: 'rgba(50, 60, 65, 0.9)',
           borderColor: st.color,
           borderWidth: 1,
           borderRadius: 4,
@@ -471,7 +471,7 @@ export const EtfRotationView: React.FC = () => {
           fontWeight: 'bold',
           fontSize: 11,
           fontFamily: 'monospace',
-          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          backgroundColor: 'rgba(50, 60, 65, 0.9)',
           borderColor: st.color,
           borderWidth: 1,
           borderRadius: 4,
@@ -527,7 +527,7 @@ export const EtfRotationView: React.FC = () => {
       return {
         value: diff,
         itemStyle: {
-          color: isPositive ? 'rgba(16, 185, 129, 0.85)' : 'rgba(244, 63, 94, 0.85)',
+          color: isPositive ? 'rgba(167, 192, 128, 0.85)' : 'rgba(230, 126, 128, 0.85)',
           borderRadius: isPositive ? [0, 4, 4, 0] : [4, 0, 0, 4]
         },
         meta: it
@@ -547,7 +547,7 @@ export const EtfRotationView: React.FC = () => {
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        backgroundColor: '#12131a',
+        backgroundColor: '#272e33',
         borderColor: 'rgba(255, 255, 255, 0.15)',
         borderWidth: 1,
         textStyle: { color: '#ffffff', fontSize: 11, fontFamily: 'monospace' },
@@ -563,7 +563,7 @@ export const EtfRotationView: React.FC = () => {
               </div>
               <div style="display: flex; justify-content: space-between; gap: 16px; padding: 2px 0;">
                 <span style="color: #94a3b8;">Diferencial vs SPY (1W):</span>
-                <strong style="color: ${diff >= 0 ? '#34d399' : '#f87171'};">${diff >= 0 ? '+' : ''}${diff.toFixed(2)}%</strong>
+                <strong style="color: ${diff >= 0 ? '#a7c080' : '#e67e80'};">${diff >= 0 ? '+' : ''}${diff.toFixed(2)}%</strong>
               </div>
               <div style="display: flex; justify-content: space-between; gap: 16px; padding: 2px 0;">
                 <span style="color: #94a3b8;">Retorno ETF (1W):</span>
@@ -571,7 +571,7 @@ export const EtfRotationView: React.FC = () => {
               </div>
               <div style="display: flex; justify-content: space-between; gap: 16px; padding: 2px 0;">
                 <span style="color: #94a3b8;">Retorno SPY Benchmark:</span>
-                <span style="color: #fbbf24; font-weight: bold;">${spyPerf >= 0 ? '+' : ''}${spyPerf.toFixed(2)}%</span>
+                <span style="color: #dbbc7f; font-weight: bold;">${spyPerf >= 0 ? '+' : ''}${spyPerf.toFixed(2)}%</span>
               </div>
             </div>
           `;

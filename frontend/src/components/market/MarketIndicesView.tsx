@@ -234,7 +234,7 @@ export const MarketIndicesView: React.FC = () => {
     const { dates, series } = historyData;
 
     // Colores semánticos para las curvas principales
-    const palette = ['#38bdf8', '#34d399', '#a78bfa', '#f59e0b', '#f87171'];
+    const palette = ['#38bdf8', '#a7c080', '#a78bfa', '#f59e0b', '#e67e80'];
 
     // Construcción de zonas sombreadas de mandatos (markArea)
     const markAreaPieces: any[] = [];
@@ -268,7 +268,7 @@ export const MarketIndicesView: React.FC = () => {
                   fontSize: 10,
                   fontWeight: 600,
                   padding: [3, 6],
-                  backgroundColor: 'rgba(24, 25, 32, 0.85)',
+                  backgroundColor: 'rgba(45, 53, 59, 0.85)',
                   borderColor: 'rgba(255, 255, 255, 0.12)',
                   borderWidth: 1,
                   borderRadius: 3,
@@ -309,7 +309,7 @@ export const MarketIndicesView: React.FC = () => {
               fontWeight: 600,
               color: '#facc15',
               padding: [2, 5],
-              backgroundColor: 'rgba(24, 25, 32, 0.9)',
+              backgroundColor: 'rgba(45, 53, 59, 0.9)',
               borderColor: 'rgba(245, 158, 11, 0.5)',
               borderWidth: 1,
               borderRadius: 2

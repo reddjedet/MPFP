@@ -220,7 +220,7 @@ export const PerformanceView: React.FC = () => {
           let alphaHtml = '';
           if (!entity.isSpy && spyVal !== undefined) {
             const isPos = alpha >= 0;
-            const color = isPos ? '#34d399' : '#f87171';
+            const color = isPos ? '#a7c080' : '#e67e80';
             const sign = isPos ? '+' : '';
             const badgeText = isPos ? 'SUPERÓ AL MERCADO (+ALPHA)' : 'POR DEBAJO DEL MERCADO (-ALPHA)';
             const badgeBg = isPos ? 'rgba(52, 211, 153, 0.12)' : 'rgba(248, 113, 113, 0.12)';
@@ -342,7 +342,7 @@ export const PerformanceView: React.FC = () => {
               alphaPos: {
                 fontSize: 10,
                 fontWeight: 'bold',
-                color: '#34d399',
+                color: '#a7c080',
                 lineHeight: 14,
                 fontFamily: 'monospace',
                 textBorderColor: 'rgba(0, 0, 0, 0.75)',
@@ -351,7 +351,7 @@ export const PerformanceView: React.FC = () => {
               alphaNeg: {
                 fontSize: 10,
                 fontWeight: 'bold',
-                color: '#f87171',
+                color: '#e67e80',
                 lineHeight: 14,
                 fontFamily: 'monospace',
                 textBorderColor: 'rgba(0, 0, 0, 0.75)',
