@@ -1,6 +1,43 @@
 @import "tailwindcss";
 
 @theme {
+  /* Map slate/zinc to Everforest palette for cohesive greys */
+  --color-slate-50: #fdf6e3;
+  --color-slate-100: #f4f0d9;
+  --color-slate-200: #dfddc8;
+  --color-slate-300: #d3d0be;
+  --color-slate-400: #939f91;
+  --color-slate-500: #859289;
+  --color-slate-600: #5c6a72;
+  --color-slate-700: #475258;
+  --color-slate-800: #3a454a;
+  --color-slate-900: #2d353b;
+  --color-slate-950: #272e33;
+
+  --color-zinc-50: #fdf6e3;
+  --color-zinc-100: #f4f0d9;
+  --color-zinc-200: #dfddc8;
+  --color-zinc-300: #d3d0be;
+  --color-zinc-400: #939f91;
+  --color-zinc-500: #859289;
+  --color-zinc-600: #5c6a72;
+  --color-zinc-700: #475258;
+  --color-zinc-800: #3a454a;
+  --color-zinc-900: #2d353b;
+  --color-zinc-950: #272e33;
+  
+  --color-gray-50: #fdf6e3;
+  --color-gray-100: #f4f0d9;
+  --color-gray-200: #dfddc8;
+  --color-gray-300: #d3d0be;
+  --color-gray-400: #939f91;
+  --color-gray-500: #859289;
+  --color-gray-600: #5c6a72;
+  --color-gray-700: #475258;
+  --color-gray-800: #3a454a;
+  --color-gray-900: #2d353b;
+  --color-gray-950: #272e33;
+
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -38,44 +75,26 @@
 }
 
 @layer base {
-  :root {
-    --background: #e9e9e2;
-    --foreground: #16161d;
-    --card: #ffffff;
-    --card-foreground: #16161d;
-    --primary: #16161d;
-    --primary-foreground: #e9e9e2;
-    --secondary: #d4d4cd;
-    --secondary-foreground: #16161d;
-    --muted: #d4d4cd;
-    --muted-foreground: #6b6b66;
-    --border: #d4d4cd;
-    --input: #d4d4cd;
-    --ring: #16161d;
+  :root, .dark {
+    /* Everforest Dark (Unified Single Theme) */
+    --background: #2d353b;
+    --foreground: #d3c6aa;
+    --card: #323c41;
+    --card-foreground: #d3c6aa;
+    --primary: #a7c080;
+    --primary-foreground: #2d353b;
+    --secondary: #3a454a;
+    --secondary-foreground: #d3c6aa;
+    --muted: #3a454a;
+    --muted-foreground: #9da9a0;
+    --border: #475258;
+    --input: #475258;
+    --ring: #a7c080;
     
-    --positive: #2d7a4d;
-    --negative: #b33a3a;
+    --positive: #a7c080;
+    --negative: #e67e80;
     
     --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: #16161d; /* Eigengrau */
-    --foreground: #e9e9e2;
-    --card: #1c1c24;
-    --card-foreground: #e9e9e2;
-    --primary: #e9e9e2;
-    --primary-foreground: #16161d;
-    --secondary: #2a2a35;
-    --secondary-foreground: #e9e9e2;
-    --muted: #2a2a35;
-    --muted-foreground: #8a8a98;
-    --border: #2a2a35;
-    --input: #2a2a35;
-    --ring: #e9e9e2;
-    
-    --positive: #4ade80; /* Semantic Green */
-    --negative: #f87171; /* Semantic Red */
   }
 }
 
