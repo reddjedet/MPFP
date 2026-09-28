@@ -6,7 +6,6 @@ import { CommandPalette } from '../ui/CommandPalette';
 import { Ticker360Drawer } from '../ui/Ticker360Drawer';
 import { TickerTape } from '../ui/TickerTape';
 
-import { ConsolidatedDashboardView } from '../portfolio/ConsolidatedDashboardView';
 import { UnifiedPortfolioView } from '../portfolio/UnifiedPortfolioView';
 import { HoldingsManagerView } from '../portfolio/HoldingsManagerView';
 import { AnimatePresence } from 'framer-motion';

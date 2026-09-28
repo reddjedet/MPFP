@@ -1,5 +1,6 @@
 import React from 'react';
-import ReactECharts from 'echarts-for-react/lib/core';
+import ReactEChartsCore from 'echarts-for-react/lib/core';
+const ReactECharts = (ReactEChartsCore as any).default || ReactEChartsCore;
 import * as echarts from 'echarts/core';
 import { LineChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent } from 'echarts/components';

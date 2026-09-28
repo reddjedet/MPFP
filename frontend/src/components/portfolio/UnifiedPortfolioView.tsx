@@ -150,6 +150,8 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
   const pnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
   const trackingError = errorCount > 0 ? (sumTrackingError / errorCount) : 0;
   
+  const urgentTrades = rebalanceData?.rotation_trades?.filter((t: any) => t.priority === 'Alta' || t.priority === 'Media') || [];
+  
   const rsiSummary = rebalanceData?.summary?.portfolio_rsi || rebalanceData?.summary?.rsi_summary;
 
   return (
@@ -213,13 +215,13 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
         </div>
         
         {/* Sugerencias de Rotación Táctica */}
-        {rebalanceData?.rotation_trades && rebalanceData.rotation_trades.length > 0 && (
+        {urgentTrades.length > 0 ? (
           <div className="pb-6">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300 mb-3 flex items-center gap-2">
-              <ArrowLeftRight className="w-4 h-4 text-purple-400" /> Rotación Táctica Sugerida
+            <h3 className="text-sm font-black uppercase tracking-wider text-zinc-100 mb-4 flex items-center gap-2">
+              <ArrowLeftRight className="w-5 h-5 text-purple-400" /> Alertas de Rotación Táctica
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {rebalanceData.rotation_trades.map((trade: any) => (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {urgentTrades.map((trade: any) => (
                 <div key={trade.id} className="p-3 bg-zinc-900 border border-white/5 rounded-xl flex flex-col gap-2 relative overflow-hidden group">
                   {/* Etiqueta Prioridad */}
                   <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-bold uppercase ${
@@ -231,11 +233,11 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
                   
                   {trade.sell && (
                     <div className="flex flex-col gap-1 mt-2">
-                      <div className="flex justify-between items-center text-xs">
+                      <div className="flex justify-between items-center text-sm">
                         <span className="font-bold text-rose-400 flex items-center gap-1">VENDER {trade.sell.nominals} <span className="text-white">{trade.sell.ticker}</span></span>
                         <span className="font-mono text-zinc-400 tabular-nums">${trade.sell.total_cash.toLocaleString('es-AR')}</span>
                       </div>
-                      <span className="text-[9px] text-zinc-500 truncate" title={trade.sell.reason}>{trade.sell.reason}</span>
+                      <span className="text-xs text-zinc-400 mt-1" title={trade.sell.reason}>{trade.sell.reason}</span>
                     </div>
                   )}
                   
@@ -243,11 +245,11 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
                   
                   {trade.buy && (
                     <div className="flex flex-col gap-1 mt-1">
-                      <div className="flex justify-between items-center text-xs">
+                      <div className="flex justify-between items-center text-sm">
                         <span className="font-bold text-emerald-400 flex items-center gap-1">COMPRAR {trade.buy.nominals} <span className="text-white">{trade.buy.ticker}</span></span>
                         <span className="font-mono text-zinc-400 tabular-nums">${trade.buy.total_cash.toLocaleString('es-AR')}</span>
                       </div>
-                      <span className="text-[9px] text-zinc-500 truncate" title={trade.buy.reason}>{trade.buy.reason}</span>
+                      <span className="text-xs text-zinc-400 mt-1" title={trade.buy.reason}>{trade.buy.reason}</span>
                     </div>
                   )}
                   
@@ -261,7 +263,16 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
               ))}
             </div>
           </div>
-        )}
+        ) : (rebalanceData?.rotation_trades && rebalanceData.rotation_trades.length > 0) ? (
+          <div className="pb-6">
+            <h3 className="text-sm font-black uppercase tracking-wider text-zinc-400 mb-4 flex items-center gap-2">
+              <ArrowLeftRight className="w-5 h-5 opacity-50" /> Rotación Táctica
+            </h3>
+            <div className="p-6 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex items-center justify-center">
+              <span className="text-emerald-400/80 text-sm font-bold uppercase tracking-wider">Cartera optimizada. No hay acciones urgentes requeridas.</span>
+            </div>
+          </div>
+        ) : null}
 
         {/* Tabla de Activos del Portfolio */}
         {rebalanceData && (
