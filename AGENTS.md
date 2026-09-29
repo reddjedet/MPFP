@@ -95,4 +95,3 @@ For complex multi-agent workflows, refer to subagent definitions in `.agents/AGE
 - `frontend_engineer` (`gemini-3.8-flash-low`): React 19 SPA, Tailwind, ECharts, and UI ergonomics.
 - `qa_engineer` (`gemini-3.8-flash-low`): Test coverage, Snapshot Isolation, `./scripts/test.sh`, and contract synchronization.
 - `security_auditor` (`gemini-3.8-flash-low`): Read-only cyber-security audit, secrets, and hardening boundaries.
-- `rules_architect` (`gemini-3.8-flash-low`): Governance, canonical rules, and architecture security (`.agents/RULES.md`).
