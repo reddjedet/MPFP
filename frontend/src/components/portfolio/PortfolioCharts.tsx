@@ -92,7 +92,9 @@ export const PortfolioCharts: React.FC<PortfolioChartsProps> = ({ data }) => {
     if (data?.sector_breakdown && data.sector_breakdown.length > 0) {
       return data.sector_breakdown;
     }
-    if (!data?.result || data.result.length === 0) return [];
+    if (!data?.result || data.result.length === 0) {
+      return [];
+    }
 
     // Fallback: agrupar los que tengan sector_id o 'other'
     const groups: Record<string, any> = {};
@@ -138,7 +140,9 @@ export const PortfolioCharts: React.FC<PortfolioChartsProps> = ({ data }) => {
 
   // Opción de Gráfico ECharts (Doble Anillo Concéntrico o Donut Simple)
   const pieOption = useMemo(() => {
-    if (!data?.result || data.result.length === 0) return {};
+    if (!data?.result || data.result.length === 0) {
+      return {};
+    }
 
     if (viewMode === 'sectors' && sectorBreakdown.length > 0) {
       // 1. Datos Anillo Interior: Macro-Sectores
@@ -315,7 +319,9 @@ export const PortfolioCharts: React.FC<PortfolioChartsProps> = ({ data }) => {
   }, [data, viewMode, sectorBreakdown, chartTheme]);
 
   const alphaOption = useMemo(() => {
-    if (!data?.alpha_metrics) return {};
+    if (!data?.alpha_metrics) {
+      return {};
+    }
     const periods = Object.keys(data.alpha_metrics);
     if (periods.length === 0) return {};
     const pfVals = periods.map((p: any) => data.alpha_metrics[p]?.portfolio || 0);
@@ -365,7 +371,9 @@ export const PortfolioCharts: React.FC<PortfolioChartsProps> = ({ data }) => {
     };
   }, [data, chartTheme]);
 
-  if (!data) return null;
+  if (!data) {
+    return null;
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

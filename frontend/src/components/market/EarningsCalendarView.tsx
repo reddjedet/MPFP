@@ -136,7 +136,9 @@ export const EarningsView: React.FC = () => {
 
   // Filtered earnings list
   const filteredEarnings = useMemo(() => {
-    if (!data?.earnings) return [];
+    if (!data?.earnings) {
+      return [];
+    }
     return data.earnings.filter(item => {
       // Search
       const q = searchFilter.toLowerCase().trim();
@@ -331,7 +333,9 @@ export const EarningsView: React.FC = () => {
 
   // ECharts: Heatmap Option
   const heatmapOption = useMemo(() => {
-    if (!data?.heatmap) return {};
+    if (!data?.heatmap) {
+      return {};
+    }
     const months = data.months_es || [];
     const tickers = data.heatmap.tickers || [];
     const rawData = data.heatmap.data || [];

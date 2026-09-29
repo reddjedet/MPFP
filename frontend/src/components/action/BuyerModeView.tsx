@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, ArrowRight, ArrowDownRight, ArrowUpRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
+import { useDraggableScroll } from '@/hooks/useDraggableScroll';
 
 export function BuyerModeView() {
   const { toggleBuyerMode } = useAppStore();
@@ -11,6 +12,7 @@ export function BuyerModeView() {
   const [quotes, setQuotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDeepScanning, setIsDeepScanning] = useState(false);
+  const scrollRef = useDraggableScroll<HTMLDivElement>();
 
   useEffect(() => {
     let isMounted = true;
@@ -73,23 +75,23 @@ export function BuyerModeView() {
 
   const pfNames = Object.keys(portfolios);
   
-  // Calculate excess liquidity sources based on current portfolio's RSI > 60 or simply high weights
-  const liquidSources = (() => {
+  // Calculate oversold assets in current portfolio (RSI <= 35) to average down
+  const portfolioOversold = (() => {
     if (!selectedPf || !portfolios[selectedPf]) return [];
     const assets = portfolios[selectedPf].assets || {};
     const sources = [];
     for (const [tk, weight] of Object.entries(assets)) {
       const q = quotes.find(q => q.symbol === tk);
-      if (q && q.rsi >= 60) {
+      if (q && q.rsi !== null && q.rsi <= 35) {
         sources.push({ ticker: tk, rsi: q.rsi, weight: Number(weight), price: q.local || q.cedear_usd });
       }
     }
-    return sources.sort((a, b) => b.rsi - a.rsi);
+    return sources.sort((a, b) => a.rsi - b.rsi); // Lowest RSI first
   })();
 
-  // Calculate underperforming assets (RSI < 35)
+  // Calculate underperforming assets globally (RSI <= 35)
   const buyCandidates = quotes
-    .filter(q => q.rsi !== null && q.rsi < 35)
+    .filter(q => q.rsi !== null && q.rsi <= 35)
     .sort((a, b) => a.rsi - b.rsi)
     .slice(0, 10); // top 10 most oversold
 
@@ -124,7 +126,7 @@ export function BuyerModeView() {
         <div className="p-6 max-w-7xl mx-auto w-full flex flex-col gap-6">
           
           {/* Horizontal Portfolio Selector */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
+          <div ref={scrollRef} className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar select-none cursor-grab active:cursor-grabbing">
             <span className="text-xs font-bold text-muted-foreground uppercase mr-2 shrink-0">Evaluando:</span>
             {loading && <span className="text-sm text-muted-foreground">Cargando...</span>}
             {!loading && pfNames.length === 0 && <span className="text-sm text-muted-foreground">Sin carteras</span>}
@@ -132,7 +134,7 @@ export function BuyerModeView() {
               <button
                 key={pf}
                 onClick={() => setSelectedPf(pf)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors border shrink-0 ${
                   selectedPf === pf 
                     ? 'bg-foreground text-background border-foreground shadow-md' 
                     : 'bg-card text-muted-foreground border-border hover:bg-secondary'
@@ -145,28 +147,28 @@ export function BuyerModeView() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            {/* LEFT COLUMN: LIQUIDITY SOURCES */}
+            {/* LEFT COLUMN: LIQUIDITY SOURCES / PORTFOLIO OPPORTUNITIES */}
             <div className="space-y-6">
               <div className="flex items-center gap-2 border-b border-border pb-2">
-                <ArrowDownRight className="w-5 h-5 text-negative" />
-                <h2 className="text-lg font-bold text-foreground">Fuentes de Liquidez</h2>
+                <ArrowDownRight className="w-5 h-5 text-positive" />
+                <h2 className="text-lg font-bold text-foreground">Oportunidades en Cartera</h2>
               </div>
 
               <section className="bg-card border border-border rounded-2xl p-5">
                 <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-4">
-                  <AlertCircle className="w-4 h-4 text-negative" />
-                  Activos Sobrecomprados (RSI &gt; 60)
+                  <AlertCircle className="w-4 h-4 text-positive" />
+                  Activos Sobrevendidos (RSI &lt;= 35)
                 </h3>
-                <p className="text-xs text-muted-foreground mb-4">Activos en {selectedPf || 'tu cartera'} que se encuentran en zona alta y podrían ser reducidos para tomar ganancias.</p>
+                <p className="text-xs text-muted-foreground mb-4">Activos en {selectedPf || 'tu cartera'} que se encuentran en zona baja y podrían ser promediados a la baja.</p>
                 
                 <div className="space-y-3">
-                  {liquidSources.length === 0 && <p className="text-sm text-muted-foreground">No hay activos sobrecomprados en esta cartera.</p>}
-                  {liquidSources.map(src => (
+                  {portfolioOversold.length === 0 && <p className="text-sm text-muted-foreground">No hay activos sobrevendidos en esta cartera.</p>}
+                  {portfolioOversold.map(src => (
                     <div key={src.ticker} className="flex items-center justify-between p-3 border border-border rounded-lg bg-background">
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-foreground">{src.ticker}</span>
-                          <span className="text-[10px] bg-negative/10 text-negative px-1.5 py-0.5 rounded">RSI: {src.rsi.toFixed(1)}</span>
+                          <span className="text-[10px] bg-positive/10 text-positive px-1.5 py-0.5 rounded">RSI: {src.rsi.toFixed(1)}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">Peso actual: {src.weight}%</p>
                       </div>

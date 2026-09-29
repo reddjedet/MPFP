@@ -130,7 +130,9 @@ export const EtfRotationView: React.FC = () => {
 
   // 1. Objeto SPY como EtfItem para agruparlo con QQQ y DIA
   const spyItem: EtfItem | null = useMemo(() => {
-    if (!data?.benchmark) return null;
+    if (!data?.benchmark) {
+      return null;
+    }
     return {
       ticker: 'SPY',
       name: 'S&P 500 ETF Trust',
@@ -172,7 +174,9 @@ export const EtfRotationView: React.FC = () => {
 
   // 4. Filtrado de Sectores y Activos (excluyendo SPY, QQQ, DIA, IWM, TLT, ARGT para la tabla agrupada)
   const filteredSectorItems = useMemo(() => {
-    if (!data?.items) return [];
+    if (!data?.items) {
+      return [];
+    }
     const majorSet = new Set(['SPY', 'QQQ', 'DIA', 'IWM', 'TLT', 'ARGT']);
     let list = data.items.filter(it => !majorSet.has(it.ticker));
 
@@ -193,7 +197,9 @@ export const EtfRotationView: React.FC = () => {
 
   // 5. Elementos activos para gráficos (incluyendo QQQ, DIA, IWM como referencias + sectores, sin TLT ni ARGT)
   const displayedItems = useMemo(() => {
-    if (!data?.items) return [];
+    if (!data?.items) {
+      return [];
+    }
     const excluded = new Set(['TLT', 'ARGT']);
     let list = data.items.filter(it => !excluded.has(it.ticker));
 
@@ -214,7 +220,9 @@ export const EtfRotationView: React.FC = () => {
 
   // 1. Gráfico de Evolución Semanal (Week to Date / 5 ruedas) con SPY como Benchmark Rector
   const weeklyEvolutionOption = useMemo(() => {
-    if (!data || !data.benchmark || displayedItems.length === 0) return {};
+    if (!data || !data.benchmark || displayedItems.length === 0) {
+      return {};
+    }
 
     const dates = data.week_dates && data.week_dates.length === 5 
       ? data.week_dates 
@@ -514,7 +522,9 @@ export const EtfRotationView: React.FC = () => {
 
   // 2. Gráfico de Barras Divergentes de Diferencial vs SPY (1W)
   const barChartOption = useMemo(() => {
-    if (!data || displayedItems.length === 0) return {};
+    if (!data || displayedItems.length === 0) {
+      return {};
+    }
 
     // Filtrar TLT y ARGT
     const cleanList = displayedItems.filter(it => it.ticker !== 'TLT' && it.ticker !== 'ARGT');

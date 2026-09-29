@@ -7,6 +7,7 @@ export interface PerformanceData {
   alpha_inception: number;
   metrics: {
     '3m': number;
+    'ytd': number;
     '12m': number;
     beta: number;
   };
@@ -17,10 +18,10 @@ export interface PerformanceData {
   }>;
 }
 
-export function usePortfolioPerformance(pfKey: string) {
+export function usePortfolioPerformance(pfKey: string, period: string = 'ytd') {
   const { data, loading, error } = useCachedFetch<PerformanceData>(
-    pfKey ? `portfolio-performance-${pfKey}` : 'null-key',
-    pfKey ? `/api/portfolios/performance_json/${pfKey}` : '',
+    pfKey ? `portfolio-performance-${pfKey}-${period}` : 'null-key',
+    pfKey ? `/api/portfolios/performance_json/${pfKey}?period=${period}` : '',
     { enabled: !!pfKey, ttl: 300 }
   );
   return { data, loading, error };

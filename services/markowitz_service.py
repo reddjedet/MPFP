@@ -17,7 +17,7 @@ import pandas as pd
 import yfinance as yf
 from typing import Dict, List, Any, Optional, Tuple
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from services.cache_service import smart_cache
 from services.security_service import sanitize_ticker
@@ -125,7 +125,16 @@ def resolve_calendar_start_date(period: str) -> str:
     """
     now = datetime.now()
     clean_p = (period or "2y").strip().lower()
-    if clean_p in ("1y", "ytd"):
+    if clean_p == "ytd":
+        return f"{now.year}-01-01"
+    elif clean_p == "1y":
+        return (now - timedelta(days=365)).strftime("%Y-%m-%d")
+    elif clean_p == "1m":
+        return (now - timedelta(days=31)).strftime("%Y-%m-%d")
+    elif clean_p == "3m":
+        return (now - timedelta(days=92)).strftime("%Y-%m-%d")
+    elif clean_p == "6m":
+        return (now - timedelta(days=183)).strftime("%Y-%m-%d")
         start_year = now.year
     elif clean_p == "2y":
         start_year = now.year - 1

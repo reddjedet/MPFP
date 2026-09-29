@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { getCachedData, setCachedData, cachedFetch, invalidateCache } from '@/lib/queryCache';
+import { getCachedData, setCachedData, cachedFetch, invalidateCache, invalidateCacheByPrefix } from '@/lib/queryCache';
 import { 
   RefreshCw,
   ArrowLeftRight
@@ -17,6 +17,7 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
   const setSelectedPf = useAppStore((s) => s.setSelectedPf);
   const anchorInputRef = useRef<HTMLSelectElement>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
+  const [refreshCounter, setRefreshCounter] = useState(0);
 
   const [portfolioMetadata, setPortfolioMetadata] = useState<any>(() => {
     return getCachedData('portfolios-list');
@@ -208,8 +209,9 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
             
             <button 
               onClick={() => {
-                invalidateCache(`portfolio-rebalance:${selectedPf}`);
-                invalidateCache('portfolios-list');
+                invalidateCacheByPrefix('portfolio');
+                invalidateCacheByPrefix('cedear');
+                setRefreshCounter(c => c + 1);
                 fetchMetadata();
                 fetchAllData();
               }}
@@ -225,6 +227,7 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
         {/* Tarjetas de Dashboard Consolidado (Nuevas Cards) */}
         <div className="mb-6">
            <PortfolioSummaryCards 
+              key={`${selectedPf}-${refreshCounter}`}
               pfKey={selectedPf} 
               title={portfolioMetadata?.portfolios?.[selectedPf]?.name || selectedPf} 
               totalValue={totalPatrimony} 

@@ -92,13 +92,22 @@ else
     FAILED=1
 fi
 
-# 4. Security and Privacy Hygiene Audit (if scripts exist)
+# 4. Security and Hygiene Audits
 echo ""
 echo "[Step 4] Running security & hygiene checks..."
 if [ -x "${DIR}/venv/bin/python" ]; then
     PYTHON_BIN="${DIR}/venv/bin/python"
 else
     PYTHON_BIN="${PYTHON_BIN:-python3}"
+fi
+
+if [ -f "${DIR}/scripts/audit_react_hooks.py" ]; then
+    if "${PYTHON_BIN}" "${DIR}/scripts/audit_react_hooks.py"; then
+        echo "PASS: React Hooks hygiene audit clean."
+    else
+        echo "FAIL: React Hooks audit flagged issues (Hooks after early returns)."
+        FAILED=1
+    fi
 fi
 
 if [ -f "${DIR}/scripts/audit_security_privacy.py" ]; then

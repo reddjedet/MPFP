@@ -54,7 +54,9 @@ export const EtfSectorThermometer: React.FC<EtfSectorThermometerProps> = ({ onNa
     );
   }
 
-  if (!data || data.length === 0) return null;
+  if (!data || data.length === 0) {
+    return null;
+  }
 
   // Rendimiento de referencia de SPY en la última semana
   const spyPerfW = data.length > 0 && data[0].spy_perf_w !== undefined && data[0].spy_perf_w !== null

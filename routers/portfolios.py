@@ -605,6 +605,6 @@ def export_custom_portfolio(pf_type: str):
 
 
 @router.get("/performance_json/{pf_type}", response_class=JSONResponse)
-def get_portfolio_performance(pf_type: str):
-    result = calculate_backtest_performance(pf_type)
+def get_portfolio_performance(pf_type: str, period: str = "ytd"):
+    result = calculate_backtest_performance(pf_type, chart_period=period)
     return JSONResponse(result)

@@ -123,7 +123,9 @@ export const FixedIncomeView: React.FC = () => {
 
   // Filtered and enriched rows for TanStack Table
   const filteredRows = useMemo(() => {
-    if (!data?.table_data) return [];
+    if (!data?.table_data) {
+      return [];
+    }
     const q = searchFilter.toLowerCase().trim();
     return data.table_data
       .filter(row => {
@@ -155,7 +157,9 @@ export const FixedIncomeView: React.FC = () => {
 
   // ECharts: Scatter Curve (TIR / TEA vs. Modified Duration)
   const chartOption = useMemo(() => {
-    if (!data?.scatter_points || data.scatter_points.length === 0) return {};
+    if (!data?.scatter_points || data.scatter_points.length === 0) {
+      return {};
+    }
 
     const isLecap = data.category === 'lecap';
     const yAxisLabel = isLecap ? 'TEA / TIR (%)' : 'TIR (%)';

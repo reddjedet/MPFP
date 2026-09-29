@@ -118,7 +118,9 @@ export const PerformanceView: React.FC = () => {
 
   // Filtered asset list
   const filteredAssets = useMemo(() => {
-    if (!data?.assets_detail) return [];
+    if (!data?.assets_detail) {
+      return [];
+    }
     return data.assets_detail.filter(asset => {
       const q = searchFilter.toLowerCase().trim();
       const matchesSearch = !q || asset.ticker.toLowerCase().includes(q);

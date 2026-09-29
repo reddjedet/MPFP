@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, ArrowRight, ArrowDownRight, ArrowUpRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
+import { useDraggableScroll } from '@/hooks/useDraggableScroll';
 
 export function SellerModeView() {
   const { toggleSellerMode } = useAppStore();
@@ -11,6 +12,7 @@ export function SellerModeView() {
   const [quotes, setQuotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDeepScanning, setIsDeepScanning] = useState(false);
+  const scrollRef = useDraggableScroll<HTMLDivElement>();
 
   useEffect(() => {
     let isMounted = true;
@@ -130,7 +132,7 @@ export function SellerModeView() {
           </div>
 
           {/* Horizontal Portfolio Selector */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
+          <div ref={scrollRef} className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar select-none cursor-grab active:cursor-grabbing">
             <span className="text-xs font-bold text-muted-foreground uppercase mr-2 shrink-0">Evaluando:</span>
             {loading && <span className="text-sm text-muted-foreground">Cargando...</span>}
             {!loading && pfNames.length === 0 && <span className="text-sm text-muted-foreground">Sin carteras</span>}
@@ -138,7 +140,7 @@ export function SellerModeView() {
               <button
                 key={pf}
                 onClick={() => setSelectedPf(pf)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors border shrink-0 ${
                   selectedPf === pf 
                     ? 'bg-foreground text-background border-foreground shadow-md' 
                     : 'bg-card text-muted-foreground border-border hover:bg-secondary'

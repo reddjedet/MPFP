@@ -37,7 +37,9 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
   const chartTheme = useChartTheme();
 
   const frontierOption = useMemo(() => {
-    if (!data?.frontier_data) return {};
+    if (!data?.frontier_data) {
+      return {};
+    }
     const fd = data.frontier_data;
 
     const getPointVal = (p: any) => (Array.isArray(p) ? p : (p?.value || [0, 0, 0]));
@@ -300,7 +302,9 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
 
   // ECharts Option: Cumulative Returns (Assets)
   const cumAssetsOption = useMemo(() => {
-    if (!data?.time_series) return {};
+    if (!data?.time_series) {
+      return {};
+    }
     const series = Object.entries(data.time_series.assets_cumulative).map(([ticker, values], i) => ({
       name: ticker,
       type: 'line',
@@ -344,7 +348,9 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
 
   // ECharts Option: Cumulative Returns (Portfolios)
   const cumPortfoliosOption = useMemo(() => {
-    if (!data?.time_series) return {};
+    if (!data?.time_series) {
+      return {};
+    }
     const p = data.time_series.portfolios_cumulative;
     const series: any[] = [
       {
@@ -408,7 +414,9 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
 
   // ECharts Option: Correlation Matrix Heatmap (Blue-to-Red Diverging Palette)
   const heatmapOption = useMemo(() => {
-    if (!data?.corr_matrix) return {};
+    if (!data?.corr_matrix) {
+      return {};
+    }
     const tickers = Object.keys(data.corr_matrix);
     const heatmapData: [number, number, number][] = [];
 
@@ -525,7 +533,9 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
     }
   }), [onSelectPoint]);
 
-  if (!data) return null;
+  if (!data) {
+    return null;
+  }
 
   return (
     <>
