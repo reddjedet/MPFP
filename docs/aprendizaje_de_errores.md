@@ -17,6 +17,8 @@ Este documento constituye la **caja negra de ingeniería y memoria forense** del
 | **INC-07** | **Inconsistencias Cromáticas y Contraste por Modo Claro** (Textos ilegibles y deuda técnica) | Coexistencia de temas claro y oscuro en dashboards cuantitativos de alta densidad genera colisiones | Erradicación total del Modo Claro; estandarización canónica en **Modo Oscuro Exclusivo (*Eigengrau* `#0f1015`)** | 🟢 Blindado |
 | **INC-08** | **Fallo de Bootstrap de SQLite en CI / Entornos Limpios** (Omisión de carga inicial de catálogos y colisión de rutas) | `_store.load()` devolvía un template `{"sectors": [], "profiles": {}}` en lugar de vacío, impidiendo la hidratación de datos iniciales en ausencia de `mpfp.db` | Retorno canónico de `self.default_data` limpio, bootstrap ampliado para detectar colecciones sin valores y aislamiento de SQLite DB con sufijo `.db` | 🟢 Blindado |
 | **INC-09** | **CI Rojo por Tests Acoplados a Datos Locales no Trackeados** (Verde local, rojo en CI) | Los tests asumían portfolios existentes solo en `data/` del desarrollador; el snapshot local ocultaba la dependencia y CI usaba runner distinto al canónico | Fixtures explícitos por test (`tests/portfolio_fixtures.py`), gate permanente de **Clean-Checkout Simulation** en `scripts/test.sh` y CI alineado al runner canónico (pytest) | 🟢 Blindado |
+| **INC-10** | **Desincronización de Contratos Temporales & Bypass del Quality Gate** (Rojo en CI por fechas cambiadas) | Se modificó la semántica de fechas en el backend sin sincronizar su test unitario en el mismo commit y se subió a remoto sin correr el pipeline local previo | Sincronización atómica de tests, eliminación de código muerto, hook `.githooks/pre-push` obligatorio para bloquear pushes rotos y política Zero Deprecation en `pytest.ini` | 🟢 Blindado |
+
 
 ---
 
@@ -81,4 +83,18 @@ Al enfrentar un bug complejo o regresión, duplicar este bloque y completarlo al
   2. Extender la detección de vacío en `_bootstrap_if_needed()` para abarcar `{"sectors": [], "profiles": {}}` y diccionarios con valores vacíos, forzando la hidratación desde el JSON de datos o `.example`.
   3. Aislamiento estricto de la base SQLite usando `.with_suffix(".db")` para evitar toda colisión de formato entre JSON y SQLite.
 - **Regla de Oro:** Todo motor de persistencia relacional con respaldo de archivos de ejemplo/semilla debe garantizar hidratación idempotente desde cero sobre un entorno recién clonado sin bases de datos preexistentes.
+
+### INC-10: Desincronización de Contratos Temporales & Bypass del Quality Gate Pre-Push
+- **Síntoma y Contexto:** GitHub Actions CI falló con `AssertionError: '2025-09-29' != '2026-01-01'` en `tests/test_markowitz_service.py::test_resolve_calendar_start_date` tras un push titulado "fixes varios", acompañado de un `PytestDeprecationWarning` de `pytest-asyncio`.
+- **Causa Raíz:**
+  1. **Desincronización de Contrato**: Se refactorizó la función `resolve_calendar_start_date` para separar el período rodante `'1y'` (365 días atrás con `timedelta`) del período calendario `'ytd'` (1 de enero del año actual), pero el test unitario existente no fue actualizado en el mismo commit y seguía esperando `f"{year}-01-01"`.
+  2. **Bypass del Quality Gate Local**: Se ejecutó `git push` directamente sin ejecutar previamente el runner unificado `./scripts/test.sh`. Al no existir un hook de Git `pre-push`, la regresión viajó al repositorio remoto sin ser interceptada.
+  3. **Advertencia de Deprecación Omitida**: La opción `asyncio_default_fixture_loop_scope` no estaba fijada en `pytest.ini`, lo que generaba advertencias que anticipaban roturas upstream en futuras versiones de `pytest-asyncio`.
+- **Solución Definitiva:**
+  1. **Sincronización Atómica**: Actualización integral de `test_resolve_calendar_start_date` cubriendo ventanas rodantes (`1m`, `3m`, `6m`, `1y`) y ancladas a calendario (`ytd`, `2y`, `3y`, `5y`, `10y`, `max`), más depuración de código muerto en el servicio.
+  2. **Hook de Pre-Push Obligatorio**: Creación de `.githooks/pre-push` que ejecuta automáticamente `./scripts/test.sh` y aborta físicamente el push si algún test o auditoría falla.
+  3. **Zero Deprecation Warning Policy**: Fijación explícita de `asyncio_mode = auto` y `asyncio_default_fixture_loop_scope = function` en `pytest.ini`.
+  4. **Gobernanza Agéntica**: Inclusión formal de las reglas en `AGENTS.md` y `.agents/RULES.md` y asignación de roles a `qa_engineer` y `git_recorder`.
+- **Regla de Oro:** Ningún cambio en lógica de negocio o contratos de datos puede desacoplarse de su suite de tests en Git; la calidad previa al push no debe depender de la memoria humana, sino de compuertas programáticas ineludibles (`pre-push hooks`).
+
 
