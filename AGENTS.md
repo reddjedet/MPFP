@@ -79,10 +79,12 @@ Streamlit-a-app-github/
 
 ---
 
-## 5. Specialized Subagent Delegation
+## 5. Specialized Subagent Delegation & Model Tiering
 For complex multi-agent workflows, refer to subagent definitions in `.agents/AGENTS.md`:
-- `security_auditor`: Audits inputs, secret leaks, and hardening boundaries.
-- `backend_engineer`: Endpoints, schemas, and financial calculation services.
-- `frontend_engineer`: React components, state, Tailwind, and UI ergonomics.
-- `qa_engineer`: Test coverage, temporal/financial contract synchronization, regression verification, and `./scripts/test.sh` automation.
-- `git_recorder`: Semantic local commits, contingency rollbacks, and pre-push quality gate verification.
+- **Orchestrator (Project Lead)**: Defined by user per chat (default: `gemini-3.1-pro-high`). Manages goals, dispatching, and local Git.
+- `scout` (`gemini-3.6-flash-low`): Codebase inspection, dependency tracking, reports to lead.
+- `backend_engineer` (`gemini-3.8-flash-low`): FastAPI endpoints, schemas, mathematical finance, and atomic persistence.
+- `frontend_engineer` (`gemini-3.8-flash-low`): React 19 SPA, Tailwind, ECharts, and UI ergonomics.
+- `qa_engineer` (`gemini-3.8-flash-low`): Test coverage, Snapshot Isolation, `./scripts/test.sh`, and contract synchronization.
+- `security_auditor` (`gemini-3.8-flash-low`): Read-only cyber-security audit, secrets, and hardening boundaries.
+- `rules_architect` (`gemini-3.8-flash-low`): Governance, rules, and forensic incident learning (`docs/aprendizaje_de_errores.md`).

@@ -1,6 +1,6 @@
-# Agent Orchestrator & Subagent Roles
+# Agent Orchestrator & Subagent Roles (MPFP)
 
-This document defines the specialized subagents, responsibilities, and collaborative workflows for this project.
+Este documento define la arquitectura de orquestación, jerarquía de modelos, contratos de permisos y protocolos de comunicación estructurada para los agentes de este proyecto.
 
 ---
 
@@ -8,78 +8,77 @@ This document defines the specialized subagents, responsibilities, and collabora
 
 ```
                      ┌────────────────────────────────────────┐
-                     │         PROJECT LEAD ENGINEER          │
-                     │    (Bidirectional Pair Programming)    │
+                     │         PROJECT LEAD ORCHESTRATOR      │
+                     │  (Definido por usuario; def: Pro High) │
                      └───────────────────┬────────────────────┘
                                          │
-         ┌───────────────┬───────────────┴───────────────┬───────────────┐
-         │               │                               │               │
-         ▼               ▼                               ▼               ▼
-┌─────────────────┐ ┌─────────────────┐         ┌─────────────────┐ ┌─────────────────┐
-│  SUBAGENT 1     │ │  SUBAGENT 2     │         │  SUBAGENT 3     │ │  SUBAGENT 4     │
-│  Security &     │ │  Backend        │         │  Frontend / UI  │ │  QA & Testing   │
-│  Hardening      │ │  Services       │         │  Components     │ │  Automation    │
-└─────────────────┘ └─────────────────┘         └─────────────────┘ └─────────────────┘
+         ┌───────────────┬───────────────┼───────────────┬───────────────┐
+         │               │               │               │               │
+         ▼               ▼               ▼               ▼               ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│     SCOUT       │ │    BACKEND      │ │    FRONTEND     │ │       QA        │ │    AUDITORS     │
+│  (3.6 Flash Low)│ │ (3.8 Flash Low) │ │ (3.8 Flash Low) │ │ (3.8 Flash Low) │ │ (3.8 Flash Low) │
+│ Reconocimiento  │ │ Servicios/FastAPI│ │ React 19 / UI   │ │  Tests / Invar. │ │ Security / Rules│
+└─────────────────┘ └─────────────────┘ └─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
 
 ---
 
-## 2. Core Subagent Roles & Scopes
+## 2. Definición de Modelos y Estratificación (Model Tiering)
 
-### Subagent 1: Security & Hardening Auditor (`security_auditor`)
-- Objective: Ensure the project is protected against input injection, memory exhaustion, concurrent data races, or unauthorized exposure.
-- Scope Permitido: Solo lectura del código fuente, configuración de dependencias, scripts de auditoría (`scripts/audit_*`).
-- Scope Prohibido: Modificación directa de lógica de negocio o componentes UI sin supervisión.
-- Core Responsibilities:
-  1. Validate all inputs against strict typed schemas and regex patterns.
-  2. Enforce local binding (127.0.0.1) for servers and daemons.
-  3. Ensure POSIX atomic persistence and concurrency locking.
-  4. Audit dependencies and enforce zero credentials/tokens committed.
-
-### Subagent 2: Backend & Services Engineer (`backend_engineer`)
-- Objective: Implement resilient service architectures, data schemas, and domain business logic.
-- Scope Permitido: `services/`, `api/`, `models/`, endpoints FastAPI, capas de datos SQLite.
-- Scope Prohibido: Modificación directa de componentes UI (`frontend/src/`).
-- Core Responsibilities:
-  1. Implement clean service endpoints and data processing layers.
-  2. Enforce atomic writes and concurrency safety for local data stores.
-  3. Provide structured, typed data contracts without unnecessary presentation coupling.
-
-### Subagent 3: Frontend & UI Engineer (`frontend_engineer`)
-- Objective: Build responsive, accessible, ergonomic user interfaces tailored to the project stack.
-- Scope Permitido: `frontend/src/`, `frontend/public/`, configuración de Tailwind y Vite.
-- Scope Prohibido: Modificación de la persistencia directa de datos o lógica backend (`services/`).
-- Core Responsibilities:
-  1. Implement clean views, widgets, and state management according to the target technology.
-  2. Apply consistent design tokens and responsive constraints.
-  3. Ensure resilient error handling (e.g. localized error boundaries or fallback states).
-
-### Subagent 4: QA & Test Automation Engineer (`qa_engineer`)
-- Objective: Guarantee test coverage, regression prevention, and non-destructive test isolation.
-- Scope Permitido: `tests/`, `scripts/test.sh`, reportes de verificación.
-- Scope Prohibido: Modificar archivos en producción para hacer que los tests pasen artificialmente.
-- Core Responsibilities:
-  1. Lead the adaptive testing workflow (Strict TDD for core logic vs Agile Milestone testing for UI).
-  2. Implement Snapshot Isolation in tests to prevent production data pollution.
-  3. Run and maintain automated verification pipelines (`./scripts/test.sh`).
-
-### Subagent 5: Codebase Researcher (`research`)
-- Objective: Ingestión, análisis exploratorio masivo y mapeo de dependencias utilizando modelos económicos y rápidos (`flash` o `flash_lite`).
-- Scope: Solo lectura en todo el proyecto. Prohibido ejecutar herramientas de edición.
+- **Orquestador Principal (Project Lead):**
+  - **Modelo:** Definido por el usuario al iniciar la sesión (por defecto: `gemini-3.1-pro-high` o `inherit`).
+  - **Responsabilidad:** Comprender la intención del usuario, descomponer objetivos en sub-prompts atómicos, despachar subagentes, consolidar resultados y gestionar Git en local (con prohibición estricta de `git push` autónomo).
+- **Subagentes Operativos Generales (`backend_engineer`, `frontend_engineer`, `qa_engineer`, `security_auditor`, `rules_architect`):**
+  - **Modelo:** `gemini-3.8-flash-low` (tier: `flash`).
+  - **Autonomía:** Reciben un sub-prompt con la meta y definen de forma autónoma la mejor estrategia técnica para cumplirla.
+- **Subagente Explorador (`scout`):**
+  - **Modelo:** `gemini-3.6-flash-low` (tier: `flash`).
+  - **Objetivo:** Inspección ultrarrápida de rutas, dependencias y contratos.
 
 ---
 
-## 3. Protocolo de Orquestación y RODA
+## 3. Matriz de Permisos Declarativos (Least Privilege)
 
-1. **Principio RODA (Read Once, Decide, Act)**:
-   - Todo agente debe evitar releer archivos redundantemente. Tras una inspección guiada por rangos, el agente decide y actúa. La validación se delega a las herramientas de verificación (`syntax-guard`, compiladores, suites de tests) y no a la re-inspección en memoria de trabajo.
-2. **Estratificación de Modelos**:
-   - Tareas exploratorias masivas o lectura de documentación extensa se delegan al subagente `research` para preservar limpia la ventana de contexto del Project Lead.
-3. **Prohibición Estricta de Operaciones Remotas**:
-   - `git push`, publicaciones de paquetes o alteraciones de repositorios remotos están permanentemente denegadas para todos los subagentes.
+| Subagente | Archivo Especificación | Read | Write | Bash | Web | Ámbito Permitido |
+|---|---|:---:|:---:|:---:|:---:|---|
+| **`scout`** | [scout.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/.agents/agents/scout.md) | ✅ | ✅* | ❌ | ❌ | Solo lectura de repo; escritura limitada a `scratch/` y reportes al lead. |
+| **`backend_engineer`** | [backend_engineer.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/.agents/agents/backend_engineer.md) | ✅ | ✅ | ✅ | ❌ | `services/`, `routers/`, `schemas/`, `models/`. Prohibido tocar UI. |
+| **`frontend_engineer`** | [frontend_engineer.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/.agents/agents/frontend_engineer.md) | ✅ | ✅ | ✅ | ❌ | `frontend/src/`. Prohibido tocar backend o bundles `static/`. |
+| **`qa_engineer`** | [qa_engineer.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/.agents/agents/qa_engineer.md) | ✅ | ✅ | ✅ | ❌ | `tests/`, ejecución de `./scripts/test.sh`. Snapshot Isolation obligatorio. |
+| **`security_auditor`** | [security_auditor.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/.agents/agents/security_auditor.md) | ✅ | ❌ | ❌ | ❌ | Auditor puro. No muta código; emite diagnósticos y remediaciones. |
+| **`rules_architect`** | [rules_architect.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/.agents/agents/rules_architect.md) | ✅ | ✅ | ❌ | ❌ | Gobernanza y post-mortems: `AGENTS.md`, `.agents/`, `docs/`, `WORKFLOW.md`. |
+
+*\*Nota: El subagente `git_recorder` ha sido eliminado. La gestión de Git local es ejecutada directamente por el Orquestador Lead, protegido por el hook físico `.githooks/pre-push`.*
 
 ---
 
-## 4. Extension Subagents & Skills
-Additional domain-specific subagents (e.g. quant financial analysts, system daemons) and skills are dynamically registered from the agentic library catalog according to project requirements.
+## 4. Protocolo de Comunicación Estructurada (YAML Contract)
 
+Para evitar sobrecarga de contexto, verbosidad y pérdida de tokens, **todos los subagentes deben comunicarse con el orquestador utilizando una estructura mínima predefinida en YAML**:
+
+```yaml
+agent: <nombre_subagente>
+status: SUCCESS | FAILURE | BLOCKED
+summary: "Resumen de alto nivel en una o dos líneas"
+actions_taken:
+  - "Acción concreta 1"
+  - "Acción concreta 2"
+files_modified:
+  - "ruta/al/archivo"
+verification:
+  command: "comando ejecutado (si aplica)"
+  exit_code: 0
+  result: "Resultado conciso de la verificación"
+contract_changes:
+  added_or_modified: []
+blockers_or_notes: []
+```
+
+---
+
+## 5. Protocolo de Despacho y Autonomía Operativa
+
+1. **Sub-Prompts Orientados a Metas:** El orquestador no microgestiona línea por línea; instruye a cada subagente con la meta de alto nivel y el contexto pertinente.
+2. **Autonomía Resolutiva:** El subagente ejecutor (`backend_engineer`, `frontend_engineer`, `qa_engineer`) analiza, edita los archivos necesarios y valida su propia sintaxis/tipos con sus permisos de escritura y bash.
+3. **Reporte Sintético:** El subagente devuelve el bloque YAML estructurado para que el orquestador decida el siguiente paso o cierre el ciclo de verificación.
