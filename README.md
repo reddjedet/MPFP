@@ -183,12 +183,10 @@ El pipeline unificado de verificación ejecuta secuencialmente 4 fases:
 
 ---
 
-## 📚 Documentación Técnica & Bitácora
+## 📚 Documentación Técnica & Gobernanza
 
 * **[Instructivo General & Fórmulas](instructivo.md):** Mapa completo de modelos matemáticos, PnL, Rebalanceo MCM y fórmulas financieras.
-* **[Aprendizaje de Errores & Anti-Patrones](docs/aprendizaje_de_errores.md):** Post-mortem técnico de incidentes, causas raíz y 9 Reglas de Oro inquebrantables.
-* **[Bitácora de Evolución](docs/bitacora.md):** Registro histórico de fases de desarrollo y mejoras continuas de arquitectura.
-* **[Módulos de Data Science & Finanzas Cuantitativas](docs/data_science/README.md):** Guía modular de 5 capítulos (Markowitz, Curvas de Rendimiento, Wilder RSI, Modelos Factoriales y Asignación Discreta).
+* **[Reglas Canónicas del Sistema](.agents/RULES.md):** 19 Reglas de Oro estructuradas por mecanismo de cumplimiento y calidad.
 
 ---
 
