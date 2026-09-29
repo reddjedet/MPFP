@@ -143,12 +143,34 @@ class TestMarkowitzService(unittest.TestCase):
 
     def test_resolve_calendar_start_date(self):
         from services.markowitz_service import resolve_calendar_start_date
-        from datetime import datetime
-        year = datetime.now().year
-        self.assertEqual(resolve_calendar_start_date("1y"), f"{year}-01-01")
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        year = now.year
+
+        # 1. Ventanas rodantes (rolling periods)
+        self.assertEqual(resolve_calendar_start_date("1y"), (now - timedelta(days=365)).strftime("%Y-%m-%d"))
+        self.assertEqual(resolve_calendar_start_date("1m"), (now - timedelta(days=31)).strftime("%Y-%m-%d"))
+        self.assertEqual(resolve_calendar_start_date("3m"), (now - timedelta(days=92)).strftime("%Y-%m-%d"))
+        self.assertEqual(resolve_calendar_start_date("6m"), (now - timedelta(days=183)).strftime("%Y-%m-%d"))
+
+        # 2. Ventanas ancladas a calendario (01/01)
+        self.assertEqual(resolve_calendar_start_date("ytd"), f"{year}-01-01")
         self.assertEqual(resolve_calendar_start_date("2y"), f"{year - 1}-01-01")
         self.assertEqual(resolve_calendar_start_date("3y"), f"{year - 2}-01-01")
         self.assertEqual(resolve_calendar_start_date("5y"), f"{year - 4}-01-01")
+        self.assertEqual(resolve_calendar_start_date("10y"), f"{year - 9}-01-01")
+        self.assertEqual(resolve_calendar_start_date("max"), f"{year - 9}-01-01")
+
+        # 3. Casos por defecto, vacíos y desconocidos
+        self.assertEqual(resolve_calendar_start_date(""), f"{year - 1}-01-01")
+        self.assertEqual(resolve_calendar_start_date(None), f"{year - 1}-01-01")
+        self.assertEqual(resolve_calendar_start_date("   "), f"{year - 1}-01-01")
+        self.assertEqual(resolve_calendar_start_date("invalid_period"), f"{year - 1}-01-01")
+
+        # 4. Insensibilidad a mayúsculas y espacios en blanco
+        self.assertEqual(resolve_calendar_start_date(" YTD "), f"{year}-01-01")
+        self.assertEqual(resolve_calendar_start_date(" 1Y "), (now - timedelta(days=365)).strftime("%Y-%m-%d"))
+        self.assertEqual(resolve_calendar_start_date(" 3M "), (now - timedelta(days=92)).strftime("%Y-%m-%d"))
 
     def test_simulate_portfolio_returns_regimes(self):
         from services.markowitz_service import simulate_portfolio_returns

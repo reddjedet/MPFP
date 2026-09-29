@@ -23,9 +23,13 @@ echo "[1/4] Verificando entorno Python (${PYTHON_BIN})..."
 "${PYTHON_BIN}" --version
 
 # 2. Asegurar permisos de ejecución en scripts de guardrails y herramientas
-echo "[2/4] Configurando permisos de ejecución en scripts..."
+echo "[2/4] Configurando permisos de ejecución en scripts y hooks de Git..."
 chmod +x .agents/scripts/*.py 2>/dev/null || true
 chmod +x scripts/*.sh 2>/dev/null || true
+if [ -d ".githooks" ]; then
+    chmod +x .githooks/* 2>/dev/null || true
+    git config core.hooksPath .githooks 2>/dev/null || true
+fi
 
 # 3. Validar existencia del contrato de hooks
 echo "[3/4] Validando contrato de configuración (.agents/hooks.json)..."

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Git Pre-Push Quality Gate Hook (MPFP)
+# Prevents broken code, failing tests, or security regressions from being pushed.
+# ==============================================================================
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "${REPO_ROOT}"
+
+echo "======================================================="
+echo "       [Git Pre-Push Hook] Running Verification Pipeline"
+echo "======================================================="
+
+# Run the project's canonical verification pipeline
+if [ -f "./scripts/test.sh" ]; then
+    ./scripts/test.sh
+else
+    echo "Warning: ./scripts/test.sh not found. Running pytest directly..."
+    ./venv/bin/pytest tests/ -v
+fi
+
+echo "======================================================="
+echo "       [Git Pre-Push Hook] Verification Passed! Push allowed."
+echo "======================================================="
+exit 0

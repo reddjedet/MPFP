@@ -116,12 +116,21 @@ def calculate_efficient_frontier_curve(
 
 def resolve_calendar_start_date(period: str) -> str:
     """
-    Resuelve la fecha de inicio anclada al 1 de Enero del año correspondiente:
-    - '1y' o 'ytd': 01/01 del año en curso (ej. 2026-01-01)
-    - '2y': 01/01 de hace 1 año (ej. 2025-01-01, cubriendo 2025 y 2026)
-    - '3y': 01/01 de hace 2 años (ej. 2024-01-01, cubriendo 2024, 2025 y 2026)
-    - '5y': 01/01 de hace 4 años (ej. 2022-01-01, cubriendo 2022 a 2026)
-    - '10y': 01/01 de hace 9 años (ej. 2017-01-01, cubriendo 2017 a 2026)
+    Resuelve la fecha de inicio según el período especificado:
+
+    Períodos rodantes (calculados dinámicamente mediante timedelta relativo a la fecha actual):
+    - '1m': 31 días atrás (YYYY-MM-DD).
+    - '3m': 92 días atrás (YYYY-MM-DD).
+    - '6m': 183 días atrás (YYYY-MM-DD).
+    - '1y': 365 días atrás (YYYY-MM-DD).
+
+    Períodos anclados al año calendario (fijados al 1 de enero del año base):
+    - 'ytd': 1 de enero del año en curso (ej. 2026-01-01).
+    - '2y': 1 de enero de hace 1 año (ej. 2025-01-01, cubriendo 2 años: 2025 y 2026).
+    - '3y': 1 de enero de hace 2 años (ej. 2024-01-01, cubriendo 3 años: 2024 a 2026).
+    - '5y': 1 de enero de hace 4 años (ej. 2022-01-01, cubriendo 5 años: 2022 a 2026).
+    - '10y' / 'max': 1 de enero de hace 9 años (ej. 2017-01-01, cubriendo 10 años: 2017 a 2026).
+    - Por defecto ('2y' u otro no reconocido): 1 de enero de hace 1 año.
     """
     now = datetime.now()
     clean_p = (period or "2y").strip().lower()
@@ -135,7 +144,6 @@ def resolve_calendar_start_date(period: str) -> str:
         return (now - timedelta(days=92)).strftime("%Y-%m-%d")
     elif clean_p == "6m":
         return (now - timedelta(days=183)).strftime("%Y-%m-%d")
-        start_year = now.year
     elif clean_p == "2y":
         start_year = now.year - 1
     elif clean_p == "3y":
