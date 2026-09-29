@@ -42,14 +42,14 @@ Este documento define la arquitectura de orquestación, jerarquía de modelos, c
 
 | Subagente | Archivo Especificación | Read | Write | Bash | Web | Ámbito Permitido |
 |---|---|:---:|:---:|:---:|:---:|---|
-| **`scout`** | [scout.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/.agents/agents/scout.md) | ✅ | ✅* | ❌ | ❌ | Solo lectura de repo; escritura limitada a `scratch/` y reportes al lead. |
+| **`scout`** | [scout.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/.agents/agents/scout.md) | ✅ | ✅* | ❌ | 🌐* | Repo local + búsqueda web acotada a documentación técnica oficial. Escritura a `scratch/`. |
 | **`backend_engineer`** | [backend_engineer.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/.agents/agents/backend_engineer.md) | ✅ | ✅ | ✅ | ❌ | `services/`, `routers/`, `schemas/`, `models/`. Prohibido tocar UI. |
 | **`frontend_engineer`** | [frontend_engineer.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/.agents/agents/frontend_engineer.md) | ✅ | ✅ | ✅ | ❌ | `frontend/src/`. Prohibido tocar backend o bundles `static/`. |
 | **`qa_engineer`** | [qa_engineer.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/.agents/agents/qa_engineer.md) | ✅ | ✅ | ✅ | ❌ | `tests/`, ejecución de `./scripts/test.sh`. Snapshot Isolation obligatorio. |
 | **`security_auditor`** | [security_auditor.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/.agents/agents/security_auditor.md) | ✅ | ❌ | ❌ | ❌ | Auditor puro. No muta código; emite diagnósticos y remediaciones. |
 | **`rules_architect`** | [rules_architect.md](file:///run/media/christian/51cc8d45-50ef-4ae6-8f35-ecd9286e0c67/Documentos/Proyectos%20Antigravity/Streamlit-a-app-github/.agents/agents/rules_architect.md) | ✅ | ✅ | ❌ | ❌ | Gobernanza y post-mortems: `AGENTS.md`, `.agents/`, `docs/`, `WORKFLOW.md`. |
 
-*\*Nota: El subagente `git_recorder` ha sido eliminado. La gestión de Git local es ejecutada directamente por el Orquestador Lead, protegido por el hook físico `.githooks/pre-push`.*
+*\*Nota: `scout` solo escribe en `scratch/` reportes para el lead y usa `web_search` exclusivamente para documentación técnica de librerías externas. `git_recorder` ha sido eliminado y absorbido por el Orquestador Lead, protegido por `.githooks/pre-push`.*
 
 ---
 
