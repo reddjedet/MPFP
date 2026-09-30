@@ -92,9 +92,9 @@ export const FixedIncomeView: React.FC = () => {
   const [data, setData] = useState<FixedIncomeResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rpScenarioBps, setRpScenarioBps] = useState<number>(0);
-
 
   const fetchCurveData = async () => {
     setRefreshing(true);
@@ -104,13 +104,20 @@ export const FixedIncomeView: React.FC = () => {
         ley,
         tipo_inst: tipoInst
       });
-      const res = await fetch(`/api/renta_fija/curve_json?${params.toString()}`);
+      let res = await fetch(`/api/renta_fija/curve_json?${params.toString()}`);
+      if (!res.ok) {
+        res = await fetch(`/api/fixed_income/curve_json?${params.toString()}`);
+      }
       if (res.ok) {
         const json: FixedIncomeResponse = await res.json();
         setData(json);
+        setError(null);
+      } else {
+        setError(`Error (${res.status}): No se pudo obtener la curva de rendimiento.`);
       }
     } catch (e) {
-      console.error(e);
+      console.error('Error fetching fixed income curve:', e);
+      setError('Error de conexión al cargar la curva de renta fija.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -829,7 +836,20 @@ export const FixedIncomeView: React.FC = () => {
             )}
           </div>
         </>
-      ) : null}
+      ) : (
+        <div className="bg-secondary/80 border border-border p-12 rounded-2xl flex flex-col items-center justify-center gap-4 text-center backdrop-blur-md">
+          <p className="text-muted-foreground text-sm">
+            {error || 'No se pudieron cargar los datos de la curva de renta fija.'}
+          </p>
+          <button
+            onClick={fetchCurveData}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-foreground text-xs font-bold rounded-xl transition-colors shadow flex items-center gap-2"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Reintentar Carga
+          </button>
+        </div>
+      )}
     </div>
   );
 };

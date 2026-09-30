@@ -131,6 +131,21 @@ class TestFixedIncomeService(unittest.TestCase):
         self.assertIn("table_data", resp.text)
         self.assertIn("tea", resp.text)
 
+    @patch("services.fixed_income_service.fetch_datos", return_value=[])
+    @patch("services.fixed_income_service.fetch_panel")
+    def test_endpoint_renta_fija_curve_alias(self, mock_panel, mock_datos):
+        """Verifica que el alias /api/renta_fija/curve_json responda idénticamente a /api/fixed_income/curve_json."""
+        mock_panel.return_value = {
+            "data": [
+                {"symbol": "S30O6", "trade": 112.08, "volumeAmount": 5000000}
+            ]
+        }
+        resp_fi = self.client.get("/api/fixed_income/curve_json?category=lecap")
+        resp_rf = self.client.get("/api/renta_fija/curve_json?category=lecap")
+        self.assertEqual(resp_fi.status_code, 200)
+        self.assertEqual(resp_rf.status_code, 200)
+        self.assertEqual(resp_fi.json(), resp_rf.json())
+
     @patch("routers.fixed_income.fetch_yield_curve")
     def test_endpoint_hard_dollar_curve(self, mock_curve):
         """Verifica el endpoint para Hard Dollar."""

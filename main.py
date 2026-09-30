@@ -190,6 +190,7 @@ app.include_router(portfolios.router, prefix="/api/portfolios", tags=["portfolio
 app.include_router(earnings.router, prefix="/api/earnings", tags=["earnings"])
 app.include_router(valuation.router, prefix="/api/valuation", tags=["valuation"])
 app.include_router(fixed_income.router, prefix="/api/fixed_income", tags=["fixed_income"])
+app.include_router(fixed_income.router, prefix="/api/renta_fija", tags=["fixed_income"])
 app.include_router(performance.router, prefix="/api/performance", tags=["performance"])
 app.include_router(markowitz.router, prefix="/api/markowitz", tags=["markowitz"])
 app.include_router(rotation.router, prefix="/api/rotation", tags=["rotation"])

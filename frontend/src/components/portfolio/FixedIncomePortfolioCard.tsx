@@ -72,10 +72,18 @@ export const FixedIncomePortfolioCard: React.FC<FixedIncomePortfolioCardProps> =
   // Fetch curvas de renta fija
   const fetchCurves = async () => {
     try {
+      const fetchWithFallback = async (query: string) => {
+        let res = await fetch(`/api/renta_fija/curve_json?${query}`);
+        if (!res.ok) {
+          res = await fetch(`/api/fixed_income/curve_json?${query}`);
+        }
+        return res;
+      };
+
       const [resLecap, resSob, resCer] = await Promise.all([
-        fetch('/api/renta_fija/curve_json?category=lecap&tipo_inst=Todos'),
-        fetch('/api/renta_fija/curve_json?category=soberanos&ley=Ambas'),
-        fetch('/api/renta_fija/curve_json?category=bopreal'),
+        fetchWithFallback('category=lecap&tipo_inst=Todos'),
+        fetchWithFallback('category=soberanos&ley=Ambas'),
+        fetchWithFallback('category=bopreal'),
       ]);
 
       if (resLecap.ok) {
