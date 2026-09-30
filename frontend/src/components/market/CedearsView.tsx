@@ -1,6 +1,7 @@
 import { EtfSectorThermometer } from "./EtfSectorThermometer";
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useCachedFetch, getCachedData, setCachedData, cachedFetch, invalidateCache } from '@/lib/queryCache';
+import { queryClient } from '@/lib/queryClient';
+import { useQuery } from '@tanstack/react-query';
 import { 
   createColumnHelper, 
   flexRender, 
@@ -83,14 +84,14 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
   });
 
   const [portfolioTickers, setPortfolioTickers] = useState<string[]>(() => {
-    return getCachedData<string[]>('cedears-portfolio-tickers') || [];
+    return queryClient.getQueryData<string[]>(['cedears-portfolio-tickers']) || [];
   });
   const [quotes, setQuotes] = useState<CedearQuote[]>(() => {
-    const cached = getCachedData<CedearQuote[]>('cedears-quotes-list');
+    const cached = queryClient.getQueryData<CedearQuote[]>(['cedears-quotes-list']);
     return cached || [];
   });
   const [loading, setLoading] = useState<boolean>(() => {
-    const cached = getCachedData<CedearQuote[]>('cedears-quotes-list');
+    const cached = queryClient.getQueryData<CedearQuote[]>(['cedears-quotes-list']);
     return !cached || cached.length === 0;
   });
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -103,11 +104,15 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
   const { openTickerDrawer, setArea, setSubTab } = useAppStore();
 
   // Catálogo completo de CEDEARs — cacheado y compartido con CommandPalette (misma key)
-  const { data: catalogData } = useCachedFetch<{ catalog: CedearCatalogItem[] }>(
-    'cedears-catalog',
-    '/api/cedears/tickers',
-    { ttl: 3600 }
-  );
+  const { data: catalogData } = useQuery<{ catalog: CedearCatalogItem[] }>({
+    queryKey: ['cedears-catalog'],
+    queryFn: async () => {
+      const res = await fetch('/api/cedears/tickers');
+      if (!res.ok) throw new Error('API Error');
+      return res.json();
+    },
+    staleTime: 3600 * 1000
+  });
   const catalog = catalogData?.catalog ?? [];
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
@@ -137,15 +142,15 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
   useEffect(() => {
     const fetchPortfolioTickers = async () => {
       try {
-        const { data } = await cachedFetch<{ portfolio_tickers?: string[] }>(
-          'cedears-portfolio-tickers',
-          async () => {
+        const data = await queryClient.fetchQuery({
+          queryKey: ['cedears-portfolio-tickers'],
+          queryFn: async () => {
             const res = await fetch('/api/cedears/portfolio_tickers');
             if (!res.ok) throw new Error('Error al cargar portfolio tickers');
             return res.json();
           },
-          120 * 1000
-        );
+          staleTime: 120 * 1000
+        });
         const pfTickers: string[] = data.portfolio_tickers || [];
         setPortfolioTickers(pfTickers);
         if (pfTickers.length > 0) {
@@ -169,22 +174,22 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
     setErrorMsg(null);
     try {
       const cacheKey = `cedears-quotes:${tickersToFetch.slice().sort().join(',')}`;
-      if (force) invalidateCache(cacheKey);
-      const { data } = await cachedFetch<any>(
-        cacheKey,
-        async () => {
+      if (force) queryClient.invalidateQueries({ queryKey: [cacheKey] });
+      const data = await queryClient.fetchQuery({
+        queryKey: [cacheKey],
+        queryFn: async () => {
           const res = await fetch(`/api/cedears/quotes_json?tickers=${tickersToFetch.join(',')}`);
           if (!res.ok) throw new Error('Error al cargar cotizaciones');
           return res.json();
         },
-        90 * 1000
-      );
+        staleTime: 90 * 1000
+      });
       const quotesList = data.quotes || [];
       setQuotes(quotesList);
-      setCachedData('cedears-quotes-list', quotesList, 90);
+      queryClient.setQueryData(['cedears-quotes-list'], quotesList);
       if (data.portfolio_tickers) {
         setPortfolioTickers(data.portfolio_tickers);
-        setCachedData('cedears-portfolio-tickers', data.portfolio_tickers, 120);
+        queryClient.setQueryData(['cedears-portfolio-tickers'], data.portfolio_tickers);
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
@@ -216,23 +221,23 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
 
       try {
         const cacheKey = `cedears-quotes:${watchlist.slice().sort().join(',')}`;
-        const { data } = await cachedFetch<any>(
-          cacheKey,
-          async () => {
+        const data = await queryClient.fetchQuery({
+          queryKey: [cacheKey],
+          queryFn: async () => {
             const res = await fetch(`/api/cedears/quotes_json?tickers=${watchlist.join(',')}`);
             if (!res.ok) throw new Error('Error al cargar cotizaciones');
             return res.json();
           },
-          90 * 1000
-        );
+          staleTime: 90 * 1000
+        });
 
         if (!isCancelled && data) {
           const quotesList = data.quotes || [];
           setQuotes(quotesList);
-          setCachedData('cedears-quotes-list', quotesList, 90);
+          queryClient.setQueryData(['cedears-quotes-list'], quotesList);
           if (data.portfolio_tickers) {
             setPortfolioTickers(data.portfolio_tickers);
-            setCachedData('cedears-portfolio-tickers', data.portfolio_tickers, 120);
+            queryClient.setQueryData(['cedears-portfolio-tickers'], data.portfolio_tickers);
           }
         }
       } catch (err: any) {

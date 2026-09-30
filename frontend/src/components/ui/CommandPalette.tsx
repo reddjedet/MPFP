@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useCachedFetch } from '@/lib/queryCache';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Search, 
   X, 
@@ -58,11 +58,15 @@ const COMMON_BONDS = [
   const listRef = useRef<HTMLDivElement>(null);
 
   // Catálogo de CEDEARs — cacheado y compartido con CedearsView (misma key)
-  const { data: catalogData } = useCachedFetch<{ catalog: any[] }>(
-    'cedears-catalog',
-    '/api/cedears/tickers',
-    { ttl: 3600 }
-  );
+  const { data: catalogData } = useQuery<{ catalog: any[] }>({
+    queryKey: ['cedears-catalog'],
+    queryFn: async () => {
+      const res = await fetch('/api/cedears/tickers');
+      if (!res.ok) throw new Error('API error');
+      return res.json();
+    },
+    staleTime: 3600 * 1000
+  });
   const catalog = catalogData?.catalog ?? [];
 
   // Manejador del atajo de teclado global Ctrl+K / Cmd+K y Escape

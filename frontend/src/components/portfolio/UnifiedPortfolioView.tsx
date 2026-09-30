@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { getCachedData, setCachedData, cachedFetch, invalidateCache, invalidateCacheByPrefix } from '@/lib/queryCache';
+import { queryClient } from '@/lib/queryClient';
 import { 
   RefreshCw,
   ArrowLeftRight
@@ -20,29 +20,25 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
   const [refreshCounter, setRefreshCounter] = useState(0);
 
   const [portfolioMetadata, setPortfolioMetadata] = useState<any>(() => {
-    return getCachedData('portfolios-list');
+    return queryClient.getQueryData(['portfolios-list']);
   });
   const [rebalanceData, setRebalanceData] = useState<any>(() => {
     const active = localStorage.getItem('finapp_active_portfolio') || 'min_drawdown_15';
-    return getCachedData(`portfolio-rebalance:${active}`);
+    return queryClient.getQueryData([`portfolio-rebalance:${active}`]);
   });
   const [loading, setLoading] = useState<boolean>(() => {
     const active = localStorage.getItem('finapp_active_portfolio') || 'min_drawdown_15';
-    return !getCachedData(`portfolio-rebalance:${active}`);
+    return !queryClient.getQueryData([`portfolio-rebalance:${active}`]);
   });
   const [error, setError] = useState<string | null>(null);
 
   const fetchMetadata = async () => {
     try {
-      const { data } = await cachedFetch<any>(
-        'portfolios-list',
-        async () => {
+      const data = await queryClient.fetchQuery({ queryKey: ['portfolios-list'], queryFn: async () => {
           const res = await fetch('/api/portfolios/list_json');
           if (!res.ok) throw new Error('Error metadata');
           return res.json();
-        },
-        120 * 1000
-      );
+         } });
       setPortfolioMetadata(data);
       if (!selectedPf || !data.portfolios?.[selectedPf]) {
         const first = Object.keys(data.portfolios || {})[0];
@@ -59,7 +55,7 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
   const fetchAllData = useCallback(async (pfKey = selectedPf, anchor?: string, qty?: number) => {
     if (!pfKey) return;
     const cacheKey = `portfolio-rebalance:${pfKey}${anchor ? `:${anchor}` : ''}${qty !== undefined ? `:${qty}` : ''}`;
-    const hasCached = !!getCachedData(cacheKey);
+    const hasCached = !!queryClient.getQueryData([cacheKey]);
     if (!hasCached) {
       setLoading(true);
     }
@@ -72,17 +68,17 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
       const qString = params.toString();
       if (qString) url += `?${qString}`;
 
-      const { data: rbData } = await cachedFetch<any>(
-        cacheKey,
-        async () => {
+      const rbData = await queryClient.fetchQuery({
+        queryKey: [cacheKey],
+        queryFn: async () => {
           const res = await fetch(url);
           if (!res.ok) throw new Error(`Error API: ${res.status}`);
           return res.json();
         },
-        90 * 1000
-      );
+        staleTime: 90 * 1000
+      });
       setRebalanceData(rbData);
-      setCachedData(cacheKey, rbData, 90);
+      queryClient.setQueryData([cacheKey], rbData);
     } catch (err: any) {
       setError(err.message || 'Error cargando dashboard.');
     } finally {
@@ -209,8 +205,8 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
             
             <button 
               onClick={() => {
-                invalidateCacheByPrefix('portfolio');
-                invalidateCacheByPrefix('cedear');
+                queryClient.invalidateQueries({ predicate: (query) => (query.queryKey[0] as string).startsWith('portfolio') });
+                queryClient.invalidateQueries({ predicate: (query) => (query.queryKey[0] as string).startsWith('cedear') });
                 setRefreshCounter(c => c + 1);
                 fetchMetadata();
                 fetchAllData();

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { cachedFetch, getCachedData, invalidateCache } from '@/lib/queryCache';
+import { queryClient } from '@/lib/queryClient';
 import { useAppStore } from '@/store/useAppStore';
 import { SECTOR_COLOR_MAP } from '@/components/portfolio/PortfolioCharts';
 import { Layers, Wallet, TrendingUp, TrendingDown } from 'lucide-react';
@@ -63,7 +63,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 export function useHoldingsManager() {
   const openTickerDrawer = useAppStore((s) => s.openTickerDrawer);
   const [portfolios, setPortfolios] = useState<Record<string, any>>(() => {
-    const cached = getCachedData<any>('portfolios-list');
+    const cached = queryClient.getQueryData<any>(['portfolios-list']);
     return cached?.portfolios || {};
   });
   const [quotes, setQuotes] = useState<Record<string, any>>({});
@@ -72,7 +72,7 @@ export function useHoldingsManager() {
   const selectedPf = useAppStore((s) => s.selectedPf);
   const setSelectedPf = useAppStore((s) => s.setSelectedPf);
   const [loading, setLoading] = useState(() => {
-    return !getCachedData('portfolios-list');
+    return !queryClient.getQueryData(['portfolios-list']);
   });
   const [loadError, setLoadError] = useState<string | null>(null);
   const [retryTick, setRetryTick] = useState(0);
@@ -90,25 +90,17 @@ export function useHoldingsManager() {
     let isMounted = true;
     const fetchData = async () => {
       try {
-        const [{ data: pfData }, { data: qData }] = await Promise.all([
-          cachedFetch<any>(
-            'portfolios-list',
-            async () => {
+        const [pfData, qData] = await Promise.all([
+          queryClient.fetchQuery({ queryKey: ['portfolios-list'], queryFn: async () => {
               const res = await fetch('/api/portfolios/list_json');
               if (!res.ok) throw new Error('Error al cargar lista de portfolios');
               return res.json();
-            },
-            120 * 1000
-          ),
-          cachedFetch<any>(
-            'cedears-quotes-default',
-            async () => {
+             }, staleTime: 120 * 1000 }),
+          queryClient.fetchQuery({ queryKey: ['cedears-quotes-default'], queryFn: async () => {
               const res = await fetch('/api/cedears/quotes_json');
               if (!res.ok) throw new Error('Error al cargar cotizaciones');
               return res.json();
-            },
-            60 * 1000
-          )
+             }, staleTime: 60 * 1000 })
         ]);
         if (!isMounted) return;
 
@@ -141,15 +133,15 @@ export function useHoldingsManager() {
     let isMounted = true;
     const fetchHoldings = async () => {
       try {
-        const { data } = await cachedFetch<any>(
-          `rotation-holdings:${selectedPf}`,
-          async () => {
+        const data = await queryClient.fetchQuery({
+          queryKey: [`rotation-holdings:${selectedPf}`],
+          queryFn: async () => {
             const res = await fetch(`/api/rotation/holdings?portfolio=${encodeURIComponent(selectedPf)}`);
             if (!res.ok) throw new Error('Error al cargar tenencias reales');
             return res.json();
           },
-          60 * 1000
-        );
+          staleTime: 60 * 1000
+        });
         if (!isMounted || !data) return;
         const map: Record<string, RealHolding> = {};
         Object.entries(data.holdings || {}).forEach(([tk, v]: [string, any]) => {
@@ -176,15 +168,15 @@ export function useHoldingsManager() {
     let isMounted = true;
     const fetchMcm = async () => {
       try {
-        const { data } = await cachedFetch<any>(
-          `portfolio-mcm:${selectedPf}`,
-          async () => {
+        const data = await queryClient.fetchQuery({
+          queryKey: [`portfolio-mcm:${selectedPf}`],
+          queryFn: async () => {
             const res = await fetch(`/api/portfolios/rebalance_json/${encodeURIComponent(selectedPf)}`);
             if (!res.ok) throw new Error('Error al calcular la cartera base MCM');
             return res.json();
           },
-          120 * 1000
-        );
+          staleTime: 120 * 1000
+        });
         if (!isMounted || !data) return;
         setMcmBaseNominals(data.mcm_info?.base_nominals || {});
       } catch (e) {
@@ -454,11 +446,11 @@ export function useHoldingsManager() {
       }
 
       // Refresco sin recargar la página: invalidar caches + re-fetch
-      invalidateCache('portfolios-list');
-      invalidateCache('cedears-quotes-default');
-      invalidateCache(`portfolio-rebalance:${selectedPf}`);
-      invalidateCache(`rotation-holdings:${selectedPf}`);
-      invalidateCache(`portfolio-mcm:${selectedPf}`);
+      queryClient.invalidateQueries({ queryKey: ['portfolios-list'] });
+      queryClient.invalidateQueries({ queryKey: ['cedears-quotes-default'] });
+      queryClient.invalidateQueries({ queryKey: [`portfolio-rebalance:${selectedPf}`] });
+      queryClient.invalidateQueries({ queryKey: [`rotation-holdings:${selectedPf}`] });
+      queryClient.invalidateQueries({ queryKey: [`portfolio-mcm:${selectedPf}`] });
       isEditingRef.current = false;
       setDraftHoldings({});
       setFeedback({ kind: 'success', msg: 'Cambios guardados. Los nominales objetivo se recalcularon con los precios actuales.' });

@@ -1,4 +1,4 @@
-import { useCachedFetch } from '@/lib/queryCache';
+import { useQuery } from '@tanstack/react-query';
 
 export interface PerformanceData {
   benchmark: string;
@@ -19,10 +19,15 @@ export interface PerformanceData {
 }
 
 export function usePortfolioPerformance(pfKey: string, period: string = 'ytd') {
-  const { data, loading, error } = useCachedFetch<PerformanceData>(
-    pfKey ? `portfolio-performance-${pfKey}-${period}` : 'null-key',
-    pfKey ? `/api/portfolios/performance_json/${pfKey}?period=${period}` : '',
-    { enabled: !!pfKey, ttl: 300 }
-  );
-  return { data, loading, error };
+  const { data, isLoading: loading, error } = useQuery<PerformanceData>({
+    queryKey: ['portfolio-performance', pfKey, period],
+    queryFn: async () => {
+      const res = await fetch(`/api/portfolios/performance_json/${pfKey}?period=${period}`);
+      if (!res.ok) throw new Error('Failed to fetch performance');
+      return res.json();
+    },
+    enabled: !!pfKey,
+    staleTime: 300 * 1000,
+  });
+  return { data, loading, error: error as Error | null };
 }

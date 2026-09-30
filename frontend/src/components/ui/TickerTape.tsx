@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useCachedQuery } from '@/lib/queryCache';
+import { useQuery } from '@tanstack/react-query';
 import { useAppStore } from '@/store/useAppStore';
 import { cn } from '@/lib/utils';
 
@@ -83,11 +83,12 @@ const fmtPrice = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function TickerTape() {
-  const { data: oversoldTickers, loading, error } = useCachedQuery<TickerTapeItem[]>(
-    'ticker-tape-oversold',
-    fetchTickerTapeData,
-    { ttl: 60, refetchInterval: 60 }
-  );
+  const { data: oversoldTickers, isLoading: loading, error } = useQuery<TickerTapeItem[]>({
+    queryKey: ['ticker-tape-oversold'],
+    queryFn: fetchTickerTapeData,
+    staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000
+  });
   const openTickerDrawer = useAppStore((s) => s.openTickerDrawer);
   const [grabbing, setGrabbing] = useState(false);
   const [hovered, setHovered] = useState<HoverInfo | null>(null);

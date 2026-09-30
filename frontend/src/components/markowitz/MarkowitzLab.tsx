@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { cachedFetch, invalidateCache } from '@/lib/queryCache';
+import { queryClient } from '@/lib/queryClient';
 import { useAppStore } from '@/store/useAppStore';
 import { 
   TrendingUp, 
@@ -132,15 +132,15 @@ export const MarkowitzLab: React.FC = () => {
   useEffect(() => {
     const loadPfs = async () => {
       try {
-        const { data: json } = await cachedFetch<any>(
-          'portfolios-list',
-          async () => {
+        const json = await queryClient.fetchQuery({
+          queryKey: ['portfolios-list'],
+          queryFn: async () => {
             const res = await fetch('/api/portfolios/list_json');
             if (!res.ok) throw new Error('Error al cargar lista de portfolios');
             return res.json();
           },
-          120 * 1000
-        );
+          staleTime: 120 * 1000
+        });
           let list: AvailablePortfolio[] = [];
           const assetsMap: Record<string, string[]> = {};
           if (Array.isArray(json)) {
@@ -299,7 +299,7 @@ export const MarkowitzLab: React.FC = () => {
   const handleSavedSuccessfully = async (portfolioName: string) => {
     setSaveToast(`Cartera "${portfolioName}" integrada permanentemente al sistema.`);
     setTimeout(() => setSaveToast(null), 4000);
-    invalidateCache('portfolios-list');
+    queryClient.invalidateQueries({ queryKey: ['portfolios-list'] });
     try {
       const res = await fetch('/api/portfolios/list_json');
       if (res.ok) {

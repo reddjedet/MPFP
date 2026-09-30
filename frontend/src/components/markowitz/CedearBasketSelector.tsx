@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, X, RotateCcw, Trash2, AlertCircle, CheckCircle2, Search } from 'lucide-react';
-import { useCachedFetch } from '@/lib/queryCache';
+import { useQuery } from '@tanstack/react-query';
 
 interface CedearBasketSelectorProps {
   selectedTickers: string[];
@@ -24,11 +24,15 @@ export const CedearBasketSelector: React.FC<CedearBasketSelectorProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Cargar catálogo oficial de CEDEARs (compartido y cacheado con CommandPalette y CedearsView)
-  const { data: catalogData } = useCachedFetch<{ tickers?: string[] }>(
-    'cedears-catalog',
-    '/api/cedears/tickers',
-    { ttl: 3600 }
-  );
+  const { data: catalogData } = useQuery<{ tickers?: string[] }>({
+    queryKey: ['cedears-catalog'],
+    queryFn: async () => {
+      const res = await fetch('/api/cedears/tickers');
+      if (!res.ok) throw new Error('API Error');
+      return res.json();
+    },
+    staleTime: 3600 * 1000
+  });
   const allCedears = catalogData?.tickers ?? [];
 
   // Manejo de clic fuera del dropdown de autocompletado

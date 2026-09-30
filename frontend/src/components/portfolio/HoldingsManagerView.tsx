@@ -1,5 +1,5 @@
 import React from 'react';
-import { invalidateCache } from '@/lib/queryCache';
+import { queryClient } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
 import { Plus, Upload, Trash2, AlertTriangle, Save, Download, Layers, Wallet, TrendingUp, TrendingDown } from 'lucide-react';
 import { Dropdown } from '../ui/Dropdown';
@@ -419,7 +419,7 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
         onCreated={() => {
           setShowCreateModal(false);
           setFeedback({ kind: 'success', msg: 'Portafolio creado.' });
-          invalidateCache('portfolios-list');
+          queryClient.invalidateQueries({ queryKey: ['portfolios-list'] });
           setRetryTick((t) => t + 1);
         }}
       />
@@ -452,7 +452,7 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
                       setShowDeleteAlert(false);
                       setSelectedPf('');
                       setFeedback({ kind: 'success', msg: `Portafolio ${selectedPf} enviado a la papelera.` });
-                      invalidateCache('portfolios-list');
+                      queryClient.invalidateQueries({ queryKey: ['portfolios-list'] });
                       setRetryTick((t) => t + 1);
                     } else {
                       setFeedback({ kind: 'error', msg: 'El backend rechazó el borrado del portafolio.' });
@@ -503,7 +503,7 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
                     if (res.ok) {
                       setShowImportModal(false);
                       setFeedback({ kind: 'success', msg: 'Portafolio importado.' });
-                      invalidateCache('portfolios-list');
+                      queryClient.invalidateQueries({ queryKey: ['portfolios-list'] });
                       setRetryTick((t) => t + 1);
                     } else {
                       setFeedback({ kind: 'error', msg: 'El backend rechazó la importación del JSON.' });
