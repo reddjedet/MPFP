@@ -1,0 +1,1 @@
+DEFAULT_PORTFOLIO_MODE = 'min_drawdown_15'

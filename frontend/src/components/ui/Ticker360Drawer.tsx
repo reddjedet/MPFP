@@ -90,27 +90,37 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = () => {
       setData(null);
     }
 
+    const abortController = new AbortController();
+
     // Fetch fresco de 360 grados
     const fetch360 = async () => {
       setLoading(true);
       try {
         const savedPf = localStorage.getItem('finapp_active_portfolio') || 'min_drawdown_15';
         setActivePortfolio(savedPf);
-        const res = await fetch(`/api/cedears/quote_json/${encodeURIComponent(ticker)}?portfolio=${encodeURIComponent(savedPf)}`);
+        const res = await fetch(`/api/cedears/quote_json/${encodeURIComponent(ticker)}?portfolio=${encodeURIComponent(savedPf)}`, {
+          signal: abortController.signal
+        });
         if (res.ok) {
           const fresh = await res.json();
           setData((prev: any) => ({ ...prev, ...fresh }));
           setEditPpc(fresh.ppc !== undefined && fresh.ppc !== null ? String(fresh.ppc) : '');
           setEditGf(fresh.gf_value !== undefined && fresh.gf_value !== null ? String(fresh.gf_value) : '');
         }
-      } catch (e) {
-        console.error("Error al cargar Ficha 360:", e);
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          console.error("Error al cargar Ficha 360:", e);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetch360();
+
+    return () => {
+      abortController.abort();
+    };
   }, [isOpen, ticker, initialData]);
 
   // Cálculos reactivos de compra rápida
