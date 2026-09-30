@@ -35,3 +35,12 @@ def parse_price_input(value: Any) -> Optional[float]:
 def clamp(val: float, min_val: float, max_val: float) -> float:
     """Restringe un valor numérico dentro del rango [min_val, max_val]."""
     return max(min_val, min(max_val, val))
+
+
+import numpy as np
+import pandas as pd
+
+def safe_div(a, b, default=0.0):
+    if isinstance(b, (pd.Series, pd.DataFrame, np.ndarray)):
+        return a / b
+    return a / b if b else default

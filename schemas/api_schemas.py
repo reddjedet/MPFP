@@ -196,3 +196,71 @@ class SyncGFRequest(BaseModel):
     def check_fv(cls, v: float) -> float:
         val = validate_price_or_ppc(v, allow_none=False, field_name="Fair Value")
         return val if val is not None else 0.0
+
+# ------------------------------------------------------------------------------
+# 5. Responses and Additional Requests
+# ------------------------------------------------------------------------------
+from typing import List
+
+class BulkQuickUpdateAssetRequest(BaseModel):
+    items: List[QuickUpdateAssetRequest]
+
+class RenamePortfolioRequest(BaseModel):
+    old_name: str
+    new_name: str
+
+class QuickUpdateAssetResponse(BaseModel):
+    success: bool
+    ticker: str
+    ppc: Optional[float]
+    gf_value: Optional[float]
+    pfcf: Optional[float]
+
+class PortfolioListResponse(BaseModel):
+    portfolios: Dict[str, Any]
+    weights_str_map: Dict[str, str]
+    fair_values_map: Dict[str, Any]
+    selected_pf: str
+
+class PortfolioRebalanceResponse(BaseModel):
+    pf_type: str
+    mode: str
+    anchor: Optional[str]
+    qty: int
+    weights: Dict[str, float]
+    asset_allocation: Optional[Dict[str, Any]]
+    fixed_income_summary: Optional[Dict[str, Any]]
+    result: List[Dict[str, Any]]
+    sector_breakdown: List[Dict[str, Any]]
+    mcm_info: Optional[Dict[str, Any]]
+    take_profit_alerts: List[Dict[str, Any]]
+    rotation_trades: List[Dict[str, Any]]
+    alpha_metrics: Optional[Dict[str, Any]]
+    summary: Dict[str, Any]
+
+class PortfolioCreateResponse(BaseModel):
+    success: bool
+    name: str
+    mode: str
+    assets: Dict[str, float]
+
+class TrashListResponse(BaseModel):
+    trash: List[Dict[str, Any]]
+
+class RenamePortfolioResponse(BaseModel):
+    success: bool
+    old_name: str
+    new_name: str
+    error: Optional[str] = None
+
+class ImportPortfoliosResponse(BaseModel):
+    success: bool
+    error: Optional[str] = None
+    imported_count: Optional[int] = None
+    portfolios: Optional[Dict[str, Any]] = None
+
+class DeletePortfolioResponse(BaseModel):
+    success: bool
+    message: Optional[str] = None
+    error: Optional[str] = None
+    moved_to_trash: Optional[str] = None

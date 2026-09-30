@@ -1,3 +1,4 @@
+from services.utils import safe_div
 import math
 from typing import Any, Optional
 import logging
@@ -165,13 +166,13 @@ def calculate_portfolio_mcm(weights: dict, data: dict) -> dict | None:
     total_w = sum(weights.values())
     if total_w == 0:
         return None
-    norm = {t: w * 100.0 / total_w for t, w in weights.items()}
+    norm = {t: safe_div(w * 100.0, total_w) for t, w in weights.items()}
 
     ratios = {}
     for t, w in norm.items():
         if t in data and data[t].get("local") and data[t]["local"] > 0 and w > 0:
             p = data[t]["local"]
-            ratios[t] = p / (w / 100.0)
+            ratios[t] = safe_div(p, safe_div(w, 100.0))
 
     if not ratios:
         return None
@@ -183,7 +184,7 @@ def calculate_portfolio_mcm(weights: dict, data: dict) -> dict | None:
     for t, w in norm.items():
         if t in data and data[t].get("local") and data[t]["local"] > 0:
             p = data[t]["local"]
-            base_nominals[t] = max(1, int(round((base_capital * (w / 100.0)) / p)))
+            base_nominals[t] = max(1, int(round(safe_div(base_capital * safe_div(w, 100.0), p))))
 
     total_nominals = sum(base_nominals.values())
     actual_base_capital = sum(base_nominals[t] * data[t]["local"] for t in base_nominals if t in data and data[t].get("local"))
@@ -233,12 +234,12 @@ def calculate_portfolio(weights: dict, data: dict, anchor_ticker: str, anchor_qt
     total_w = sum(weights.values())
     if total_w <= 0:
         return None
-    norm = {t: w * 100 / total_w for t, w in weights.items()}
+    norm = {t: safe_div(w * 100, total_w) for t, w in weights.items()}
     anchor_price = data[anchor_ticker]["local"]
     anchor_weight_norm = norm.get(anchor_ticker, 0.0)
     if anchor_weight_norm <= 0:
         return None
-    total_value = (anchor_price * anchor_qty) / (anchor_weight_norm / 100)
+    total_value = safe_div(anchor_price * anchor_qty, safe_div(anchor_weight_norm, 100))
     
     result = []
     actual_total_value = 0.0
@@ -254,7 +255,7 @@ def calculate_portfolio(weights: dict, data: dict, anchor_ticker: str, anchor_qt
         if ticker == anchor_ticker:
             qty = anchor_qty
         else:
-            qty = max(1, round(weight / 100 * total_value / price)) if price > 0 else 0
+            qty = max(1, round(safe_div(safe_div(weight, 100) * total_value, price))) if price > 0 else 0
             
         value = qty * price
         actual_total_value += value
@@ -272,7 +273,7 @@ def calculate_portfolio(weights: dict, data: dict, anchor_ticker: str, anchor_qt
         
     # Segunda pasada: calcular los pesos reales basados en la sumatoria real del patrimonio
     for item in result:
-        real_w = (item["value"] / actual_total_value * 100) if actual_total_value else 0
+        real_w = (safe_div(item['value'], actual_total_value) * 100) if actual_total_value else 0
         item["real_weight"] = round(real_w, 2)
         
         # Filtro de Fricción / Turn-over:
@@ -315,7 +316,7 @@ def calculate_portfolio_data(pf_data: dict, data: dict, anchor_ticker: str = Non
             })
             
         for item in result:
-            real_w = (item["value"] / actual_total_value * 100) if actual_total_value else 0
+            real_w = (safe_div(item['value'], actual_total_value) * 100) if actual_total_value else 0
             item["weight"] = round(real_w, 2) # Para nominales, el peso objetivo coincide con el real
             item["real_weight"] = round(real_w, 2)
             item["error"] = 0.0
@@ -338,11 +339,11 @@ def calculate_portfolio_rsi(result: list[dict]) -> dict | None:
         
     total_val = sum(item.get("value", 0.0) for item in valid_items)
     if total_val > 0:
-        weighted_rsi = sum(item["rsi"] * item.get("value", 0.0) for item in valid_items) / total_val
+        weighted_rsi = safe_div(sum((item['rsi'] * item.get('value', 0.0) for item in valid_items)), total_val)
     else:
-        weighted_rsi = sum(item["rsi"] for item in valid_items) / len(valid_items)
+        weighted_rsi = safe_div(sum((item['rsi'] for item in valid_items)), len(valid_items))
         
-    simple_rsi = sum(item["rsi"] for item in valid_items) / len(valid_items)
+    simple_rsi = safe_div(sum((item['rsi'] for item in valid_items)), len(valid_items))
     
     # Determinar régimen y color semafórico
     w_rounded = round(weighted_rsi, 1)
@@ -779,11 +780,11 @@ def calculate_sector_breakdown(result: list[dict]) -> list[dict]:
     for s in breakdown:
         s["total_target_weight"] = round(s["total_target_weight"], 2)
         s["total_value"] = round(s["total_value"], 2)
-        s["weight_pct"] = round((s["total_value"] / total_value * 100.0), 2) if total_value > 0 else s["total_target_weight"]
+        s["weight_pct"] = round((safe_div(s['total_value'], total_value) * 100.0), 2) if total_value > 0 else s["total_target_weight"]
         sec_weight = s["total_target_weight"] if s["total_target_weight"] > 0 else 1.0
         
         for a in s["assets"]:
-            a["relative_weight_in_sector"] = round((a["target_weight"] / sec_weight * 100.0), 1)
+            a["relative_weight_in_sector"] = round((safe_div(a['target_weight'], sec_weight) * 100.0), 1)
             
         # Ordenar activos del sector por peso descendente
         s["assets"].sort(key=lambda x: x["target_weight"], reverse=True)
@@ -795,7 +796,7 @@ def calculate_sector_breakdown(result: list[dict]) -> list[dict]:
 
 def _sma_dist(close, sma):
     if close and sma:
-        pct = (close - sma) / sma * 100
+        pct = safe_div(close - sma, sma) * 100
         return f"{'▲' if pct >= 0 else '▼'} {abs(pct):.1f}%"
     return "—"
 
@@ -808,10 +809,10 @@ def _portfolio_agg(weights, lookup, field):
     for t, w in weights.items():
         r = lookup.get(t.upper())
         if r and isinstance(r.get(field), (int, float)):
-            nw = w / total_w
+            nw = safe_div(w, total_w)
             num += nw * r[field]
             denom += nw
-    return num / denom if denom else None
+    return safe_div(num, denom) if denom else None
 
 
 def _portfolio_sma(weights, lookup, sma_field):
@@ -824,13 +825,13 @@ def _portfolio_sma(weights, lookup, sma_field):
         if r:
             c, s = r.get("close"), r.get(sma_field)
             if c and s:
-                pct = (c - s) / s * 100
-                nw = w / total_w
+                pct = safe_div(c - s, s) * 100
+                nw = safe_div(w, total_w)
                 num += nw * pct
                 denom += nw
     if denom == 0:
         return None
-    avg = num / denom
+    avg = safe_div(num, denom)
     return f"{'▲' if avg >= 0 else '▼'} {abs(avg):.1f}%"
 
 
@@ -848,13 +849,13 @@ def get_effective_weights(pf_data: dict, lookup_prices: dict) -> dict:
                 vals[t] = 0.0
         total_v = sum(vals.values())
         if total_v == 0:
-            return {t: 1.0 / len(assets) for t in assets}
-        return {t: v / total_v for t, v in vals.items()}
+            return {t: safe_div(1.0, len(assets)) for t in assets}
+        return {t: safe_div(v, total_v) for t, v in vals.items()}
     else:
         total_w = sum(assets.values())
         if total_w == 0:
-            return {t: 1.0 / len(assets) for t in assets}
-        return {t: w / total_w for t, w in assets.items()}
+            return {t: safe_div(1.0, len(assets)) for t in assets}
+        return {t: safe_div(w, total_w) for t, w in assets.items()}
 
 
 def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
@@ -939,7 +940,7 @@ def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
                 d_vto = datetime.strptime(spec["vencimiento"], "%Y-%m-%d").date()
                 dias_tot = (d_vto - d_emis).days
                 tem_emis = spec["tem_emision"]
-                vf_base_100 = round(100.0 * ((1.0 + tem_emis) ** (dias_tot / 30.0)), 2)
+                vf_base_100 = round(100.0 * ((1.0 + tem_emis) ** (safe_div(dias_tot, 30.0))), 2)
             except Exception:
                 vf_base_100 = 100.0
         if vf_base_100 is None:
@@ -964,25 +965,25 @@ def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
         # calcular analíticamente a partir del precio spot, valor final a finish y días
         if (tem_mkt is None or tna is None or tea is None) and precio_spot_base_100 and precio_spot_base_100 > 0 and vf_base_100 and vf_base_100 > 0:
             if dias and dias > 0:
-                r_spot = (vf_base_100 - precio_spot_base_100) / precio_spot_base_100
+                r_spot = safe_div(vf_base_100 - precio_spot_base_100, precio_spot_base_100)
                 if -0.5 < r_spot < 5.0:
                     if tna is None:
-                        tna = round(r_spot * (365.0 / dias) * 100.0, 2)
+                        tna = round(r_spot * (safe_div(365.0, dias)) * 100.0, 2)
                     if tea is None:
                         try:
-                            tea = round((((1.0 + r_spot) ** (365.0 / dias)) - 1.0) * 100.0, 2)
+                            tea = round((((1.0 + r_spot) ** (safe_div(365.0, dias))) - 1.0) * 100.0, 2)
                         except Exception:
                             pass
                     if tem_mkt is None:
                         try:
                             if tea is not None:
-                                tem_mkt = round((((1.0 + tea / 100.0) ** (30.0 / 365.0)) - 1.0) * 100.0, 2)
+                                tem_mkt = round((((1.0 + safe_div(tea, 100.0)) ** (safe_div(30.0, 365.0))) - 1.0) * 100.0, 2)
                             else:
-                                tem_mkt = round((((1.0 + r_spot) ** (30.0 / dias)) - 1.0) * 100.0, 2)
+                                tem_mkt = round((((1.0 + r_spot) ** (safe_div(30.0, dias))) - 1.0) * 100.0, 2)
                         except Exception:
                             pass
                     if md is None and tea is not None:
-                        md = round((dias / 365.0) / (1.0 + (tea / 100.0)), 2)
+                        md = round(safe_div(safe_div(dias, 365.0), 1.0 + safe_div(tea, 100.0)), 2)
 
         # Fallback a tasa de referencia promedio de mercado de las ALyCs argentinas si persiste nulo
         if tem_mkt is None:
@@ -991,13 +992,13 @@ def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
                 if (val := safe_float(v.get("tem_mkt"))) is not None and val > 0
             ]
             if active_tems:
-                tem_mkt = round(sum(active_tems) / len(active_tems), 2)
+                tem_mkt = round(safe_div(sum(active_tems), len(active_tems)), 2)
             else:
                 tem_mkt = 3.70  # Tasa representativa promedio de mercado ALyC
             if tna is None:
                 tna = round(tem_mkt * 12.0, 2)
             if tea is None:
-                tea = round((((1.0 + tem_mkt / 100.0) ** (365.0 / 30.0)) - 1.0) * 100.0, 2)
+                tea = round((((1.0 + safe_div(tem_mkt, 100.0)) ** (safe_div(365.0, 30.0))) - 1.0) * 100.0, 2)
 
 
         if ppc_val is not None and ppc_val > 0:
@@ -1013,11 +1014,11 @@ def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
         invested_capital = round(nominals * ppc_unit, 2)
         current_market_value = round(nominals * spot_unit, 2)
         pnl_ars = round(current_market_value - invested_capital, 2)
-        pnl_pct = round((pnl_ars / invested_capital * 100.0), 2) if invested_capital > 0 else 0.0
+        pnl_pct = round((safe_div(pnl_ars, invested_capital) * 100.0), 2) if invested_capital > 0 else 0.0
 
         projected_payoff = round(nominals * vf_unit, 2)
         projected_profit_ars = round(projected_payoff - invested_capital, 2)
-        projected_profit_pct = round((projected_profit_ars / invested_capital * 100.0), 2) if invested_capital > 0 else 0.0
+        projected_profit_pct = round((safe_div(projected_profit_ars, invested_capital) * 100.0), 2) if invested_capital > 0 else 0.0
 
         # TNA / TEA de compra calculada a partir del PPC y el Valor Final a Finish
         # MATEMÁTICAMENTE IMPOSIBLE sin conocer la fecha de compra exacta.
@@ -1035,7 +1036,7 @@ def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
                 d_vto = datetime.strptime(spec["vencimiento"], "%Y-%m-%d").date()
                 dias_totales = max(1, (d_vto - d_emis).days)
                 dias_transcurridos = max(0, (hoy - d_emis).days)
-                pct_ciclo = round(min(100.0, max(0.0, (dias_transcurridos / dias_totales) * 100.0)), 1)
+                pct_ciclo = round(min(100.0, max(0.0, (safe_div(dias_transcurridos, dias_totales)) * 100.0)), 1)
             except Exception:
                 pass
 
@@ -1079,21 +1080,21 @@ def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
     total_invested = sum(it["invested_capital"] for it in items)
     total_market_val = sum(it["current_market_value"] for it in items)
     for it in items:
-        it["real_weight_rf"] = round((it["current_market_value"] / total_market_val * 100.0), 2) if total_market_val > 0 else 0.0
+        it["real_weight_rf"] = round((safe_div(it['current_market_value'], total_market_val) * 100.0), 2) if total_market_val > 0 else 0.0
 
     total_pnl = total_market_val - total_invested
-    total_pnl_pct = (total_pnl / total_invested * 100.0) if total_invested > 0 else 0.0
+    total_pnl_pct = (safe_div(total_pnl, total_invested) * 100.0) if total_invested > 0 else 0.0
 
     total_payoff = sum(it["projected_payoff"] for it in items)
     total_proj_profit = total_payoff - total_invested
-    total_proj_profit_pct = (total_proj_profit / total_invested * 100.0) if total_invested > 0 else 0.0
+    total_proj_profit_pct = (safe_div(total_proj_profit, total_invested) * 100.0) if total_invested > 0 else 0.0
 
     # TNA promedio ponderada de compra
     weighted_tna_compra = None
     invested_with_tna = sum(it["invested_capital"] for it in items if it.get("tna_compra") is not None)
     if invested_with_tna > 0:
         weighted_sum = sum(it["invested_capital"] * it["tna_compra"] for it in items if it.get("tna_compra") is not None)
-        weighted_tna_compra = round(weighted_sum / invested_with_tna, 2)
+        weighted_tna_compra = round(safe_div(weighted_sum, invested_with_tna), 2)
 
     valid_days = [it["dias"] for it in items if it.get("dias") is not None]
     nearest_days = min(valid_days) if valid_days else None
@@ -1156,3 +1157,179 @@ def calculate_portfolio_alpha(weights: dict) -> dict:
 
 
 
+
+def get_portfolio_rebalance_data(
+    pf_clean: str,
+    anchor: Optional[str] = None,
+    qty: Optional[int] = None,
+    cash_budget: Optional[float] = None,
+    tolerance_pct: float = 1.5
+) -> dict:
+    from services.cedear_service import get_multiple_tickers_data
+    from services.ppc_service import load_ppc_values, evaluate_ppc_return
+    from services.fair_value_service import load_fair_values, evaluate_fair_value_signal
+    from services.pfcf_service import load_pfcf_values, evaluate_fcf_rsi_state
+    from services.earnings_service import load_earnings_calendar, get_ticker_earnings_badge
+    from services.rotation_service import load_user_holdings, analyze_rotation
+    import logging
+    logger = logging.getLogger(__name__)
+
+    portfolios = load_portfolios()
+    if pf_clean not in portfolios:
+        from services.exceptions import PortfolioNotFoundError; raise PortfolioNotFoundError(f"El portfolio '{pf_clean}' no existe.")
+        
+    pf_data = portfolios[pf_clean]
+    mode = pf_data.get("mode", "weights")
+    weights = pf_data.get("assets", {})
+    
+    if not weights:
+        from services.exceptions import DomainValidationError; raise DomainValidationError("El portfolio seleccionado no contiene activos.")
+    
+    data = get_multiple_tickers_data(list(weights.keys()))
+    mcm_info = calculate_portfolio_mcm(weights, data) if mode == "weights" else None
+    
+    saved_anchor = pf_data.get("anchor")
+    saved_qty = pf_data.get("qty")
+    
+    if anchor is not None:
+        from services.security_service import sanitize_ticker
+        anchor_clean = sanitize_ticker(anchor)
+        if not anchor_clean or anchor_clean not in weights:
+            anchor_clean = saved_anchor if (saved_anchor and saved_anchor in weights) else (
+                mcm_info["most_expensive_ticker"] if (mcm_info and mcm_info.get("most_expensive_ticker") in weights) else list(weights.keys())[0]
+            )
+    else:
+        # Priorizar anchor guardado si existe, sino el activo dinámico más caro
+        anchor_clean = saved_anchor if (saved_anchor and saved_anchor in weights) else (
+            mcm_info["most_expensive_ticker"] if (mcm_info and mcm_info.get("most_expensive_ticker") in weights) else list(weights.keys())[0]
+        )
+        
+    if qty is not None:
+        try:
+            qty_clean = max(1, int(qty))
+        except (ValueError, TypeError):
+            qty_clean = saved_qty if (saved_qty and saved_qty > 0) else (
+                mcm_info["most_expensive_qty"] if (mcm_info and anchor_clean == mcm_info.get("most_expensive_ticker")) else 1
+            )
+    else:
+        # Priorizar cantidad guardada si existe, sino la calculada por MCM
+        if saved_qty and saved_qty > 0:
+            qty_clean = saved_qty
+        elif mcm_info and anchor_clean == mcm_info.get("most_expensive_ticker"):
+            qty_clean = mcm_info["most_expensive_qty"]
+        else:
+            qty_clean = 1
+        
+    result = calculate_portfolio_data(pf_data, data, anchor_clean, qty_clean)
+    ppc_map = load_ppc_values()
+    fair_values_map = load_fair_values()
+    pfcf_map = load_pfcf_values()
+    earnings_cal = load_earnings_calendar()
+    user_holdings = load_user_holdings(pf_clean).get("holdings", {})
+
+    if result:
+        for item in result:
+            tk = item.get("ticker", "")
+            adr_p = item.get("adr_price")
+            local_p = item.get("price")
+            rsi_val = item.get("rsi")
+            item["earnings_badge"] = get_ticker_earnings_badge(tk, cal=earnings_cal)
+            item["gf_signal"] = evaluate_fair_value_signal(tk, adr_p, gf_val_map=fair_values_map)
+            item["gf_value"] = fair_values_map.get(tk)
+            
+            # Use portfolio-specific PPC if available, fallback to global PPC
+            tk_holdings = user_holdings.get(tk, {})
+            item["actual_qty"] = tk_holdings.get("nominals", 0)
+            
+            pf_ppc = tk_holdings.get("ppc")
+            if pf_ppc and pf_ppc > 0:
+                item["ppc"] = pf_ppc
+            else:
+                item["ppc"] = ppc_map.get(tk)
+                
+            item["ppc_return"] = evaluate_ppc_return(tk, local_p, item["ppc"])
+            item["pfcf"] = pfcf_map.get(tk)
+            item["pfcf_signal"] = evaluate_fcf_rsi_state(tk, item["pfcf"], rsi_val)
+            
+    # Recalcular pesos reales y errores de tracking si el usuario informó tenencias
+    if result:
+        actual_total_val = sum((item.get("actual_qty", 0) * item.get("price", 0)) for item in result)
+        has_actual_holdings = actual_total_val > 0
+        
+        for item in result:
+            if has_actual_holdings:
+                actual_val = item.get("actual_qty", 0) * item.get("price", 0)
+                real_w = (actual_val / actual_total_val * 100) if actual_total_val else 0
+                item["real_weight"] = round(real_w, 2)
+                
+                raw_error = real_w - item["weight"]
+                if abs(raw_error) < 2.5:
+                    item["error"] = 0.0
+                else:
+                    item["error"] = round(raw_error, 2)
+            else:
+                # Si no hay tenencias reales, conservar el error de redondeo teórico (fricción)
+                pass
+
+    take_profit_alerts = [
+        item for item in result 
+        if item.get("ppc_return") and item["ppc_return"].get("is_take_profit")
+    ] if result else []
+    
+    alpha_metrics = calculate_portfolio_alpha(weights)
+        
+    total_portfolio_value = sum(item.get("value", 0.0) for item in result) if result else 0.0
+    total_portfolio_qty = sum(item.get("qty", 0) for item in result) if result else 0
+    base_anchor_qty = 1
+    if mcm_info and mcm_info.get("base_nominals"):
+        base_anchor_qty = mcm_info["base_nominals"].get(anchor_clean, 1)
+        
+    portfolio_rsi = calculate_portfolio_rsi(result) if result else None
+    
+    # Renta Fija y Asignación Macro
+    fixed_income_summary = get_portfolio_fixed_income_summary(pf_clean)
+    asset_allocation = pf_data.get("asset_allocation")
+    fi_market_value = fixed_income_summary.get("total_market_value", 0.0) if fixed_income_summary else 0.0
+    total_consolidated_value = round(total_portfolio_value + fi_market_value, 2)
+
+    # Desglose Sectorial
+    sector_breakdown = calculate_sector_breakdown(result) if result else []
+
+    # Calculate Tactical Rotation Trades
+    try:
+        rotation_analysis = analyze_rotation(pf_clean, cash_budget=cash_budget, tolerance_pct=tolerance_pct)
+        rotation_trades = rotation_analysis.get("rotation_trades", [])
+    except Exception as e:
+        logger.warning(f"Rotation analysis failed for {pf_clean}: {e}")
+        rotation_analysis = {}
+        rotation_trades = []
+
+    total_real_value = sum(
+        (item.get("actual_qty", 0) or 0) * (item.get("price", 0) or 0) for item in (result or [])
+    )
+    user_cash = load_user_holdings(pf_clean).get("cash_ars", 0.0)
+
+    return {
+        "pf_type": pf_clean,
+        "mode": mode,
+        "anchor": anchor_clean,
+        "qty": qty_clean,
+        "weights": weights,
+        "asset_allocation": asset_allocation,
+        "fixed_income_summary": fixed_income_summary,
+        "result": result if result is not None else [],
+        "sector_breakdown": sector_breakdown,
+        "mcm_info": mcm_info,
+        "take_profit_alerts": take_profit_alerts if take_profit_alerts is not None else [],
+        "rotation_trades": rotation_trades,
+        "alpha_metrics": alpha_metrics,
+        "summary": {
+            "total_portfolio_value": round(total_portfolio_value, 2),
+            "total_real_value": round(total_real_value, 2),
+            "cash_ars": round(float(user_cash or 0.0), 2),
+            "total_portfolio_qty": total_portfolio_qty,
+            "total_consolidated_value": total_consolidated_value,
+            "base_anchor_qty": base_anchor_qty,
+            "portfolio_rsi": portfolio_rsi
+        }
+    }

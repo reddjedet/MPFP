@@ -10,3 +10,12 @@ garantiza también para pytest, que importa los conftest antes del paquete.
 from tests._isolation import ensure_isolated_data_dir
 
 ensure_isolated_data_dir()
+
+import pytest
+from services.sqlite_persistence import SQLiteEngine
+
+@pytest.fixture(autouse=True)
+def cleanup_sqlite_connections():
+    """Cierra las conexiones de SQLite después de cada test para evitar fugas."""
+    yield
+    SQLiteEngine.close_all()

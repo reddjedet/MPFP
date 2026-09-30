@@ -122,7 +122,7 @@ class TestSQLitePersistence(unittest.TestCase):
 
         # Debe fallar con DatabaseCorruptionError / PersistenceError y NO resetear a defaults vacíos
         with self.assertRaises((PersistenceError, DatabaseCorruptionError, sqlite3.DatabaseError)):
-            SQLiteTableStore(table_name="portfolios", db_path=corrupt_db_path)
+            SQLiteTableStore(table_name="portfolios", db_path=corrupt_db_path).load()
 
 
     # --------------------------------------------------------------------------

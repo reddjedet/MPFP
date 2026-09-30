@@ -1,4 +1,4 @@
-import { EtfSectorThermometer } from "@/components/EtfSectorThermometer";
+import { EtfSectorThermometer } from "./EtfSectorThermometer";
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useCachedFetch, getCachedData, setCachedData, cachedFetch, invalidateCache } from '@/lib/queryCache';
 import { 

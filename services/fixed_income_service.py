@@ -1,4 +1,5 @@
 from __future__ import annotations
+from services.utils import safe_div
 import logging
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ def calculate_irr_and_duration(price: float, cash_flows: list[tuple[float, float
         return None, None
 
     def npv(r: float) -> float:
-        return sum(cf / ((1.0 + r) ** t) for t, cf in cash_flows) - price
+        return sum(safe_div(cf, (1.0 + r) ** t) for t, cf in cash_flows) - price
 
     low, high = -0.3, 5.0
     f_low = npv(low)
@@ -84,7 +85,7 @@ def calculate_irr_and_duration(price: float, cash_flows: list[tuple[float, float
         return None, None
 
     for _ in range(40):
-        mid = (low + high) / 2.0
+        mid = safe_div(low + high, 2.0)
         f_mid = npv(mid)
         if abs(f_mid) < 1e-5:
             break
@@ -97,8 +98,8 @@ def calculate_irr_and_duration(price: float, cash_flows: list[tuple[float, float
 
     tir_annual = mid
     try:
-        mac_duration = (1.0 / price) * sum((t * cf) / ((1.0 + tir_annual) ** t) for t, cf in cash_flows)
-        mod_duration = mac_duration / (1.0 + tir_annual)
+        mac_duration = (safe_div(1.0, price)) * sum(safe_div(t * cf, (1.0 + tir_annual) ** t) for t, cf in cash_flows)
+        mod_duration = safe_div(mac_duration, 1.0 + tir_annual)
         return round(tir_annual * 100.0, 2), round(mod_duration, 2)
     except Exception:
         return round(tir_annual * 100.0, 2), None
@@ -177,7 +178,7 @@ def fetch_yield_curve(category: str = "hard_dollar") -> pd.DataFrame | None:
             if detalle:
                 vr = detalle[0].get("vr")
                 if vr and vr > 0:
-                    paridad = round((precio / vr) * 100.0, 1)
+                    paridad = round((safe_div(precio, vr)) * 100.0, 1)
 
         tir_val = b.get("tir")
         if tir_val is not None:
@@ -261,7 +262,7 @@ def fetch_yield_curve(category: str = "hard_dollar") -> pd.DataFrame | None:
                             if f_pago and cash:
                                 try:
                                     dt_pago = datetime.strptime(f_pago[:10], "%Y-%m-%d").date()
-                                    t_years = (dt_pago - hoy).days / 365.0
+                                    t_years = safe_div((dt_pago - hoy).days, 365.0)
                                     if t_years > 0:
                                         cfs_for_irr.append((t_years, float(cash)))
                                 except Exception:
@@ -271,7 +272,7 @@ def fetch_yield_curve(category: str = "hard_dollar") -> pd.DataFrame | None:
 
                         vr = cf_source[0].get("vr") if cf_source else 100.0
                         if vr and vr > 0:
-                            paridad_calc = round((p_val / vr) * 100.0, 1)
+                            paridad_calc = round((safe_div(p_val, vr)) * 100.0, 1)
 
                     tipo_ley = classify_bond_law(m_tick)
                     rows.append({
@@ -525,7 +526,7 @@ def fetch_lecaps() -> pd.DataFrame | None:
 
         # Valor Final Capitalizado (VF) al vencimiento
         tem_emis = spec["tem_emision"]
-        vf = 100.0 * ((1.0 + tem_emis) ** (dias_tot / 30.0))
+        vf = 100.0 * ((1.0 + tem_emis) ** (safe_div(dias_tot, 30.0)))
 
         # Si no hay cotización de mercado en vivo (fuera de rueda o APIs desconectadas),
         # estimar precio de cierre a partir de la curva de corte promedio de ALyCs
@@ -539,16 +540,16 @@ def fetch_lecaps() -> pd.DataFrame | None:
                 tem_ref = 0.0380
             else:
                 tem_ref = 0.0392
-            precio = round(vf / ((1.0 + tem_ref) ** (dias / 30.0)), 2)
+            precio = round(safe_div(vf, (1.0 + tem_ref) ** safe_div(dias, 30.0)), 2)
 
         tea, tna, tem_mkt, md = None, None, None, None
         if precio and precio > 0:
-            r = (vf / precio) - 1.0
+            r = (safe_div(vf, precio)) - 1.0
             if -0.3 < r < 3.0:  # Rango razonable para evitar outliers o distorsiones
-                tea = round(((1.0 + r) ** (365.0 / dias) - 1.0) * 100.0, 2)
-                tna = round(r * (365.0 / dias) * 100.0, 2)
-                tem_mkt = round((((1.0 + tea / 100.0) ** (30.0 / 365.0)) - 1.0) * 100.0, 2)
-                md = round((dias / 365.0) / (1.0 + (tea / 100.0)), 2)
+                tea = round(((1.0 + r) ** (safe_div(365.0, dias)) - 1.0) * 100.0, 2)
+                tna = round(r * (safe_div(365.0, dias)) * 100.0, 2)
+                tem_mkt = round((((1.0 + safe_div(tea, 100.0)) ** (safe_div(30.0, 365.0))) - 1.0) * 100.0, 2)
+                md = round(safe_div(safe_div(dias, 365.0), 1.0 + safe_div(tea, 100.0)), 2)
 
         rows.append({
             "ticker": ticker,

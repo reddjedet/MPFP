@@ -408,7 +408,7 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertIn("stats", earn_data)
 
         # 4. Renta Fija
-        resp_rf = self.client.get("/api/renta_fija/curve_json?category=lecap")
+        resp_rf = self.client.get("/api/fixed_income/curve_json?category=lecap")
         self.assertEqual(resp_rf.status_code, 200)
         rf_data = resp_rf.json()
         self.assertIn("category", rf_data)

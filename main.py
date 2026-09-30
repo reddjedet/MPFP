@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from routers import (
     cedears, 
     portfolios, 
-    renta_fija, 
+    fixed_income, 
     performance, 
     earnings, 
     valuation, 
@@ -189,7 +189,7 @@ app.include_router(cedears.router, prefix="/api/cedears", tags=["cedears"])
 app.include_router(portfolios.router, prefix="/api/portfolios", tags=["portfolios"])
 app.include_router(earnings.router, prefix="/api/earnings", tags=["earnings"])
 app.include_router(valuation.router, prefix="/api/valuation", tags=["valuation"])
-app.include_router(renta_fija.router, prefix="/api/renta_fija", tags=["renta_fija"])
+app.include_router(fixed_income.router, prefix="/api/fixed_income", tags=["fixed_income"])
 app.include_router(performance.router, prefix="/api/performance", tags=["performance"])
 app.include_router(markowitz.router, prefix="/api/markowitz", tags=["markowitz"])
 app.include_router(rotation.router, prefix="/api/rotation", tags=["rotation"])

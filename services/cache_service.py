@@ -137,7 +137,8 @@ def generate_canonical_cache_key(func: Callable, args: tuple, kwargs: dict) -> s
         bound = sig.bind(*args, **kwargs)
         bound.apply_defaults()
         normalized_args = _normalize_for_canonical_key(bound.arguments)
-    except Exception:
+    except Exception as e:
+        logger.error('Exception caught', exc_info=True)
         # Fallback para funciones builtin o wrappers dinámicos
         normalized_args = {
             "_pos": _normalize_for_canonical_key(args),
@@ -215,10 +216,12 @@ def _decode_val(val: Any) -> Any:
                 if len(df.index) > 0 and isinstance(df.index[0], str) and ("-" in df.index[0] or "/" in df.index[0]):
                     try:
                         df.index = pd.to_datetime(df.index)
-                    except Exception:
+                    except Exception as e:
+                        logger.error('Exception caught', exc_info=True)
                         pass
                 return df
-            except Exception:
+            except Exception as e:
+                logger.error('Exception caught', exc_info=True)
                 return val
         elif t == "Series" or val.get("__series__"):
             data = val.get("data", {})
@@ -228,17 +231,20 @@ def _decode_val(val: Any) -> Any:
                 if len(s.index) > 0 and isinstance(s.index[0], str) and ("-" in s.index[0] or "/" in s.index[0]):
                     try:
                         s.index = pd.to_datetime(s.index)
-                    except Exception:
+                    except Exception as e:
+                        logger.error('Exception caught', exc_info=True)
                         pass
                 return s
-            except Exception:
+            except Exception as e:
+                logger.error('Exception caught', exc_info=True)
                 return val
         elif t == "ndarray":
             data = val.get("data", [])
             dtype = val.get("dtype")
             try:
                 return np.array(data, dtype=dtype)
-            except Exception:
+            except Exception as e:
+                logger.error('Exception caught', exc_info=True)
                 return np.array(data)
         elif t == "tuple":
             items = val.get("items", [])
@@ -246,7 +252,8 @@ def _decode_val(val: Any) -> Any:
         elif t == "datetime":
             try:
                 return datetime.fromisoformat(val.get("val"))
-            except Exception:
+            except Exception as e:
+                logger.error('Exception caught', exc_info=True)
                 return val.get("val")
         else:
             return {k: _decode_val(v) for k, v in val.items()}
@@ -286,7 +293,8 @@ def _safe_copy(val: Any) -> Any:
         return {k: _safe_copy(v) for k, v in val.items()}
     try:
         return copy.deepcopy(val)
-    except Exception:
+    except Exception as e:
+        logger.error('Exception caught', exc_info=True)
         return val
 
 
@@ -355,7 +363,8 @@ class MarketCacheStore:
                     "UPDATE market_cache SET last_accessed_at = ? WHERE cache_key = ?;",
                     (current_time, cache_key)
                 )
-            except Exception:
+            except Exception as e:
+                logger.error('Exception caught', exc_info=True)
                 pass
 
             val = _deserialize_value(data_json)
@@ -555,7 +564,8 @@ def _load_disk_cache() -> dict:
         try:
             with open(DISK_CACHE_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except Exception:
+        except Exception as e:
+            logger.error('Exception caught', exc_info=True)
             return {}
     return {}
 
@@ -572,7 +582,8 @@ def _save_disk_cache(data: dict):
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(tmp, DISK_CACHE_FILE)
-        except Exception:
+        except Exception as e:
+            logger.error('Exception caught', exc_info=True)
             pass
         finally:
             if 'tmp' in locals() and tmp.exists():
@@ -701,7 +712,8 @@ def smart_cache(category: Union[str, int] = "realtime", maxsize: int = 256):
                     if is_mocked_disk:
                         try:
                             _save_disk_cache({func.__name__: {key: [val, now]}})
-                        except Exception:
+                        except Exception as e:
+                            logger.error('Exception caught', exc_info=True)
                             pass
                     else:
                         try:

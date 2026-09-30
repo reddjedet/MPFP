@@ -34,7 +34,7 @@ class TestFixedIncomeService(unittest.TestCase):
     def test_lecap_specs_structure(self):
         """Verifica que el registro de LECAPs y BONCAPs tenga las claves requeridas y contenga S30S6."""
         self.assertGreater(len(LECAP_BONCAP_SPECS), 15)
-        self.assertIn("S30S6", LECAP_BONCAP_SPECS)
+        self.assertIn("S30O6", LECAP_BONCAP_SPECS)
         self.assertIn("S13N6", LECAP_BONCAP_SPECS)
         self.assertIn("T15E7", LECAP_BONCAP_SPECS)
         for ticker, spec in LECAP_BONCAP_SPECS.items():
@@ -48,22 +48,22 @@ class TestFixedIncomeService(unittest.TestCase):
     @patch("services.fixed_income_service.fetch_datos", return_value=[])
     @patch("services.fixed_income_service.fetch_panel")
     def test_endpoint_lecap_curve_filters(self, mock_panel, mock_datos):
-        """Verifica filtros por tipo de instrumento (LECAP, BONCAP) en /api/renta_fija/curve_json."""
+        """Verifica filtros por tipo de instrumento (LECAP, BONCAP) en /api/fixed_income/curve_json."""
         mock_panel.return_value = {
             "data": [
-                {"symbol": "S30S6 24HS", "trade": 112.08, "volumeAmount": 5000000},
-                {"symbol": "T31Y7 24HS", "trade": 115.50, "volumeAmount": 3000000}
+                {"symbol": "S30O6", "trade": 112.08, "volumeAmount": 5000000},
+                {"symbol": "T31Y7", "trade": 115.50, "volumeAmount": 3000000}
             ]
         }
-        resp_all = self.client.get("/api/renta_fija/curve_json?category=lecap&tipo_inst=Todos")
+        resp_all = self.client.get("/api/fixed_income/curve_json?category=lecap&tipo_inst=Todos")
         self.assertEqual(resp_all.status_code, 200)
-        self.assertIn("S30S6", resp_all.text)
+        self.assertIn("S30O6", resp_all.text)
 
-        resp_lecap = self.client.get("/api/renta_fija/curve_json?category=lecap&tipo_inst=LECAP")
+        resp_lecap = self.client.get("/api/fixed_income/curve_json?category=lecap&tipo_inst=LECAP")
         self.assertEqual(resp_lecap.status_code, 200)
         self.assertIn("LECAP", resp_lecap.text)
 
-    @patch("routers.renta_fija.fetch_yield_curve")
+    @patch("routers.fixed_income.fetch_yield_curve")
     def test_endpoint_hard_dollar_curve_filters(self, mock_curve):
         """Verifica filtros por Ley (Local, NY) en Hard Dollar."""
         mock_df = pd.DataFrame([
@@ -72,10 +72,10 @@ class TestFixedIncomeService(unittest.TestCase):
         ])
         mock_curve.return_value = mock_df
 
-        resp_local = self.client.get("/api/renta_fija/curve_json?category=hard_dollar&ley=Ley+Local&rem=30.0&target_tir=0.0")
+        resp_local = self.client.get("/api/fixed_income/curve_json?category=hard_dollar&ley=Ley+Local&rem=30.0&target_tir=0.0")
         self.assertEqual(resp_local.status_code, 200)
 
-        resp_ny = self.client.get("/api/renta_fija/curve_json?category=hard_dollar&ley=Ley+NY&rem=30.0&target_tir=0.0")
+        resp_ny = self.client.get("/api/fixed_income/curve_json?category=hard_dollar&ley=Ley+NY&rem=30.0&target_tir=0.0")
         self.assertEqual(resp_ny.status_code, 200)
 
     def test_lecap_calculation_formulas(self):
@@ -120,36 +120,36 @@ class TestFixedIncomeService(unittest.TestCase):
     @patch("services.fixed_income_service.fetch_datos", return_value=[])
     @patch("services.fixed_income_service.fetch_panel")
     def test_endpoint_lecap_curve(self, mock_panel, mock_datos):
-        """Verifica que el endpoint /api/renta_fija/curve_json responda datos válidos para LECAPs."""
+        """Verifica que el endpoint /api/fixed_income/curve_json responda datos válidos para LECAPs."""
         mock_panel.return_value = {
             "data": [
-                {"symbol": "S30S6 24HS", "trade": 112.08, "volumeAmount": 5000000}
+                {"symbol": "S30O6", "trade": 112.08, "volumeAmount": 5000000}
             ]
         }
-        resp = self.client.get("/api/renta_fija/curve_json?category=lecap")
+        resp = self.client.get("/api/fixed_income/curve_json?category=lecap")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("table_data", resp.text)
         self.assertIn("tea", resp.text)
 
-    @patch("routers.renta_fija.fetch_yield_curve")
+    @patch("routers.fixed_income.fetch_yield_curve")
     def test_endpoint_hard_dollar_curve(self, mock_curve):
         """Verifica el endpoint para Hard Dollar."""
         mock_df = pd.DataFrame([
             {"ticker": "AL30", "nombre": "Bono USD 2030 Ley Local", "tir": 15.2, "md": 2.1, "ley": "Ley Local", "precio": 65.0, "paridad": 65.0, "spread_curva_bps": 12.0, "posicion_curva": "arriba", "teorica": 15.0},
         ])
         mock_curve.return_value = mock_df
-        resp = self.client.get("/api/renta_fija/curve_json?category=hard_dollar&ley=Ambas&rem=30.0&target_tir=0.0")
+        resp = self.client.get("/api/fixed_income/curve_json?category=hard_dollar&ley=Ambas&rem=30.0&target_tir=0.0")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("Bono", resp.text)
 
-    @patch("routers.renta_fija.fetch_yield_curve")
+    @patch("routers.fixed_income.fetch_yield_curve")
     def test_endpoint_soberanos_category_alias(self, mock_curve):
         """Verifica que category=soberanos funcione de forma equivalente a hard_dollar."""
         mock_df = pd.DataFrame([
             {"ticker": "GD30", "nombre": "Bono USD 2030 Ley NY", "tir": 14.5, "md": 2.2, "ley": "Ley NY", "tipo": "Ley NY", "precio": 67.0, "paridad": 67.0, "spread_curva_bps": -15.0, "posicion_curva": "abajo", "teorica": 14.7},
         ])
         mock_curve.return_value = mock_df
-        resp = self.client.get("/api/renta_fija/curve_json?category=soberanos&ley=Ambas")
+        resp = self.client.get("/api/fixed_income/curve_json?category=soberanos&ley=Ambas")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("GD30", resp.text)
         mock_curve.assert_called_with("soberanos")
@@ -169,20 +169,20 @@ class TestFixedIncomeService(unittest.TestCase):
     def test_calc_spread_numeric_and_lecap(self):
         """Verifica que calc_spread soporte tanto benchmarks numéricos como DataFrames con columna 'tea'."""
         df_lecap = pd.DataFrame([
-            {"ticker": "S30S6", "tea": 38.5},
+            {"ticker": "S30O6", "tea": 38.5},
             {"ticker": "S15D6", "tea": 36.0},
         ])
         # Test con float numérico
         res_num = calc_spread(df_lecap, 35.0)
-        self.assertEqual(res_num.loc[res_num["ticker"] == "S30S6", "spread"].iloc[0], 3.5)
+        self.assertEqual(res_num.loc[res_num["ticker"] == "S30O6", "spread"].iloc[0], 3.5)
         self.assertEqual(res_num.loc[res_num["ticker"] == "S15D6", "spread"].iloc[0], 1.0)
 
         # Test con ticker de LECAP
         res_tk = calc_spread(df_lecap, "S15D6")
-        self.assertEqual(res_tk.loc[res_tk["ticker"] == "S30S6", "spread"].iloc[0], 2.5)
+        self.assertEqual(res_tk.loc[res_tk["ticker"] == "S30O6", "spread"].iloc[0], 2.5)
         self.assertEqual(res_tk.loc[res_tk["ticker"] == "S15D6", "spread"].iloc[0], 0.0)
 
-    @patch("routers.renta_fija.fetch_yield_curve")
+    @patch("routers.fixed_income.fetch_yield_curve")
     def test_endpoint_hard_dollar_highlights_best_tir_and_currency(self, mock_curve):
         """Verifica que highlights.best_tir se calcule para bonos con columna 'tir' y que most_liquid use U$."""
         mock_df = pd.DataFrame([
@@ -190,7 +190,7 @@ class TestFixedIncomeService(unittest.TestCase):
             {"ticker": "GD30", "nombre": "Bono USD 2030 NY", "tir": 15.2, "md": 2.2, "ley": "Ley NY", "tipo": "Ley NY", "precio": 67.0, "monto": 5000000.0, "moneda": "USD", "paridad": 77.0, "posicion_curva": "abajo", "spread_curva_bps": -30, "teorica": 15.5},
         ])
         mock_curve.return_value = mock_df
-        resp = self.client.get("/api/renta_fija/curve_json?category=soberanos&ley=Ambas")
+        resp = self.client.get("/api/fixed_income/curve_json?category=soberanos&ley=Ambas")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertIn("highlights", data)

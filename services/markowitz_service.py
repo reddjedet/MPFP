@@ -11,6 +11,7 @@ Implementa:
 """
 
 from __future__ import annotations
+from services.utils import safe_div
 
 import numpy as np
 import pandas as pd
@@ -40,7 +41,7 @@ def optimize_min_volatility(cov: np.ndarray) -> np.ndarray:
         
     bounds = tuple((0.0, 1.0) for _ in range(n))
     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1.0})
-    initial_guess = np.ones(n) / n
+    initial_guess = safe_div(np.ones(n), n)
     
     result = sco.minimize(min_vol, initial_guess, args=args,
                           method='SLSQP', bounds=bounds, constraints=constraints)
@@ -56,11 +57,11 @@ def optimize_max_sharpe(mu: np.ndarray, cov: np.ndarray, rf: float = DEFAULT_RF_
         vol = np.sqrt(np.dot(w.T, np.dot(cov_mat, w)))
         if vol == 0:
             return 0
-        return -(ret - rf_rate) / vol
+        return safe_div(-(ret - rf_rate), vol)
         
     bounds = tuple((0.0, 1.0) for _ in range(n))
     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1.0})
-    initial_guess = np.ones(n) / n
+    initial_guess = safe_div(np.ones(n), n)
     
     result = sco.minimize(neg_sharpe, initial_guess, args=args,
                           method='SLSQP', bounds=bounds, constraints=constraints)
@@ -85,7 +86,7 @@ def calculate_efficient_frontier_curve(
     ef_weights = []
     
     bounds = tuple((0.0, 1.0) for _ in range(n))
-    last_w = np.ones(n) / n
+    last_w = safe_div(np.ones(n), n)
     
     def port_vol(w):
         return np.sqrt(np.dot(w.T, np.dot(cov, w)))
@@ -220,20 +221,20 @@ def fetch_historical_returns_and_cov(
         cov_matrix = np.outer(base_vols, base_vols) * corr_matrix
         
         # Simular serie temporal diaria coherente
-        daily_cov = cov_matrix / ANNUAL_TRADING_DAYS
-        daily_mu = base_returns / ANNUAL_TRADING_DAYS
+        daily_cov = safe_div(cov_matrix, ANNUAL_TRADING_DAYS)
+        daily_mu = safe_div(base_returns, ANNUAL_TRADING_DAYS)
         sim_rets = rng.multivariate_normal(daily_mu, daily_cov, size=len(dates))
         daily_returns = pd.DataFrame(sim_rets, index=dates, columns=valid_tickers)
         corr_df = pd.DataFrame(corr_matrix, index=valid_tickers, columns=valid_tickers)
 
-        spy_sim = rng.normal(0.12 / ANNUAL_TRADING_DAYS, 0.16 / np.sqrt(ANNUAL_TRADING_DAYS), size=len(dates))
+        spy_sim = rng.normal(safe_div(0.12, ANNUAL_TRADING_DAYS), safe_div(0.16, np.sqrt(ANNUAL_TRADING_DAYS)), size=len(dates))
         spy_returns = pd.Series(spy_sim, index=dates, name="SPY")
         return base_returns, cov_matrix, corr_df, valid_tickers, daily_returns, spy_returns
 
     if spy_returns.empty or len(spy_returns) < 20:
         spy_seed = 8888
         spy_rng = np.random.default_rng(spy_seed)
-        spy_sim = spy_rng.normal(0.12 / ANNUAL_TRADING_DAYS, 0.16 / np.sqrt(ANNUAL_TRADING_DAYS), size=len(daily_returns.index))
+        spy_sim = spy_rng.normal(safe_div(0.12, ANNUAL_TRADING_DAYS), safe_div(0.16, np.sqrt(ANNUAL_TRADING_DAYS)), size=len(daily_returns.index))
         spy_returns = pd.Series(spy_sim, index=daily_returns.index, name="SPY")
     else:
         spy_returns = spy_returns.reindex(daily_returns.index).ffill().bfill()
@@ -287,7 +288,7 @@ def calculate_portfolio_performance_stats(
     if n_days == 0:
         return {}
 
-    years = max(n_days / ANNUAL_TRADING_DAYS, 1.0 / ANNUAL_TRADING_DAYS)
+    years = max(safe_div(n_days, ANNUAL_TRADING_DAYS), safe_div(1.0, ANNUAL_TRADING_DAYS))
 
     # 1. Crecimiento acumulado y Saldo final (base $10,000 USD)
     cum_growth = (1.0 + clean_ret).cumprod()
@@ -297,7 +298,7 @@ def calculate_portfolio_performance_stats(
 
     # 2. CAGR (Compound Annual Growth Rate)
     if total_return > -1.0 and years > 0:
-        cagr = float((1.0 + total_return) ** (1.0 / years) - 1.0)
+        cagr = float((1.0 + total_return) ** (safe_div(1.0, years)) - 1.0)
     else:
         cagr = -1.0
 
@@ -307,20 +308,20 @@ def calculate_portfolio_performance_stats(
 
     # 4. Máximo Drawdown
     running_max = cum_growth.cummax()
-    drawdowns = (cum_growth - running_max) / (running_max + 1e-12)
+    drawdowns = safe_div(cum_growth - running_max, running_max + 1e-12)
     max_dd = float(drawdowns.min()) if not drawdowns.empty else 0.0
 
     # 5. Sharpe Ratio (ex-post)
-    sharpe = (cagr - rf_rate) / (annual_vol + 1e-8)
+    sharpe = safe_div(cagr - rf_rate, annual_vol + 1e-08)
 
     # 6. Downside Deviation & Sortino Ratio
     # Penaliza únicamente retornos negativos (< 0)
     negative_returns = np.minimum(0.0, clean_ret.values)
     downside_dev = float(np.sqrt(np.mean(negative_returns ** 2)) * np.sqrt(ANNUAL_TRADING_DAYS))
-    sortino = (cagr - rf_rate) / (downside_dev + 1e-8)
+    sortino = safe_div(cagr - rf_rate, downside_dev + 1e-08)
 
     # 7. Calmar Ratio
-    calmar = (cagr / abs(max_dd)) if abs(max_dd) > 1e-4 else 0.0
+    calmar = (safe_div(cagr, abs(max_dd))) if abs(max_dd) > 1e-4 else 0.0
 
     # 8. Retornos por Año Calendario
     annual_returns_dict = {}
@@ -360,16 +361,16 @@ def calculate_portfolio_performance_stats(
             b_sub = benchmark_series.loc[common_idx]
 
             b_total = float((1.0 + b_sub).prod() - 1.0)
-            sub_years = len(common_idx) / ANNUAL_TRADING_DAYS
-            b_cagr = float((1.0 + b_total) ** (1.0 / sub_years) - 1.0) if (b_total > -1.0 and sub_years > 0) else 0.0
+            sub_years = safe_div(len(common_idx), ANNUAL_TRADING_DAYS)
+            b_cagr = float((1.0 + b_total) ** (safe_div(1.0, sub_years)) - 1.0) if (b_total > -1.0 and sub_years > 0) else 0.0
 
             p_total = float((1.0 + p_sub).prod() - 1.0)
-            p_cagr = float((1.0 + p_total) ** (1.0 / sub_years) - 1.0) if (p_total > -1.0 and sub_years > 0) else 0.0
+            p_cagr = float((1.0 + p_total) ** (safe_div(1.0, sub_years)) - 1.0) if (p_total > -1.0 and sub_years > 0) else 0.0
 
             active_return = (p_cagr - b_cagr) * 100.0
             excess_daily = p_sub - b_sub
             tracking_error = float(excess_daily.std(ddof=1) * np.sqrt(ANNUAL_TRADING_DAYS)) * 100.0
-            information_ratio = (active_return / tracking_error) if tracking_error > 1e-4 else 0.0
+            information_ratio = (safe_div(active_return, tracking_error)) if tracking_error > 1e-4 else 0.0
 
             stats["active_return"] = round(active_return, 2)
             stats["tracking_error"] = round(tracking_error, 2)
@@ -420,8 +421,8 @@ def calculate_candidate_rsi(
         return None
         
     total_val = sum(item["value"] for item in valid_items)
-    weighted_rsi = sum(item["rsi"] * item["value"] for item in valid_items) / total_val if total_val > 0 else sum(item["rsi"] for item in valid_items) / len(valid_items)
-    simple_rsi = sum(item["rsi"] for item in valid_items) / len(valid_items)
+    weighted_rsi = safe_div(sum((item['rsi'] * item['value'] for item in valid_items)), total_val) if total_val > 0 else safe_div(sum((item['rsi'] for item in valid_items)), len(valid_items))
+    simple_rsi = safe_div(sum((item['rsi'] for item in valid_items)), len(valid_items))
     
     w_rounded = round(weighted_rsi, 1)
     if w_rounded > 65.0:
@@ -498,9 +499,9 @@ def simulate_portfolio_returns(
     weights = np.asarray(weights, dtype=float)
     total_w = np.sum(weights)
     if total_w > 0:
-        weights = weights / total_w
+        weights = safe_div(weights, total_w)
     else:
-        weights = np.ones(len(weights)) / len(weights)
+        weights = safe_div(np.ones(len(weights)), len(weights))
         
     regime_clean = (regime or "annual").strip().lower()
     if regime_clean == "daily":
@@ -511,8 +512,8 @@ def simulate_portfolio_returns(
         asset_cum = (1.0 + daily_returns).cumprod()
         port_val = (asset_cum * weights).sum(axis=1)
         port_val_prev = port_val.shift(1).fillna(1.0)
-        daily_series = (port_val / port_val_prev) - 1.0
-        daily_series.iloc[0] = (port_val.iloc[0] / 1.0) - 1.0
+        daily_series = (safe_div(port_val, port_val_prev)) - 1.0
+        daily_series.iloc[0] = (safe_div(port_val.iloc[0], 1.0)) - 1.0
         return daily_series
 
     # Regime == "annual" (estándar Portfolio Visualizer)
@@ -531,7 +532,7 @@ def simulate_portfolio_returns(
         
         prev_val = curr_capital
         for val in port_val_year:
-            portfolio_daily_rets.append((val / prev_val) - 1.0)
+            portfolio_daily_rets.append((safe_div(val, prev_val)) - 1.0)
             prev_val = val
             
         curr_capital = port_val_year.iloc[-1]
@@ -558,20 +559,20 @@ def calculate_markowitz_model(
     w_min = optimize_min_volatility(cov)
     r_min = float(np.dot(w_min, mu))
     v_min = float(np.sqrt(np.dot(w_min, np.dot(cov, w_min))))
-    s_min = (r_min - rf_rate) / (v_min + 1e-8)
+    s_min = safe_div(r_min - rf_rate, v_min + 1e-08)
     
     # 2. Optimización Máximo Sharpe
     w_ms = optimize_max_sharpe(mu, cov, rf=rf_rate)
     r_ms = float(np.dot(w_ms, mu))
     v_ms = float(np.sqrt(np.dot(w_ms, np.dot(cov, w_ms))))
-    s_ms = (r_ms - rf_rate) / (v_ms + 1e-8)
+    s_ms = safe_div(r_ms - rf_rate, v_ms + 1e-08)
     
     # 3. Simulación Monte Carlo
     rng = np.random.default_rng(42)
     mc_weights = rng.dirichlet(np.ones(n_assets), size=num_simulations)
     mc_rets = np.dot(mc_weights, mu)
     mc_vols = np.sqrt(np.einsum('ij,jk,ik->i', mc_weights, cov, mc_weights))
-    mc_sharpes = (mc_rets - rf_rate) / (mc_vols + 1e-8)
+    mc_sharpes = safe_div(mc_rets - rf_rate, mc_vols + 1e-08)
     
     # 4. Frontera Eficiente (Curva)
     r_top = float(np.max(mu))
@@ -584,10 +585,10 @@ def calculate_markowitz_model(
         raw_w = np.array([current_weights.get(tk, 0.0) for tk in valid_tickers], dtype=float)
         sum_w = np.sum(raw_w)
         if sum_w > 0:
-            norm_w_curr = raw_w / sum_w
+            norm_w_curr = safe_div(raw_w, sum_w)
             r_curr = float(np.dot(norm_w_curr, mu))
             v_curr = float(np.sqrt(np.dot(norm_w_curr, np.dot(cov, norm_w_curr))))
-            s_curr = (r_curr - rf_rate) / (v_curr + 1e-8)
+            s_curr = safe_div(r_curr - rf_rate, v_curr + 1e-08)
             curr_point = {
                 "return": r_curr,
                 "volatility": v_curr,
@@ -694,7 +695,7 @@ def calculate_markowitz_model(
     ef_points_data = []
     for i in range(len(ef_vols)):
         ef_w = ef_weights[i]
-        s_val = (ef_rets[i] - rf_rate) / (ef_vols[i] + 1e-8)
+        s_val = safe_div(ef_rets[i] - rf_rate, ef_vols[i] + 1e-08)
         w_p = {valid_tickers[j]: round(float(ef_w[j]), 4) for j in range(n_assets) if ef_w[j] >= 0.005}
         ef_points_data.append({
             "value": [round(float(ef_vols[i] * 100.0), 2), round(float(ef_rets[i] * 100.0), 2), round(float(s_val), 3)],
@@ -747,7 +748,7 @@ def calculate_markowitz_model(
                     "ticker": tk,
                     "vol": round(float(np.sqrt(cov[i, i]) * 100.0), 2),
                     "ret": round(float(mu[i] * 100.0), 2),
-                    "sharpe": round(float((mu[i] - rf_rate) / (np.sqrt(cov[i, i]) + 1e-8)), 3)
+                    "sharpe": round(float(safe_div(mu[i] - rf_rate, np.sqrt(cov[i, i]) + 1e-08)), 3)
                 }
                 for i, tk in enumerate(valid_tickers)
             ]

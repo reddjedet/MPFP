@@ -57,8 +57,17 @@ class SQLiteEngine:
         try:
             self._ensure_database()
             self._initialized = True
-        except Exception:
+        except Exception as e:
+            logger.error('Exception caught', exc_info=True)
             key = str(target_path)
+            with self._init_lock:
+                if hasattr(self, '_all_conns'):
+                    for conn in self._all_conns:
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
+                    self._all_conns.clear()
             with SQLiteEngine._instance_lock:
                 SQLiteEngine._instances.pop(key, None)
             raise
@@ -94,8 +103,28 @@ class SQLiteEngine:
             conn.row_factory = sqlite3.Row
             self._apply_pragmas(conn)
             self._local.conn = conn
+            with self._init_lock:
+                if not hasattr(self, '_all_conns'):
+                    self._all_conns = []
+                self._all_conns.append(conn)
         return self._local.conn
 
+    @classmethod
+    def close_all(cls):
+        """Cierra todas las conexiones cacheadas para evitar fugas de recursos."""
+        with cls._instance_lock:
+            for instance in cls._instances.values():
+                with instance._init_lock:
+                    if hasattr(instance, '_all_conns'):
+                        for conn in instance._all_conns:
+                            try:
+                                conn.close()
+                            except Exception:
+                                pass
+                        instance._all_conns.clear()
+                    if hasattr(instance, '_local') and hasattr(instance._local, 'conn'):
+                        instance._local.conn = None
+            cls._instances.clear()
     @contextmanager
     def transaction(self):
         """
@@ -110,7 +139,8 @@ class SQLiteEngine:
         except Exception as e:
             try:
                 conn.execute("ROLLBACK;")
-            except Exception:
+            except Exception as e:
+                logger.error('Exception caught', exc_info=True)
                 pass
             if isinstance(e, sqlite3.DatabaseError) and "corrupt" in str(e).lower():
                 logger.critical(f"FATAL: Base de datos dañada en {self.db_path}: {e}")
@@ -321,10 +351,13 @@ class SQLiteTableStore:
             self._custom_path = p
         
         self.default_data = default_data if default_data is not None else ({} if table_name != "portfolios_trash" else [])
-        self._engine = SQLiteEngine(self._custom_path)
         self.lock = threading.RLock()
         self._cache = None
         self._cache_valid = False
+
+    @property
+    def _engine(self) -> SQLiteEngine:
+        return SQLiteEngine(self._custom_path)
 
     @property
     def file_path(self) -> Path:
@@ -339,7 +372,7 @@ class SQLiteTableStore:
             if p.suffix == ".json":
                 p = p.with_suffix(".db")
             self._custom_path = p
-            self._engine = SQLiteEngine(p)
+            # El engine se resolverá dinámicamente en el próximo acceso
             self.invalidate()
 
     def invalidate(self) -> None:
@@ -359,7 +392,7 @@ class SQLiteTableStore:
                 self._cache_valid = True
                 return copy.deepcopy(data)
             except Exception as e:
-                if isinstance(e, (DatabaseCorruptionError, PersistenceError)):
+                if isinstance(e, (DatabaseCorruptionError, PersistenceError, sqlite3.DatabaseError, sqlite3.OperationalError)):
                     raise
                 logger.error(f"Error al leer tabla '{self.table_name}' desde SQLite: {e}")
                 if not self.file_path.exists():
@@ -523,7 +556,8 @@ class SQLiteTableStore:
             for r in rows:
                 try:
                     p_data = json.loads(r["data_json"])
-                except Exception:
+                except Exception as e:
+                    logger.error('Exception caught', exc_info=True)
                     p_data = {"mode": r["mode"], "assets": {}}
                 result[r["id"]] = p_data
             return result
@@ -534,7 +568,8 @@ class SQLiteTableStore:
             for r in rows:
                 try:
                     entry = json.loads(r["data_json"])
-                except Exception:
+                except Exception as e:
+                    logger.error('Exception caught', exc_info=True)
                     entry = {
                         "id": r["id"],
                         "name": r["name"],
@@ -592,7 +627,8 @@ class SQLiteTableStore:
             for r in rows:
                 try:
                     result[r["ticker"]] = json.loads(r["data_json"])
-                except Exception:
+                except Exception as e:
+                    logger.error('Exception caught', exc_info=True)
                     result[r["ticker"]] = {}
             return result
 
@@ -602,7 +638,8 @@ class SQLiteTableStore:
             for r in rows:
                 try:
                     result[r["ticker"]] = json.loads(r["inputs_json"])
-                except Exception:
+                except Exception as e:
+                    logger.error('Exception caught', exc_info=True)
                     result[r["ticker"]] = {}
             return result
 
@@ -611,7 +648,8 @@ class SQLiteTableStore:
             if row:
                 try:
                     return json.loads(row["value_json"])
-                except Exception:
+                except Exception as e:
+                    logger.error('Exception caught', exc_info=True)
                     return copy.deepcopy(self.default_data)
             return copy.deepcopy(self.default_data)
 
@@ -622,13 +660,15 @@ class SQLiteTableStore:
             if len(rows) == 1 and rows[0]["key"] == "__root__":
                 try:
                     return json.loads(rows[0]["value_json"])
-                except Exception:
+                except Exception as e:
+                    logger.error('Exception caught', exc_info=True)
                     return {}
             result = {}
             for r in rows:
                 try:
                     result[r["key"]] = json.loads(r["value_json"])
-                except Exception:
+                except Exception as e:
+                    logger.error('Exception caught', exc_info=True)
                     result[r["key"]] = r["value_json"]
             return result
 

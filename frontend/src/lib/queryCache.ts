@@ -26,6 +26,13 @@ const memoryCache = new Map<string, CacheEntry>();
 /** In-flight request dedup — maps key → Promise of the fetch result */
 const inflightRequests = new Map<string, Promise<unknown>>();
 
+type CacheListener = (key: string) => void;
+const cacheListeners = new Set<CacheListener>();
+
+function notifyListeners(key: string) {
+  cacheListeners.forEach(listener => listener(key));
+}
+
 // ---- sessionStorage helpers ----
 
 function readSessionCache<T>(key: string): CacheEntry<T> | null {
@@ -76,6 +83,7 @@ export function setCachedData<T>(key: string, data: T, ttlSeconds = 120): void {
   const entry: CacheEntry<T> = { data, fetchedAt: Date.now(), ttl: ttlSeconds * 1000 };
   memoryCache.set(key, entry);
   writeSessionCache(key, entry);
+  notifyListeners(key);
 }
 
 /**
@@ -106,6 +114,7 @@ export async function cachedFetch<T>(
     memoryCache.set(key, entry);
     writeSessionCache(key, entry);
     inflightRequests.delete(key);
+    notifyListeners(key);
     return data;
   }).catch((err) => {
     inflightRequests.delete(key);
@@ -243,12 +252,23 @@ export function useCachedFetch<T>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, url, ttlMs, enabled]);
 
-  // Initial fetch on mount
+  // Initial fetch on mount & subscription
   useEffect(() => {
     mountedRef.current = true;
     doFetch();
-    return () => { mountedRef.current = false; };
-  }, [doFetch]);
+
+    const listener = (notifiedKey: string) => {
+      if (notifiedKey === key) {
+        doFetch();
+      }
+    };
+    cacheListeners.add(listener);
+
+    return () => {
+      mountedRef.current = false;
+      cacheListeners.delete(listener);
+    };
+  }, [key, doFetch]);
 
   // Polling
   useEffect(() => {
@@ -357,8 +377,19 @@ export function useCachedQuery<T>(
   useEffect(() => {
     mountedRef.current = true;
     doFetch();
-    return () => { mountedRef.current = false; };
-  }, [doFetch]);
+
+    const listener = (notifiedKey: string) => {
+      if (notifiedKey === key) {
+        doFetch();
+      }
+    };
+    cacheListeners.add(listener);
+
+    return () => {
+      mountedRef.current = false;
+      cacheListeners.delete(listener);
+    };
+  }, [key, doFetch]);
 
   useEffect(() => {
     if (refetchInterval > 0 && enabled) {
@@ -384,6 +415,7 @@ export function useCachedQuery<T>(
 export function invalidateCache(key: string): void {
   memoryCache.delete(key);
   try { sessionStorage.removeItem(STORAGE_PREFIX + key); } catch {}
+  notifyListeners(key);
 }
 
 /**
@@ -392,12 +424,21 @@ export function invalidateCache(key: string): void {
  */
 export function invalidateCacheByPrefix(prefix: string): void {
   const keysToRemove = [...memoryCache.keys()].filter((k) => k.startsWith(prefix));
-  keysToRemove.forEach((k) => memoryCache.delete(k));
+  keysToRemove.forEach((k) => {
+    memoryCache.delete(k);
+    notifyListeners(k);
+  });
   try {
     const toRemove: string[] = [];
     for (let i = 0; i < sessionStorage.length; i++) {
       const sk = sessionStorage.key(i);
-      if (sk && sk.startsWith(STORAGE_PREFIX + prefix)) toRemove.push(sk);
+      if (sk && sk.startsWith(STORAGE_PREFIX + prefix)) {
+        toRemove.push(sk);
+        const actualKey = sk.substring(STORAGE_PREFIX.length);
+        if (!keysToRemove.includes(actualKey)) {
+          notifyListeners(actualKey);
+        }
+      }
     }
     toRemove.forEach((sk) => sessionStorage.removeItem(sk));
   } catch {}

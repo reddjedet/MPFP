@@ -10,24 +10,24 @@ export interface Ticker360InitialData {
   sector_name?: string;
   is_etf?: boolean;
   adr?: number | null;
-  adr_price?: number | null;
   local?: number | null;
   price?: number | null;
   ratio?: number | string;
   rsi?: number | null;
-  earnings_badge?: { badge_text?: string; badge_class?: string; target_month_name?: string; text?: string; class?: string; is_urgent?: boolean; [key: string]: unknown } | null;
+  earnings_badge?: string | number | null;
   gf_value?: number | null;
-  gf_signal?: string | number | boolean | Record<string, unknown> | null;
+  gf_signal?: string | null;
   discount_pct?: number | null;
   ppc?: number | null;
-  ppc_return?: string | number | boolean | Record<string, unknown> | null;
+  ppc_return?: string | number | null;
   pfcf?: number | null;
-  pfcf_signal?: string | number | boolean | Record<string, unknown> | null;
+  pfcf_signal?: string | null;
   nominals?: number;
   qty?: number;
   real_nominals?: number;
   value?: number;
   position_value_ars?: number;
+  [key: string]: unknown;
 }
 
 interface AppState {
