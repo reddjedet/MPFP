@@ -60,6 +60,17 @@ const fmtPct = (n: number, digits = 1) =>
   `${n.toLocaleString('es-AR', { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/** Normaliza el bloque fixed_income_holdings de la API a {ticker: {nominals, ppc}} */
+const mapFixedIncome = (raw: unknown): Record<string, RealHolding> => {
+  const out: Record<string, RealHolding> = {};
+  if (!raw || typeof raw !== 'object') return out;
+  Object.entries(raw as Record<string, any>).forEach(([tk, v]) => {
+    if (!v || typeof v !== 'object') return;
+    out[tk] = { nominals: Number((v as any).nominals) || 0, ppc: Number((v as any).ppc) || 0 };
+  });
+  return out;
+};
+
 export function useHoldingsManager() {
   const openTickerDrawer = useAppStore((s) => s.openTickerDrawer);
   const [portfolios, setPortfolios] = useState<Record<string, any>>(() => {
@@ -68,6 +79,15 @@ export function useHoldingsManager() {
   });
   const [quotes, setQuotes] = useState<Record<string, any>>({});
   const [realHoldings, setRealHoldings] = useState<Record<string, RealHolding>>({});
+  const [fixedIncomeHoldings, setFixedIncomeHoldings] = useState<Record<string, RealHolding>>({});
+  const [deletingFiTicker, setDeletingFiTicker] = useState<string | null>(null);
+  // Objetivo de renta fija: tamaño del sleeve (%) y reparto interno por ticker
+  const [draftFiSleeve, setDraftFiSleeve] = useState<number>(0);
+  const [fiTargetWeights, setFiTargetWeights] = useState<Record<string, number>>({});
+  const [isSavingFiTarget, setIsSavingFiTarget] = useState(false);
+  const [fiTargetDirty, setFiTargetDirty] = useState(false);
+  // Calendario de vencimientos (nombre, vencimiento, vencido)
+  const [fixedIncomeSpecs, setFixedIncomeSpecs] = useState<Record<string, any>>({});
   const [cashArs, setCashArs] = useState<number>(0);
   const selectedPf = useAppStore((s) => s.selectedPf);
   const setSelectedPf = useAppStore((s) => s.setSelectedPf);
@@ -148,11 +168,13 @@ export function useHoldingsManager() {
           map[tk] = { nominals: Number(v?.nominals) || 0, ppc: Number(v?.ppc) || 0 };
         });
         setRealHoldings(map);
+        setFixedIncomeHoldings(mapFixedIncome(data.fixed_income_holdings));
         setCashArs(Number(data.cash_ars) || 0);
       } catch (e) {
         console.error('Error fetching tenencias reales', e);
         if (isMounted) {
           setRealHoldings({});
+          setFixedIncomeHoldings({});
           setCashArs(0);
           setLoadError('No se pudieron cargar las tenencias reales.');
         }
@@ -349,12 +371,12 @@ export function useHoldingsManager() {
     result.push({
       label: 'Efectivo',
       value: fmtMoney(cashArs, 'ARS'),
-      sub: `${holdings.filter((h) => h.baseNominals > 0).length} posiciones informadas`,
+      sub: `${holdings.filter((h) => h.baseNominals > 0).length + Object.values(fixedIncomeHoldings).filter((v) => v.nominals > 0).length} posiciones informadas`,
       icon: <Wallet className="w-3 h-3" />
     });
 
     return result;
-  }, [holdings, mcmMultiplier, cashArs]);
+  }, [holdings, mcmMultiplier, cashArs, fixedIncomeHoldings]);
 
   const [draftHoldings, setDraftHoldings] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -387,6 +409,210 @@ export function useHoldingsManager() {
       delete updated[tickerToRemove];
       return updated;
     });
+  };
+
+  // ---- Posiciones de renta fija (LECAPs / soberanos / ONCER) ----
+  // Cargar el objetivo de renta fija ya persistido en la cartera (asset_allocation +
+  // fixed_income_assets), salvo que el usuario esté editando en este momento.
+  useEffect(() => {
+    if (!selectedPf) return;
+    const pf = (portfolios as Record<string, any>)[selectedPf];
+    if (!pf) return;
+    if (isEditingRef.current) return;
+    const alloc = pf.asset_allocation || {};
+    setDraftFiSleeve(Number(alloc.fixed_income_weight) || 0);
+    const next: Record<string, number> = {};
+    Object.entries(pf.fixed_income_assets || {}).forEach(([tk, v]: [string, any]) => {
+      next[tk] = Number(v?.target_weight_rf) || 0;
+    });
+    setFiTargetWeights(next);
+    setFiTargetDirty(false);
+  }, [selectedPf, portfolios]);
+
+  const fixedIncomeRows = useMemo(() => {
+    return Object.entries(fixedIncomeHoldings)
+      .map(([ticker, v]) => {
+        const spec = fixedIncomeSpecs[ticker];
+        return {
+          ticker,
+          nominals: v.nominals,
+          ppc: v.ppc,
+          // El PPC de renta fija se persiste en base 100 (convención BYMA/MAE).
+          invested: round2((v.nominals * v.ppc) / 100),
+          nombre: spec?.nombre ?? null,
+          vencimiento: spec?.vencimiento ?? null,
+          dias: typeof spec?.dias === 'number' ? spec.dias : null,
+          vencida: Boolean(spec?.vencida),
+          porVencer: Boolean(spec?.por_vencer)
+        };
+      })
+      .sort((a, b) => b.invested - a.invested);
+  }, [fixedIncomeHoldings, fixedIncomeSpecs]);
+
+  /**
+   * Calendario de vencimientos (LECAP_BONCAP_SPECS). Fuente estática del backend: a diferencia
+   * de la curva de BYMA, sigue incluyendo los títulos ya vencidos, que es justo el caso que
+   * necesitamos marcar para que el usuario limpie su tenencia.
+   */
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSpecs = async () => {
+      try {
+        const data = await queryClient.fetchQuery({
+          queryKey: ['fixed-income-specs'],
+          queryFn: async () => {
+            const res = await fetch('/api/fixed_income/specs_json');
+            if (!res.ok) throw new Error('Error al cargar el calendario de vencimientos');
+            return res.json();
+          },
+          staleTime: 60 * 60 * 1000
+        });
+        if (!isMounted) return;
+        setFixedIncomeSpecs((data?.specs && typeof data.specs === 'object') ? data.specs : {});
+      } catch (e) {
+        console.error('Error fetching specs de renta fija', e);
+        if (isMounted) setFixedIncomeSpecs({});
+      }
+    };
+    fetchSpecs();
+    return () => { isMounted = false; };
+  }, [retryTick]);
+
+  // Catálogo de títulos de renta fija para el selector "Agregar título"
+  const availableFiTickers = useMemo(() => {
+    const held = Object.keys(fixedIncomeHoldings);
+    const target = Object.keys(fiTargetWeights);
+    return Object.values(fixedIncomeSpecs)
+      .filter((s: any) => s?.ticker)
+      .sort((a: any, b: any) => {
+        // Primero los que todavía no están en cartera ni en el objetivo
+        const used = (t: string) => (held.includes(t) || target.includes(t) ? 1 : 0);
+        const byUsed = used(a.ticker) - used(b.ticker);
+        if (byUsed !== 0) return byUsed;
+        return String(a.ticker).localeCompare(String(b.ticker));
+      });
+  }, [fixedIncomeSpecs, fixedIncomeHoldings, fiTargetWeights]);
+
+  const handleAddFiTarget = (ticker: string) => {
+    if (!ticker) return;
+    setFiTargetWeights((prev) => (prev[ticker] !== undefined ? prev : { ...prev, [ticker]: 0 }));
+    // Alt+Fijado: la tenencia arranca en cero, el usuario define el peso en RF
+    setDraftFiSleeve((prev) => (prev > 0 ? prev : 20));
+    isEditingRef.current = true;
+    setFiTargetDirty(true);
+  };
+
+  const handleRemoveFiTarget = (ticker: string) => {
+    isEditingRef.current = true;
+    setFiTargetDirty(true);
+    setFiTargetWeights((prev) => {
+      const next = { ...prev };
+      delete next[ticker];
+      return next;
+    });
+  };
+
+  const handleFiTargetFieldChange = (ticker: string, value: string) => {
+    isEditingRef.current = true;
+    setFiTargetDirty(true);
+    const n = Number(value);
+    setFiTargetWeights((prev) => ({ ...prev, [ticker]: Number.isFinite(n) && n >= 0 ? n : 0 }));
+  };
+
+  const handleSleeveChange = (value: string) => {
+    isEditingRef.current = true;
+    setFiTargetDirty(true);
+    const n = Number(value);
+    setDraftFiSleeve(Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0);
+  };
+
+  /** Persiste el objetivo de renta fija. Lanza si el backend rechaza. Sin feedback propio. */
+  const persistFixedIncomeTarget = async () => {
+    if (!selectedPf) return;
+    const res = await fetch(
+      `/api/portfolios/fixed_income_target_json/${encodeURIComponent(selectedPf)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fixed_income_weight: draftFiSleeve,
+          fixed_income_assets: Object.entries(fiTargetWeights).map(([tk, w]) => ({
+            ticker: tk,
+            target_weight_rf: w
+          }))
+        })
+      }
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'No se pudo guardar el objetivo de renta fija.');
+    }
+    const body = await res.json().catch(() => null);
+    // Reflejar en la UI lo que el servidor efectivamente normalizó
+    if (body?.asset_allocation) setDraftFiSleeve(Number(body.asset_allocation.fixed_income_weight) || 0);
+    if (body?.fixed_income_assets && typeof body.fixed_income_assets === 'object') {
+      const next: Record<string, number> = {};
+      Object.entries(body.fixed_income_assets as Record<string, any>).forEach(([tk, v]: [string, any]) => {
+        next[tk] = Number(v?.target_weight_rf) || 0;
+      });
+      setFiTargetWeights(next);
+    }
+    queryClient.invalidateQueries({ queryKey: ['portfolios-list'] });
+    setFiTargetDirty(false);
+  };
+
+  const handleSaveFixedIncomeTarget = async () => {
+    setIsSavingFiTarget(true);
+    setFeedback(null);
+    try {
+      await persistFixedIncomeTarget();
+      isEditingRef.current = false;
+      setFeedback({ kind: 'success', msg: 'Objetivo de renta fija guardado.' });
+      window.dispatchEvent(new Event('refresh_portfolios'));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al guardar el objetivo de renta fija.';
+      console.error(err);
+      setFeedback({ kind: 'error', msg });
+    } finally {
+      setIsSavingFiTarget(false);
+    }
+  };
+
+  const handleDeleteFixedIncomeHolding = async (ticker: string) => {
+    if (!selectedPf) return;
+    setDeletingFiTicker(ticker);
+    setFeedback(null);
+    try {
+      const res = await fetch(
+        `/api/rotation/fixed_income/${encodeURIComponent(ticker)}?portfolio=${encodeURIComponent(selectedPf)}`,
+        { method: 'DELETE' }
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'No se pudo eliminar la posición de renta fija.');
+      }
+      const body = await res.json().catch(() => null);
+      const serverFi = body?.data?.fixed_income_holdings;
+      if (serverFi && typeof serverFi === 'object') {
+        setFixedIncomeHoldings(mapFixedIncome(serverFi));
+      } else {
+        setFixedIncomeHoldings((prev) => {
+          const next = { ...prev };
+          delete next[ticker];
+          return next;
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: [`rotation-holdings:${selectedPf}`] });
+      queryClient.invalidateQueries({ queryKey: [`portfolio-rebalance:${selectedPf}`] });
+      window.dispatchEvent(new Event('refresh_portfolios'));
+      setFeedback({ kind: 'success', msg: `Posición de renta fija ${ticker} eliminada de ${selectedPf}.` });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al eliminar la posición de renta fija.';
+      console.error(err);
+      setFeedback({ kind: 'error', msg });
+    } finally {
+      setDeletingFiTicker(null);
+    }
   };
 
   const handleSaveHoldings = async () => {
@@ -445,6 +671,14 @@ export function useHoldingsManager() {
         }
       }
 
+      // 4. Objetivo de renta fija, si el usuario lo modificó en esta pantalla.
+      // Así toda la vista (pesos, tenencias, fair values y objetivo RF) se guarda desde un solo botón.
+      let savedFiTarget = false;
+      if (fiTargetDirty) {
+        await persistFixedIncomeTarget();
+        savedFiTarget = true;
+      }
+
       // Refresco sin recargar la página: invalidar caches + re-fetch
       queryClient.invalidateQueries({ queryKey: ['portfolios-list'] });
       queryClient.invalidateQueries({ queryKey: ['cedears-quotes-default'] });
@@ -453,7 +687,12 @@ export function useHoldingsManager() {
       queryClient.invalidateQueries({ queryKey: [`portfolio-mcm:${selectedPf}`] });
       isEditingRef.current = false;
       setDraftHoldings({});
-      setFeedback({ kind: 'success', msg: 'Cambios guardados. Los nominales objetivo se recalcularon con los precios actuales.' });
+      setFeedback({
+        kind: 'success',
+        msg: savedFiTarget
+          ? 'Cambios guardados, incluido el objetivo de renta fija. Los nominales objetivo se recalcularon con los precios actuales.'
+          : 'Cambios guardados. Los nominales objetivo se recalcularon con los precios actuales.'
+      });
       window.dispatchEvent(new Event('refresh_portfolios'));
       setRetryTick((t) => t + 1);
     } catch (err) {
@@ -481,6 +720,12 @@ export function useHoldingsManager() {
     portfolios, setPortfolios,
     quotes, setQuotes,
     realHoldings, setRealHoldings,
+    fixedIncomeHoldings, setFixedIncomeHoldings,
+    fixedIncomeRows, handleDeleteFixedIncomeHolding, deletingFiTicker,
+    fixedIncomeSpecs, availableFiTickers,
+    draftFiSleeve, handleSleeveChange,
+    fiTargetWeights, handleFiTargetFieldChange, handleAddFiTarget, handleRemoveFiTarget,
+    handleSaveFixedIncomeTarget, isSavingFiTarget, fiTargetDirty,
     cashArs, setCashArs,
     selectedPf, setSelectedPf,
     loading, setLoading,

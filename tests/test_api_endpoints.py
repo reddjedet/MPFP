@@ -599,6 +599,133 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertGreaterEqual(s["cash_ars"], 0)
 
 
+    def test_fixed_income_target_normalizes_and_derives_weights(self):
+        """
+        El usuario informa el tamaño del sleeve y el reparto en pesos RELATIVOS a renta fija.
+        El servidor debe normalizar a 100 y derivar target_weight_portfolio y equity_weight,
+        de modo que los tres campos nunca queden desincronizados.
+        """
+        self.client.post("/api/portfolios/create_json", json={
+            "name": "fi_target_pf", "mode": "weights", "weights_str": "GGAL:60, YPF:40"
+        })
+
+        resp = self.client.post("/api/portfolios/fixed_income_target_json/fi_target_pf", json={
+            "fixed_income_weight": 40.0,
+            "fixed_income_assets": [
+                {"ticker": "S30S6", "target_weight_rf": 30.0},
+                {"ticker": "T31Y7", "target_weight_rf": 20.0},
+            ],
+        })
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertTrue(body["success"])
+
+        # 30+20 = 50 → normalizado a 60/40
+        fia = body["fixed_income_assets"]
+        self.assertAlmostEqual(fia["S30S6"]["target_weight_rf"], 60.0, places=4)
+        self.assertAlmostEqual(fia["T31Y7"]["target_weight_rf"], 40.0, places=4)
+
+        # Derivados: 60% de 40 = 24 ; 40% de 40 = 16 ; equity = 100 - 40
+        self.assertAlmostEqual(fia["S30S6"]["target_weight_portfolio"], 24.0, places=3)
+        self.assertAlmostEqual(fia["T31Y7"]["target_weight_portfolio"], 16.0, places=3)
+        alloc = body["asset_allocation"]
+        self.assertAlmostEqual(alloc["fixed_income_weight"], 40.0, places=2)
+        self.assertAlmostEqual(alloc["equity_weight"], 60.0, places=2)
+        self.assertEqual(alloc["fixed_income_policy"], "preserve")
+
+        # Persistencia real
+        exp = self.client.get("/api/portfolios/export_json/fi_target_pf").json()["fi_target_pf"]
+        self.assertIn("S30S6", exp["fixed_income_assets"])
+        self.assertAlmostEqual(exp["asset_allocation"]["equity_weight"], 60.0, places=2)
+        # No debe tocar los pesos de renta variable
+        self.assertIn("GGAL", exp["assets"])
+
+    def test_fixed_income_target_rejects_non_fixed_income_ticker(self):
+        """El objetivo de renta fija solo admite instrumentos de renta fija."""
+        self.client.post("/api/portfolios/create_json", json={
+            "name": "fi_bad_ticker", "mode": "weights", "weights_str": "GGAL:100"
+        })
+        resp = self.client.post("/api/portfolios/fixed_income_target_json/fi_bad_ticker", json={
+            "fixed_income_weight": 30.0,
+            "fixed_income_assets": [{"ticker": "GGAL", "target_weight_rf": 100.0}],
+        })
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("renta fija", resp.json()["error"].lower())
+
+        exp = self.client.get("/api/portfolios/export_json/fi_bad_ticker").json()["fi_bad_ticker"]
+        self.assertNotIn("fixed_income_assets", exp)
+
+    def test_fixed_income_target_rejects_duplicate_ticker(self):
+        """Ticker repetido en el objetivo → 400, sin persistir nada."""
+        self.client.post("/api/portfolios/create_json", json={
+            "name": "fi_dupe", "mode": "weights", "weights_str": "GGAL:100"
+        })
+        resp = self.client.post("/api/portfolios/fixed_income_target_json/fi_dupe", json={
+            "fixed_income_weight": 30.0,
+            "fixed_income_assets": [
+                {"ticker": "S30S6", "target_weight_rf": 50.0},
+                {"ticker": "S30S6", "target_weight_rf": 50.0},
+            ],
+        })
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("duplicado", resp.json()["error"].lower())
+
+    def test_fixed_income_target_zero_sleeve_deactivates(self):
+        """
+        Sleeve 0 (o lista vacía) deja la cartera 100% renta variable y borra el objetivo,
+        revirtiendo la renta fija al estado "invisible para el motor".
+        """
+        self.client.post("/api/portfolios/create_json", json={
+            "name": "fi_off_pf", "mode": "weights", "weights_str": "GGAL:100"
+        })
+        on = self.client.post("/api/portfolios/fixed_income_target_json/fi_off_pf", json={
+            "fixed_income_weight": 50.0,
+            "fixed_income_assets": [{"ticker": "S30S6", "target_weight_rf": 100.0}],
+        })
+        self.assertEqual(on.status_code, 200)
+
+        off = self.client.post("/api/portfolios/fixed_income_target_json/fi_off_pf", json={
+            "fixed_income_weight": 0.0,
+            "fixed_income_assets": []
+        })
+        self.assertEqual(off.status_code, 200)
+        self.assertEqual(off.json()["fixed_income_assets"], {})
+        self.assertAlmostEqual(off.json()["asset_allocation"]["fixed_income_weight"], 0.0, places=2)
+        self.assertAlmostEqual(off.json()["asset_allocation"]["equity_weight"], 100.0, places=2)
+
+        exp = self.client.get("/api/portfolios/export_json/fi_off_pf").json()["fi_off_pf"]
+        self.assertNotIn("fixed_income_assets", exp)
+
+    def test_fixed_income_target_unknown_portfolio_returns_404(self):
+        resp = self.client.post("/api/portfolios/fixed_income_target_json/no_existe_pf", json={
+            "fixed_income_weight": 30.0,
+            "fixed_income_assets": [{"ticker": "S30S6", "target_weight_rf": 100.0}],
+        })
+        self.assertEqual(resp.status_code, 404)
+
+    def test_fixed_income_specs_json_incluye_titulos_vencidos(self):
+        """
+        specs_json es la fuente estática de vencimientos. Debe seguir respondiendo para los
+        títulos YA vencidos, que desaparecen de la curva de BYMA (es el caso que dispara el
+        aviso "Vencida" en la UI).
+        """
+        resp = self.client.get("/api/fixed_income/specs_json")
+        self.assertEqual(resp.status_code, 200)
+        specs = resp.json()["specs"]
+
+        self.assertIn("S30S6", specs)
+        s30s6 = specs["S30S6"]
+        self.assertEqual(s30s6["vencimiento"], "2026-09-30")
+        self.assertTrue(s30s6["vencida"], "S30S6 venció el 2026-09-30 y debe marcarse como vencida")
+        self.assertIsInstance(s30s6["nombre"], str)
+
+        # Todo título vencido tiene días negativos; ningún vigente puede estar vencido
+        for tk, s in specs.items():
+            if s["vencida"]:
+                self.assertLess(s["dias"], 0, f"{tk} marcado como vencido con días >= 0")
+            else:
+                self.assertGreaterEqual(s["dias"], 0, f"{tk} vigente con días negativos")
+
     def test_export_import_roundtrip_conserva_metadata(self):
         payload = {
             "roundtrip_pf": {

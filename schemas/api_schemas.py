@@ -3,7 +3,7 @@ Esquemas Pydantic v2 Fuertemente Tipados para Contratos REST - MPFP (API-02)
 Define modelos de entrada y salida, serializadores y validadores de invariantes.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator
 
 from services.financial_validation import (
@@ -136,6 +136,39 @@ class FixedIncomeHoldingPayload(BaseModel):
     @classmethod
     def check_ppc(cls, v: Optional[float]) -> Optional[float]:
         return validate_price_or_ppc(v, allow_none=True, field_name="PPC Renta Fija")
+
+
+class FixedIncomeTargetItem(BaseModel):
+    """Peso objetivo de un título dentro del sleeve (mandato) de renta fija."""
+    ticker: str = Field(..., description="Ticker del instrumento de renta fija objetivo.")
+    target_weight_rf: float = Field(..., ge=0.0, le=100.0, description="Peso relativo dentro de la porción de renta fija, en % (0-100).")
+
+    @field_validator("ticker")
+    @classmethod
+    def check_ticker(cls, v: str) -> str:
+        return validate_ticker(v)
+
+
+class PortfolioFixedIncomeTargetRequest(BaseModel):
+    """
+    Objetivo de renta fija de una cartera.
+
+    El usuario informa únicamente el TAMAÑO del sleeve de renta fija y el REPARTO dentro de
+    ese sleeve. El peso de cada título sobre la cartera total (`target_weight_portfolio`) y el
+    peso de renta variable (`equity_weight`) se derivan en el servidor para que ambos campos
+    nunca puedan quedar desincronizados.
+
+    Los `target_weight_rf` que no sumen exactamente 100 se normalizan proporcionalmente,
+    igual que ya se hace con los pesos de renta variable en el motor de rotación.
+    """
+    fixed_income_weight: float = Field(
+        0.0, ge=0.0, le=100.0,
+        description="Porción de la cartera destinada a renta fija, en % (0-100). Con 0 se desactiva la renta fija."
+    )
+    fixed_income_assets: List[FixedIncomeTargetItem] = Field(
+        default_factory=list,
+        description="Reparto del sleeve de renta fija entre títulos. Vacío equivale a sin renta fija objetivo."
+    )
 
 
 class BulkHoldingItem(BaseModel):

@@ -9,6 +9,7 @@ from schemas.api_schemas import (
     PortfolioCreateRequest,
     PortfolioWeightsRequest,
     PortfolioSettingsRequest,
+    PortfolioFixedIncomeTargetRequest,
     QuickUpdateAssetRequest,
     QuickUpdateAssetResponse,
     PortfolioListResponse,
@@ -50,6 +51,7 @@ from services.security_service import (
     MAX_FILE_SIZE_BYTES
 )
 from services.earnings_service import get_ticker_earnings_badge, load_earnings_calendar
+from services.financial_units import is_fixed_income_ticker
 from services.fair_value_service import (
     get_fair_value,
     load_fair_values,
@@ -221,6 +223,104 @@ def update_portfolio_weights_json(pf_type: str, body: PortfolioWeightsRequest):
         "pf_type": pf_clean,
         "assets": pf_data["assets"],
         "mode": pf_data["mode"]
+    })
+
+
+FIXED_INCOME_POLICY_DEFAULT = "preserve"
+
+
+@router.post("/fixed_income_target_json/{pf_type}", response_model=SuccessEnvelope)
+def update_portfolio_fixed_income_target_json(pf_type: str, body: PortfolioFixedIncomeTargetRequest):
+    """
+    Define el objetivo de renta fija de una cartera existente.
+
+    El usuario informa únicamente el TAMAÑO del sleeve de renta fija (`fixed_income_weight`)
+    y el REPARTO de ese sleeve entre títulos (`target_weight_rf`). El servidor deriva de
+    esos dos únicos datos:
+
+      - `target_weight_portfolio` de cada título  =  peso_rf / 100 × tamaño_del_sleeve
+      - `equity_weight`                           =  100 − tamaño_del_sleeve
+
+    Así los tres campos quedan siempre consistentes entre sí, que antes solo ocurría por
+    suerte cuando la cartera tenía un único título de renta fija.
+
+    Los pesos que no sumen 100 se normalizan proporcionalmente (mismo criterio que los
+    pesos de renta variable en `analyze_rotation`). Con sleeve 0 o sin títulos, la cartera
+    queda 100% renta variable y la renta fija vuelve a ser invisible para el motor.
+    """
+    pf_clean = sanitize_portfolio_name(pf_type)
+    if not pf_clean:
+        return JSONResponse({"error": "Nombre de portfolio no válido."}, status_code=400)
+
+    portfolios_data = load_portfolios()
+    if pf_clean not in portfolios_data:
+        raise PortfolioNotFoundError(f"La cartera '{pf_clean}' no existe.")
+
+    # Validar y sanear tickers: el objetivo solo admite instrumentos de renta fija
+    clean_items: Dict[str, float] = {}
+    for item in body.fixed_income_assets:
+        tk = sanitize_ticker(item.ticker)
+        if not tk:
+            return JSONResponse({"error": f"Ticker inválido: '{item.ticker}'."}, status_code=400)
+        if not is_fixed_income_ticker(tk):
+            return JSONResponse(
+                {"error": f"'{tk}' no es un instrumento de renta fija."}, status_code=400
+            )
+        if tk in clean_items:
+            return JSONResponse(
+                {"error": f"Ticker duplicado en el objetivo de renta fija: '{tk}'."}, status_code=400
+            )
+        clean_items[tk] = float(item.target_weight_rf)
+
+    sleeve = max(0.0, min(100.0, float(body.fixed_income_weight)))
+    total_rf = sum(clean_items.values())
+
+    # Normalización silenciosa a 100; las participaciones en 0 se descartan
+    normalized: Dict[str, float] = {}
+    if total_rf > 0.0:
+        normalized = {
+            tk: round((w / total_rf) * 100.0, 4) for tk, w in clean_items.items() if w > 0.0
+        }
+
+    pf_data = portfolios_data[pf_clean]
+    asset_alloc = dict(pf_data.get("asset_allocation") or {})
+
+    if sleeve <= 0.0 or not normalized:
+        # Cartera 100% renta variable: se desactiva el objetivo de renta fija
+        pf_data.pop("fixed_income_assets", None)
+        asset_alloc["equity_weight"] = 100.0
+        asset_alloc["fixed_income_weight"] = 0.0
+        asset_alloc["fixed_income_policy"] = FIXED_INCOME_POLICY_DEFAULT
+        pf_data["asset_allocation"] = asset_alloc
+        portfolios_data[pf_clean] = pf_data
+        save_portfolios(portfolios_data)
+        return JSONResponse({
+            "success": True,
+            "pf_type": pf_clean,
+            "asset_allocation": asset_alloc,
+            "fixed_income_assets": {},
+        })
+
+    fi_assets: Dict[str, Dict[str, float]] = {}
+    for tk, weight_rf in normalized.items():
+        fi_assets[tk] = {
+            "target_weight_portfolio": round((weight_rf / 100.0) * sleeve, 4),
+            "target_weight_rf": weight_rf,
+        }
+
+    asset_alloc["equity_weight"] = round(100.0 - sleeve, 2)
+    asset_alloc["fixed_income_weight"] = round(sleeve, 2)
+    asset_alloc["fixed_income_policy"] = FIXED_INCOME_POLICY_DEFAULT
+    pf_data["asset_allocation"] = asset_alloc
+    pf_data["fixed_income_assets"] = fi_assets
+    portfolios_data[pf_clean] = pf_data
+    save_portfolios(portfolios_data)
+
+    return JSONResponse({
+        "success": True,
+        "pf_type": pf_clean,
+        "asset_allocation": asset_alloc,
+        "fixed_income_assets": fi_assets,
     })
 
 

@@ -1,6 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
-from services.fixed_income_service import fetch_yield_curve, calc_spread, fetch_lecaps
+from datetime import date
+from services.fixed_income_service import fetch_yield_curve, calc_spread, fetch_lecaps, LECAP_BONCAP_SPECS
 import pandas as pd
 import numpy as np
 
@@ -13,6 +14,37 @@ def _bond_type(ticker: str) -> str:
     elif ticker_upper.startswith("AL") or ticker_upper.startswith("AE"):
         return "Ley Local"
     return "Ley Local"
+
+@router.get("/specs_json", response_class=JSONResponse)
+def get_fixed_income_specs_json():
+    """
+    Calendario de vencimientos de LECAPs y BONCAPs (fuente estática, sin red).
+
+    A diferencia de `curve_json`, este endpoint no consulta el mercado: por eso sigue
+    respondiendo para los títulos YA VENCIDOS, que han desaparecido de la curva de BYMA.
+    Es la fuente confiable para marcar "LECAP vencida" en la UI de tenencias.
+    """
+    hoy = date.today()
+    out = {}
+    for ticker, spec in LECAP_BONCAP_SPECS.items():
+        try:
+            vto = date.fromisoformat(str(spec.get("vencimiento")))
+        except (TypeError, ValueError):
+            vto = None
+        dias = (vto - hoy).days if vto else None
+        out[ticker] = {
+            "ticker": ticker,
+            "nombre": spec.get("nombre"),
+            "tipo": spec.get("tipo"),
+            "emision": spec.get("emision"),
+            "vencimiento": vto.isoformat() if vto else None,
+            "dias": dias,
+            # Vencido = el día del vencimiento ya pasó
+            "vencida": bool(vto and vto < hoy),
+            "por_vencer": bool(dias is not None and 0 <= dias <= 30),
+        }
+    return JSONResponse({"as_of": hoy.isoformat(), "specs": out})
+
 
 @router.get("/curve_json", response_class=JSONResponse)
 def get_yield_curve_json(

@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { queryClient } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
-import { Plus, Upload, Trash2, AlertTriangle, Save, Download, Layers, Wallet, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, Upload, Trash2, AlertTriangle, Save, Download, Layers, Wallet, TrendingUp, TrendingDown, Landmark } from 'lucide-react';
 import { Dropdown } from '../ui/Dropdown';
 import { CreatePortfolioModal } from './CreatePortfolioModal';
 import { useHoldingsManager } from '@/hooks/useHoldingsManager';
@@ -14,8 +14,27 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
     mcmMultiplier, handleMultiplierChange, feedback, setFeedback, showDeleteAlert, setShowDeleteAlert,
     showImportModal, setShowImportModal, showCreateModal, setShowCreateModal, chartMode, setChartMode,
     holdings, composition, kpis, draftHoldings, handleFieldChange, handleRemoveAsset, handleSaveHoldings,
-    handleExportJSON, pfNames, isSaving
+    handleExportJSON, pfNames, isSaving,
+    fixedIncomeRows, handleDeleteFixedIncomeHolding, deletingFiTicker,
+    fixedIncomeSpecs, availableFiTickers,
+    draftFiSleeve, handleSleeveChange,
+    fiTargetWeights, handleFiTargetFieldChange, handleAddFiTarget, handleRemoveFiTarget,
+    handleSaveFixedIncomeTarget, isSavingFiTarget, fiTargetDirty
   } = hm;
+
+  const [fiPendingDelete, setFiPendingDelete] = useState<string | null>(null);
+  const [fiPendingRemove, setFiPendingRemove] = useState<string | null>(null);
+  const [fiNewTicker, setFiNewTicker] = useState<string>('');
+
+  const fiTargetTickers = Object.keys(fiTargetWeights);
+  const fiTargetRows = useMemo(
+    () => fiTargetTickers.map((tk) => ({ ticker: tk, spec: fixedIncomeSpecs[tk] })),
+    [fiTargetTickers.join('|'), fixedIncomeSpecs]
+  );
+  const fiWeightTotal = fiTargetRows.reduce((s, r) => s + (fiTargetWeights[r.ticker] || 0), 0);
+  const fiAvailableOptions = availableFiTickers.filter(
+    (s: any) => !fiTargetTickers.includes(s.ticker) && !fixedIncomeRows.some((f: any) => f.ticker === s.ticker)
+  );
 
   const fmtPct = (n: number, digits = 1) => `${n.toLocaleString('es-AR', { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
   const fmtMoney = (n: number, currency = '') => {
@@ -288,6 +307,242 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
               </table>
             </div>
           </div>
+
+          {/* RENTA FIJA: posiciones informadas (LECAPs / soberanos / ONCER) */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-border bg-secondary/30 flex justify-between items-center gap-3">
+              <div className="flex items-center gap-2.5">
+                <Landmark className="w-4 h-4 text-emerald-400 shrink-0" />
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">Títulos de Renta Fija</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Posiciones de renta fija informadas. Se gestionan de forma independiente de los pesos del portafolio.
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs text-muted-foreground font-mono shrink-0">
+                {fixedIncomeRows.length} {fixedIncomeRows.length === 1 ? 'título' : 'títulos'}
+              </span>
+            </div>
+
+            {fixedIncomeRows.length === 0 ? (
+              <p className="px-4 py-6 text-center text-xs text-muted-foreground">
+                Esta cartera no tiene posiciones de renta fija informadas.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-muted-foreground uppercase bg-secondary/50 border-b border-border">
+                    <tr>
+                      <th scope="col" className="px-4 py-3 font-medium">Ticker</th>
+                      <th scope="col" className="px-4 py-3 font-medium text-right">Nominales</th>
+                      <th scope="col" className="px-4 py-3 font-medium text-right">PPC (Base 100)</th>
+                      <th scope="col" className="px-4 py-3 font-medium text-right">Capital Invertido</th>
+                      <th scope="col" className="px-4 py-3 font-medium text-center">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {fixedIncomeRows.map((fi: any) => (
+                      <tr key={fi.ticker} className="hover:bg-secondary/30 transition-colors border-b border-border/50 last:border-0">
+                        <td className="px-4 py-2 align-middle">
+                          <div className="flex items-center gap-1.5 flex-wrap h-full min-h-[40px]">
+                            <span className="font-bold text-foreground font-mono">{fi.ticker}</span>
+                            {fi.vencida ? (
+                              <span
+                                title={`Vencida el ${fi.vencimiento}. El capital fue cobrado: quitá la posición.`}
+                                className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono"
+                              >
+                                Vencida
+                              </span>
+                            ) : fi.porVencer ? (
+                              <span
+                                title={`Vence en ${fi.dias} días (${fi.vencimiento}).`}
+                                className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono"
+                              >
+                                Vence {fi.dias}d
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-blue-500/20 text-blue-300 border border-blue-500/30 font-mono">
+                                Renta Fija
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 text-right align-middle font-mono text-xs text-foreground">
+                          <div className="flex items-center justify-end h-full min-h-[40px]">
+                            {fi.nominals.toLocaleString('es-AR')}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 text-right align-middle">
+                          <div className="flex items-center justify-end h-full min-h-[40px]">
+                            <span className="font-mono text-xs text-foreground">
+                              {fi.ppc > 0 ? fmtMoney(fi.ppc) : '—'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 text-right align-middle font-mono text-xs font-bold text-foreground">
+                          <div className="flex items-center justify-end h-full min-h-[40px]">
+                            {fmtMoney(fi.invested, 'ARS')}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 align-middle">
+                          <div className="flex items-center justify-center h-full min-h-[40px]">
+                            <button
+                              type="button"
+                              disabled={deletingFiTicker === fi.ticker}
+                              onClick={() => setFiPendingDelete(fi.ticker)}
+                              title={`Quitar ${fi.ticker} de la cartera ${selectedPf}`}
+                              aria-label={`Eliminar posición de renta fija ${fi.ticker}`}
+                              className="p-2 min-h-9 min-w-9 items-center justify-center text-muted-foreground hover:text-negative hover:bg-negative/10 rounded transition-colors inline-flex cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* OBJETIVO DE RENTA FIJA: tamaño del sleeve + reparto interno */}
+            <div className="border-t border-border p-4 bg-secondary/20">
+              <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 mb-3">
+                <div>
+                  <h4 className="text-xs font-bold text-foreground">Objetivo de renta fija</h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Definí cuánto de la cartera querés en renta fija y cómo lo repartís. Con peso objetivo,
+                    el título deja de ser invisible para el motor de rotación.
+                  </p>
+                </div>
+                <div className="flex items-end gap-3 shrink-0">
+                  <div>
+                    <label htmlFor="fi-sleeve" className="block text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">
+                      Renta fija en la cartera
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        id="fi-sleeve"
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.01"
+                        value={draftFiSleeve}
+                        onChange={(e) => handleSleeveChange(e.target.value)}
+                        className={inputClasses + " max-w-[90px]"}
+                      />
+                      <span className="text-xs text-muted-foreground font-mono">%</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Renta variable: {(100 - draftFiSleeve).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSaveFixedIncomeTarget}
+                    disabled={isSavingFiTarget}
+                    className="min-h-9 px-3 rounded-lg text-xs font-bold bg-accent hover:bg-accent/80 text-accent-foreground transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    {isSavingFiTarget ? 'Guardando...' : 'Guardar objetivo'}
+                  </button>
+                  {fiTargetDirty && (
+                    <span className="self-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Sin guardar
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {fiTargetDirty && (
+                <p className="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2 mb-3">
+                  Hay cambios en el objetivo de renta fija sin guardar. Usá "Guardar objetivo" acá o el
+                  botón "Guardar Cambios" de arriba.
+                </p>
+              )}
+
+              {fiTargetRows.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground py-2">
+                  Sin títulos de renta fija en el objetivo: esta cartera se trata como 100% renta variable.
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+                    <span>Reparto dentro de la renta fija</span>
+                    <span className={cn('font-mono', Math.abs(fiWeightTotal - 100) > 0.01 && 'text-amber-400')}>
+                      Suma: {fmtPct(fiWeightTotal, 2)}
+                      {Math.abs(fiWeightTotal - 100) > 0.01 ? ' → se normalizará a 100% al guardar' : ''}
+                    </span>
+                  </div>
+                  {fiTargetRows.map((row: any) => (
+                    <div key={row.ticker} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-card border border-border">
+                      <span className="font-mono text-xs font-bold text-foreground min-w-[64px]">{row.ticker}</span>
+                      {row.spec?.vencida && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
+                          Vencida
+                        </span>
+                      )}
+                      <span className="flex-1 min-w-0 truncate text-[10px] text-muted-foreground" title={row.spec?.nombre}>
+                        {row.spec?.nombre || 'Sin datos de calendario'}
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.01"
+                        aria-label={`Peso en renta fija de ${row.ticker}`}
+                        value={fiTargetWeights[row.ticker] ?? 0}
+                        onChange={(e) => handleFiTargetFieldChange(row.ticker, e.target.value)}
+                        className={inputClasses + " max-w-[86px]"}
+                      />
+                      <span className="text-[10px] text-muted-foreground font-mono">% RF</span>
+                      <button
+                        type="button"
+                        onClick={() => setFiPendingRemove(row.ticker)}
+                        title={`Quitar ${row.ticker} del objetivo de renta fija`}
+                        aria-label={`Quitar ${row.ticker} del objetivo de renta fija`}
+                        className="p-1.5 min-h-8 min-w-8 inline-flex items-center justify-center text-muted-foreground hover:text-negative hover:bg-negative/10 rounded transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {fiAvailableOptions.length > 0 && (
+                <div className="flex items-end gap-2 mt-3">
+                  <div className="flex-1 min-w-0">
+                    <label htmlFor="fi-new-ticker" className="block text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">
+                      Agregar título al objetivo
+                    </label>
+                    <select
+                      id="fi-new-ticker"
+                      value={fiNewTicker}
+                      onChange={(e) => setFiNewTicker(e.target.value)}
+                      className="w-full bg-background border border-border rounded-md px-2 py-1.5 min-h-8 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                    >
+                      <option value="">Elegí un LECAP o BONCAP...</option>
+                      {fiAvailableOptions.map((s: any) => (
+                        <option key={s.ticker} value={s.ticker}>
+                          {s.ticker} — {s.nombre || 'sin nombre'}
+                          {s.vencida ? ' (vencida)' : s.dias !== null && s.dias !== undefined ? ` (${s.dias}d)` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!fiNewTicker}
+                    onClick={() => { handleAddFiTarget(fiNewTicker); setFiNewTicker(''); }}
+                    className="min-h-8 px-3 rounded-md text-xs font-bold bg-secondary hover:bg-border border border-border transition-colors disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Agregar
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* RIGHT COLUMN: Visual Analytics */}
@@ -423,6 +678,81 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
           setRetryTick((t) => t + 1);
         }}
       />
+
+      {/* Confirmar quitar un título del objetivo de renta fija */}
+      {fiPendingRemove && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div role="dialog" aria-modal="true" aria-label="Confirmar quitar del objetivo de renta fija" className="bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 bg-negative/10 rounded-full">
+                <AlertTriangle className="w-6 h-6 text-negative" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">¿Quitar {fiPendingRemove} del objetivo?</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Se saca <strong>{fiPendingRemove}</strong> de la composición objetivo de <strong>{selectedPf}</strong>.
+              Esto no toca tus nominales informados: solo deja de ser parte del armado.
+            </p>
+            {fiTargetTickers.length === 1 && (
+              <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2 mb-4">
+                Era el único título de renta fija del objetivo: al guardar, la cartera queda 100% renta variable
+                (la renta fija vuelve a ser invisible para el motor de rotación).
+              </p>
+            )}
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setFiPendingRemove(null)}
+                className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-secondary transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { handleRemoveFiTarget(fiPendingRemove); setFiPendingRemove(null); }}
+                className="px-4 py-2 bg-negative text-white rounded-lg text-sm font-bold hover:bg-negative/80 transition-colors"
+              >
+                Quitar del objetivo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmar eliminación de posición de renta fija */}
+      {fiPendingDelete && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div role="dialog" aria-modal="true" aria-label="Confirmar eliminación de posición de renta fija" className="bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 bg-negative/10 rounded-full">
+                <AlertTriangle className="w-6 h-6 text-negative" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">¿Quitar {fiPendingDelete}?</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-6">
+              Se eliminará la posición de renta fija <strong>{fiPendingDelete}</strong> de la cartera{' '}
+              <strong>{selectedPf}</strong>. Esta acción no se puede deshacer desde esta pantalla.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setFiPendingDelete(null)}
+                className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-secondary transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={deletingFiTicker === fiPendingDelete}
+                onClick={async () => {
+                  const ticker = fiPendingDelete;
+                  await handleDeleteFixedIncomeHolding(ticker);
+                  setFiPendingDelete(null);
+                }}
+                className="px-4 py-2 bg-negative text-white rounded-lg text-sm font-bold hover:bg-negative/80 transition-colors disabled:opacity-50"
+              >
+                {deletingFiTicker === fiPendingDelete ? 'Eliminando...' : 'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Alert Modal */}
       {showDeleteAlert && (

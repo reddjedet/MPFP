@@ -321,6 +321,59 @@ class TestRotationService(unittest.TestCase):
         self.assertEqual(fi_del_resp.status_code, 200)
         self.assertNotIn("S30S6", fi_del_resp.json().get("data", {}).get("fixed_income_holdings", {}))
 
+    def test_delete_fixed_income_preserves_equities_and_cash(self):
+        """
+        El borrado de una posición de renta fija (p.ej. un LECAP vencido) no debe tocar
+        las tenencias de renta variable ni el efectivo de la misma cartera.
+        """
+        save_user_holdings(
+            {
+                "holdings": {"GGAL": {"nominals": 1000, "ppc": 5000.0}},
+                "fixed_income_holdings": {"S30S6": {"nominals": 335457, "ppc": 112.08}},
+                "cash_ars": 12345.67,
+            },
+            portfolio_key="bmb",
+        )
+
+        resp = self.client.delete("/api/rotation/fixed_income/S30S6?portfolio=bmb")
+        self.assertEqual(resp.status_code, 200)
+
+        data = resp.json().get("data", {})
+        self.assertEqual(data.get("fixed_income_holdings", {}), {})
+        # Renta variable y efectivo intactos
+        self.assertEqual(data.get("holdings", {}).get("GGAL", {}).get("nominals"), 1000)
+        self.assertEqual(data.get("cash_ars"), 12345.67)
+
+        # Persistencia real (fuera de la respuesta del endpoint)
+        persisted = load_user_holdings("bmb")
+        self.assertNotIn("S30S6", persisted.get("fixed_income_holdings", {}))
+        self.assertIn("GGAL", persisted.get("holdings", {}))
+
+    def test_bulk_update_holdings_preserves_fixed_income(self):
+        """
+        El guardado masivo de tenencias de renta variable (botón "Guardar Cambios" de la vista
+        "Informar Tenencias") nunca debe borrar implícitamente las posiciones de renta fija.
+        """
+        save_user_holdings(
+            {
+                "holdings": {},
+                "fixed_income_holdings": {"S30S6": {"nominals": 335457, "ppc": 112.08}},
+                "cash_ars": 0.0,
+            },
+            portfolio_key="bmb",
+        )
+
+        resp = self.client.post(
+            "/api/rotation/holdings/bulk_update",
+            json={"portfolio": "bmb", "holdings": {"GGAL": {"nominals": 100, "ppc": 5000.0}}},
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        persisted = load_user_holdings("bmb")
+        self.assertIn("S30S6", persisted.get("fixed_income_holdings", {}))
+        self.assertEqual(persisted["fixed_income_holdings"]["S30S6"]["nominals"], 335457)
+        self.assertEqual(persisted.get("holdings", {}).get("GGAL", {}).get("nominals"), 100)
+
     @patch("services.rotation_service.evaluate_fair_value_signal")
     @patch("services.rotation_service.get_multiple_tickers_data")
     def test_neutral_rsi_and_overvaluation_downgrades_to_low_priority(self, mock_multiple_data, mock_gf):
