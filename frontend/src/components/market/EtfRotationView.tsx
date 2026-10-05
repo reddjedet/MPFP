@@ -1,14 +1,14 @@
 import React from 'react';
-import { Compass, TrendingUp, RefreshCw, Activity, Sparkles, ArrowUpRight, ArrowDownRight, Search } from 'lucide-react';
+import { Compass, RefreshCw, Activity, Sparkles, ArrowUpRight, ArrowDownRight, Search } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import { useEtfRotation, ETF_COLORS, EtfItem } from '@/hooks/useEtfRotation';
-import { EtfRotationWeeklyChart, EtfRotationBarChart } from './EtfRotationChart';
+import { useEtfRotation, EtfItem } from '@/hooks/useEtfRotation';
+import { EtfRotationBarChart } from './EtfRotationBarChart';
 
 export const EtfRotationView: React.FC = () => {
   const { openTickerDrawer: openTicker360 } = useAppStore();
   const {
     data, loading, refreshing, searchFilter, setSearchFilter,
-    universeFilter, setUniverseFilter, selectedTicker, setSelectedTicker,
+    universeFilter, setUniverseFilter,
     fetchData, spyItem, majorIndices, filteredMajorIndices,
     filteredSectorItems, displayedItems, topLeader, topLaggard
   } = useEtfRotation();
@@ -35,7 +35,7 @@ export const EtfRotationView: React.FC = () => {
             Seguimiento Semanal de ETFs vs SPY
           </h1>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 font-bold border border-blue-500/30">
-            SPY Base: {data?.benchmark?.perf_w ? `${data.benchmark.perf_w > 0 ? '+' : ''}${data.benchmark.perf_w.toFixed(1)}%` : '—'} (1W)
+            SPY Base: {data?.benchmark?.perf_w !== null && data?.benchmark?.perf_w !== undefined ? `${data.benchmark.perf_w > 0 ? '+' : ''}${data.benchmark.perf_w.toFixed(1)}%` : '—'} (1W)
           </span>
         </div>
 
@@ -109,11 +109,11 @@ export const EtfRotationView: React.FC = () => {
           </div>
         </div>
 
-        {/* Tarjeta 2: EXTREMOS TÁCTICOS (1W) */}
+        {/* Tarjeta 2: Diferenciales extremos semanales vs SPY */}
         <div className="bg-secondary border border-border rounded-xl p-4 flex flex-col justify-between shadow-sm">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
             <span className="font-bold uppercase tracking-wider text-[11px] text-muted-foreground">
-              EXTREMOS TÁCTICOS (1W)
+              EXTREMOS TÁCTICOS VS SPY (1W)
             </span>
             <Sparkles className="w-4 h-4 text-amber-400" />
           </div>
@@ -125,7 +125,7 @@ export const EtfRotationView: React.FC = () => {
               </span>
               <span className="font-bold text-positive">
                 {topLeader?.diff_vs_spy_w !== null && topLeader?.diff_vs_spy_w !== undefined
-                  ? `${topLeader.diff_vs_spy_w > 0 ? '+' : ''}${topLeader.diff_vs_spy_w.toFixed(1)}%`
+                  ? `${topLeader.diff_vs_spy_w > 0 ? '+' : ''}${topLeader.diff_vs_spy_w.toFixed(1)} p.p.`
                   : '—'}
               </span>
             </div>
@@ -135,99 +135,32 @@ export const EtfRotationView: React.FC = () => {
               </span>
               <span className="font-bold text-rose-400">
                 {topLaggard?.diff_vs_spy_w !== null && topLaggard?.diff_vs_spy_w !== undefined
-                  ? `${topLaggard.diff_vs_spy_w > 0 ? '+' : ''}${topLaggard.diff_vs_spy_w.toFixed(1)}%`
+                  ? `${topLaggard.diff_vs_spy_w > 0 ? '+' : ''}${topLaggard.diff_vs_spy_w.toFixed(1)} p.p.`
                   : '—'}
               </span>
             </div>
           </div>
 
           <div className="pt-2 border-t border-border text-[11px] text-muted-foreground flex justify-between font-mono">
-            <span>Spread Líder/Rezagado:</span>
+            <span>Spread Líder/Rezagado (p.p.):</span>
             <strong className="text-foreground font-bold">
-              {data?.spread_extremos ? `${data.spread_extremos.toFixed(1)}%` : '—'}
+              {data?.spread_extremos !== null && data?.spread_extremos !== undefined ? `${data.spread_extremos.toFixed(1)} p.p.` : '—'}
             </strong>
           </div>
         </div>
       </div>
 
-      {/* 3. Dos Gráficos: Evolución Semanal vs SPY y Ranking de Diferencial */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Gráfico 1: Evolución Semanal (Week to Date / 5 Ruedas) */}
-        <div className="bg-secondary border border-border rounded-xl p-4 flex flex-col shadow-sm">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
-            <div>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-amber-400" />
-                Evolución Semanal (Week to Date) vs SPY
-              </h2>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {selectedTicker 
-                  ? <span>Mostrando foco: <strong className="text-foreground">{selectedTicker}</strong> vs <strong className="text-amber-400">SPY</strong></span>
-                  : <span>Haz clic en un ticker para aislar su evolución contra <strong className="text-amber-400">SPY</strong></span>
-                }
-              </p>
-            </div>
-            {selectedTicker && (
-              <button
-                onClick={() => setSelectedTicker(null)}
-                className="text-[10px] font-mono px-2 py-1 rounded bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition-colors flex items-center gap-1"
-              >
-                <span>✕</span> Ver todos
-              </button>
-            )}
-          </div>
-
-          {/* Barra interactiva superior de tickers */}
-          <div className="flex items-center gap-1.5 flex-wrap pb-2.5 mb-1 overflow-x-auto text-[11px] font-mono">
-            {/* Chip SPY Fijo */}
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1">
-              ★ SPY (Benchmark)
-            </span>
-
-            {/* Chips de Tickers Clicables */}
-            {displayedItems
-              .filter((it: EtfItem) => it.ticker !== 'TLT' && it.ticker !== 'ARGT')
-              .map((it: EtfItem) => {
-                const isSelected = selectedTicker === it.ticker;
-                const baseColor = ETF_COLORS[it.ticker] || '#94a3b8';
-                return (
-                  <button
-                    key={it.ticker}
-                    onClick={() => setSelectedTicker(isSelected ? null : it.ticker)}
-                    style={{
-                      borderColor: isSelected ? baseColor : 'rgba(255, 255, 255, 0.1)',
-                      backgroundColor: isSelected ? `${baseColor}22` : 'transparent',
-                      color: isSelected ? '#ffffff' : (selectedTicker ? '#64748b' : '#cbd5e1')
-                    }}
-                    className={`px-2 py-0.5 rounded text-[10px] border transition-all duration-150 flex items-center gap-1 hover:border-white/30 ${
-                      isSelected ? 'font-bold shadow-sm' : 'font-medium'
-                    }`}
-                  >
-                    <span 
-                      className="w-1.5 h-1.5 rounded-full" 
-                      style={{ backgroundColor: baseColor }}
-                    />
-                    {it.ticker}
-                  </button>
-                );
-              })}
-          </div>
-
-          <div className="w-full h-[360px]">
-            <EtfRotationWeeklyChart data={data} displayedItems={displayedItems} selectedTicker={selectedTicker} />
-          </div>
-        </div>
-
-        {/* Gráfico 2: Ranking Diferencial vs SPY (1W) */}
+      {/* 3. Ranking de diferencial semanal vs SPY */}
+      <div className="grid grid-cols-1 gap-4">
         <div className="bg-secondary border border-border rounded-xl p-4 flex flex-col shadow-sm">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
                 <Activity className="w-4 h-4 text-positive" />
-                Diferencial Semanal vs SPY (1W)
+                Diferencial Semanal vs SPY (1W, p.p.)
               </h2>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Sobre-rendimiento (+) o rezago (-) respecto a SPY en la semana
+                Sobre-rendimiento (+) o rezago (-) respecto a SPY durante una semana
               </p>
             </div>
           </div>
@@ -271,7 +204,7 @@ export const EtfRotationView: React.FC = () => {
                 <th className="px-3 py-2.5">Sector / Nombre</th>
                 <th className="px-3 py-2.5 text-right">Precio Spot</th>
                 <th className="px-3 py-2.5 text-right font-black text-foreground bg-white/[0.04] border-x border-border">
-                  DIFERENCIAL VS SPY (1W)
+                  DIFERENCIAL VS SPY (1W, p.p.)
                 </th>
                 <th className="px-3 py-2.5 text-right">Retorno ETF (1W)</th>
                 <th className="px-3 py-2.5 text-center">RSI (14)</th>
@@ -366,9 +299,9 @@ export const EtfRotationView: React.FC = () => {
                         : 'text-muted-foreground bg-white/[0.02]'
                     }`}>
                       {isSpy 
-                        ? '0.0% (Base)'
+                        ? '0.0 p.p. (Base)'
                         : item.diff_vs_spy_w !== null && item.diff_vs_spy_w !== undefined
-                        ? `${item.diff_vs_spy_w > 0 ? '+' : ''}${item.diff_vs_spy_w.toFixed(1)}%`
+                        ? `${item.diff_vs_spy_w > 0 ? '+' : ''}${item.diff_vs_spy_w.toFixed(1)} p.p.`
                         : '—'}
                     </td>
 
@@ -462,7 +395,7 @@ export const EtfRotationView: React.FC = () => {
                         : 'text-muted-foreground bg-white/[0.02]'
                     }`}>
                       {item.diff_vs_spy_w !== null && item.diff_vs_spy_w !== undefined
-                        ? `${item.diff_vs_spy_w > 0 ? '+' : ''}${item.diff_vs_spy_w.toFixed(1)}%`
+                        ? `${item.diff_vs_spy_w > 0 ? '+' : ''}${item.diff_vs_spy_w.toFixed(1)} p.p.`
                         : '—'}
                     </td>
 

@@ -134,6 +134,8 @@ class TestEtfThermometerService(unittest.TestCase):
         self.assertIn("benchmark", result)
         self.assertEqual(result["benchmark"]["ticker"], "SPY")
         self.assertEqual(result["benchmark"]["perf_w"], 1.0)
+        self.assertNotIn("history_5d", result["benchmark"])
+        self.assertNotIn("week_dates", result)
 
         items = result["items"]
         self.assertEqual(len(items), 2)
@@ -141,6 +143,7 @@ class TestEtfThermometerService(unittest.TestCase):
         # XLK outperforming (diff_w = +2.5) -> top leader
         xlk = next(it for it in items if it["ticker"] == "XLK")
         self.assertEqual(xlk["diff_vs_spy_w"], 2.5)
+        self.assertNotIn("history_5d", xlk)
         self.assertEqual(xlk["diff_vs_spy_1m"], 2.5)
         self.assertEqual(xlk["quadrant"], "LEADERS")
 
@@ -171,7 +174,46 @@ class TestEtfThermometerService(unittest.TestCase):
         self.assertEqual(result["items"][0]["ticker"], "QQQ")
         self.assertEqual(result["items"][0]["diff_vs_spy_w"], 1.0)
 
+    @patch("services.etf_service.scanner_scan")
+    def test_weekly_differential_is_not_the_daily_change(self, mock_scan):
+        """El diferencial semanal se calcula contra SPY, independientemente del cambio diario."""
+        from services.etf_service import fetch_etf_rotation_analysis
+
+        mock_scan.return_value = {
+            "data": [
+                {"symbol": "AMEX:SPY", "name": "SPY", "close": 500.0, "change": 0.1, "Perf.W": 1.0},
+                {"symbol": "AMEX:EWZ", "name": "EWZ", "close": 35.0, "change": 0.4, "Perf.W": 20.5},
+            ]
+        }
+
+        fn = getattr(fetch_etf_rotation_analysis, "__wrapped__", fetch_etf_rotation_analysis)
+        result = fn(universe="thematic")
+
+        ewz = next(item for item in result["items"] if item["ticker"] == "EWZ")
+        self.assertEqual(ewz["perf_w"], 20.5)
+        self.assertEqual(ewz["diff_vs_spy_w"], 19.5)
+        self.assertEqual(ewz["change_d"], 0.4)
+
+    @patch("services.etf_service.scanner_scan")
+    def test_weekly_alpha_is_unavailable_when_spy_weekly_return_is_missing(self, mock_scan):
+        """No sustituye un benchmark ausente por cero al calcular el diferencial semanal."""
+        from services.etf_service import fetch_etf_rotation_analysis
+
+        mock_scan.return_value = {
+            "data": [
+                {"symbol": "AMEX:SPY", "name": "SPY", "close": 500.0, "Perf.W": None},
+                {"symbol": "AMEX:EWZ", "name": "EWZ", "close": 35.0, "change": 0.4, "Perf.W": 19.5},
+            ]
+        }
+
+        fn = getattr(fetch_etf_rotation_analysis, "__wrapped__", fetch_etf_rotation_analysis)
+        result = fn(universe="thematic")
+
+        ewz = next(item for item in result["items"] if item["ticker"] == "EWZ")
+        self.assertIsNone(result["benchmark"]["perf_w"])
+        self.assertIsNone(ewz["diff_vs_spy_w"])
+        self.assertIsNone(result["top_leader"]["diff_vs_spy_w"])
+
 
 if __name__ == "__main__":
     unittest.main()
-

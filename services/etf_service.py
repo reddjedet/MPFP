@@ -170,15 +170,10 @@ def fetch_etf_rotation_analysis(universe: str = "sectors") -> dict[str, Any]:
 
         spy_close = _safe_f(spy_row.get("close")) if spy_row else 500.0
         spy_change_d = _safe_f(spy_row.get("change")) if spy_row else 0.0
-        spy_pw = _safe_f(spy_row.get("Perf.W")) if spy_row else 0.0
+        spy_pw = _safe_f(spy_row.get("Perf.W")) if spy_row else None
         spy_p1m = _safe_f(spy_row.get("Perf.1M")) if spy_row else 0.0
         spy_p3m = _safe_f(spy_row.get("Perf.3M")) if spy_row else 0.0
         spy_pytd = _safe_f(spy_row.get("Perf.YTD")) if spy_row else 0.0
-
-        spy_d1 = round((spy_pw or 0.0) - (spy_change_d or 0.0), 2)
-        spy_d2 = round((spy_pw or 0.0) * 0.5, 2)
-        spy_d3 = round((spy_pw or 0.0) * 0.25, 2)
-        spy_history = [0.0, spy_d3, spy_d2, spy_d1, spy_pw or 0.0]
 
         spy_rsi = _safe_f(spy_row.get("RSI")) if spy_row else None
         spy_sma50 = spy_row.get("SMA50") if spy_row else None
@@ -192,13 +187,12 @@ def fetch_etf_rotation_analysis(universe: str = "sectors") -> dict[str, Any]:
             "sector": "Índice S&P 500 (Benchmark)",
             "close": spy_close or 0.0,
             "change_d": spy_change_d or 0.0,
-            "perf_w": spy_pw or 0.0,
+            "perf_w": spy_pw,
             "perf_1m": spy_p1m or 0.0,
             "perf_3m": spy_p3m or 0.0,
             "perf_ytd": spy_pytd or 0.0,
             "rsi": spy_rsi,
             "trend_sma50": spy_trend_50,
-            "history_5d": spy_history,
         }
 
         # 2. Procesar cada ETF
@@ -228,7 +222,7 @@ def fetch_etf_rotation_analysis(universe: str = "sectors") -> dict[str, Any]:
                 trend_200 = "BULLISH" if close >= float(sma200) else "BEARISH"
 
             # Spreads vs SPY (Alpha)
-            diff_w = round(pw - (spy_pw or 0.0), 2) if pw is not None else None
+            diff_w = round(pw - spy_pw, 2) if pw is not None and spy_pw is not None else None
             diff_1m = round(p1m - (spy_p1m or 0.0), 2) if p1m is not None else None
             diff_3m = round(p3m - (spy_p3m or 0.0), 2) if p3m is not None else None
             diff_ytd = round(pytd - (spy_pytd or 0.0), 2) if pytd is not None else None
@@ -251,11 +245,6 @@ def fetch_etf_rotation_analysis(universe: str = "sectors") -> dict[str, Any]:
                 quadrant = "LAGGING"
                 quadrant_label = "Rezagado"
 
-            d1 = round((pw or 0.0) - (change_d or 0.0), 2)
-            d2 = round((pw or 0.0) * 0.5, 2)
-            d3 = round((pw or 0.0) * 0.25, 2)
-            etf_history = [0.0, d3, d2, d1, pw or 0.0]
-
             items.append({
                 "ticker": raw_sym,
                 "name": meta["name"],
@@ -277,7 +266,6 @@ def fetch_etf_rotation_analysis(universe: str = "sectors") -> dict[str, Any]:
                 "volume": volume,
                 "quadrant": quadrant,
                 "quadrant_label": quadrant_label,
-                "history_5d": etf_history,
             })
 
         # Ordenar por diff_vs_spy_w descendente
@@ -333,7 +321,6 @@ def fetch_etf_rotation_analysis(universe: str = "sectors") -> dict[str, Any]:
             "top_leader": top_leader,
             "top_laggard": top_laggard,
             "spread_extremos": spread_extremos,
-            "week_dates": ["D-4", "D-3", "D-2", "D-1", "Hoy"],
         }
 
     except Exception:
@@ -346,5 +333,4 @@ def fetch_etf_rotation_analysis(universe: str = "sectors") -> dict[str, Any]:
             "top_leader": None,
             "top_laggard": None,
         }
-
 

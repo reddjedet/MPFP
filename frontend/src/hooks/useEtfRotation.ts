@@ -11,7 +11,6 @@ export interface EtfItem {
   rsi: number | null;
   trend_sma50: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
   volume: number | null;
-  history_5d?: number[];
 }
 
 export interface EtfRotationData {
@@ -21,10 +20,9 @@ export interface EtfRotationData {
     sector?: string;
     close: number;
     change_d: number;
-    perf_w: number;
+    perf_w: number | null;
     rsi?: number | null;
     trend_sma50?: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
-    history_5d?: number[];
   } | null;
   items: EtfItem[];
   breadth_w: number;
@@ -32,29 +30,7 @@ export interface EtfRotationData {
   top_leader: EtfItem | null;
   top_laggard: EtfItem | null;
   spread_extremos: number;
-  week_dates: string[];
 }
-
-export const ETF_COLORS: Record<string, string> = {
-  XLK: '#38bdf8', // Celeste Tech
-  XLF: '#60a5fa', // Azul Finanzas
-  XLV: '#a78bfa', // Violeta Salud
-  XLY: '#f472b6', // Rosa Consumo Disc
-  XLC: '#ec4899', // Fucsia Comunicaciones
-  XLI: '#94a3b8', // Pizarra / Acero Industrial (evita confusión con SPY)
-  XLP: '#84cc16', // Lima / Verde Claro Consumo Básico (evita colisión)
-  XLE: '#ef4444', // Rojo Coral Energía (evita colisión de naranja con SPY)
-  XLRE: '#4ade80', // Verde Real Estate
-  XLB: '#2dd4bf', // Turquesa Materiales
-  XLU: '#64748b', // Gris Utilities
-  QQQ: '#06b6d4',
-  IWM: '#c084fc',
-  DIA: '#818cf8',
-  SMH: '#22d3ee',
-  ARKK: '#e879f9',
-  EWZ: '#10b981',
-  GLD: '#d97706', // Oro bronce profundo
-};
 
 export const useEtfRotation = () => {
   const [data, setData] = useState<EtfRotationData | null>(null);
@@ -62,7 +38,6 @@ export const useEtfRotation = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [universeFilter, setUniverseFilter] = useState<'all' | 'sectors'>('sectors');
-  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
 
   const fetchData = async (isManual = false) => {
     if (isManual) setRefreshing(true);
@@ -106,7 +81,6 @@ export const useEtfRotation = () => {
       rsi: data.benchmark.rsi ?? null,
       trend_sma50: data.benchmark.trend_sma50 ?? 'BULLISH',
       volume: null,
-      history_5d: data.benchmark.history_5d || [0, 0, 0, 0, data.benchmark.perf_w]
     };
   }, [data?.benchmark]);
 
@@ -188,8 +162,6 @@ export const useEtfRotation = () => {
     setSearchFilter,
     universeFilter,
     setUniverseFilter,
-    selectedTicker,
-    setSelectedTicker,
     fetchData,
     spyItem,
     majorIndices,
