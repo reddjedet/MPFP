@@ -105,8 +105,8 @@ export const EarningsView: React.FC = () => {
   };
 
   const visibleEarnings = useMemo(() => {
-    if (!data?.earnings) return [];
-    return showRest ? data.earnings : data.earnings.filter(item => item.in_portfolio);
+    const earnings = data?.earnings ?? [];
+    return showRest ? earnings : earnings.filter(item => item.in_portfolio);
   }, [data, showRest]);
 
   const visibleStats = useMemo(() => ({
