@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   createColumnHelper, 
   flexRender, 
@@ -60,8 +60,8 @@ export const EarningsView: React.FC = () => {
   
   // Date Editing modal / inline state
   const [editingTicker, setEditingTicker] = useState<string | null>(null);
-  const [editDateValue, setEditDateValue] = useState<string>('');
   const [savingDate, setSavingDate] = useState<boolean>(false);
+  const editDateInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchEarningsData = async () => {
     setRefreshing(true);
@@ -237,13 +237,14 @@ export const EarningsView: React.FC = () => {
           return (
             <div className="flex items-center gap-1.5">
               <input
+                key={row.ticker}
+                ref={editDateInputRef}
                 type="date"
-                value={editDateValue}
-                onChange={e => setEditDateValue(e.target.value)}
+                defaultValue={row.confirmed_date || ''}
                 className="h-8 px-2 bg-slate-50 dark:bg-black/60 border border-blue-500 rounded-lg text-xs text-slate-900 dark:text-foreground font-mono outline-none"
               />
               <button
-                onClick={() => handleSaveDate(row.ticker, editDateValue)}
+                onClick={() => handleSaveDate(row.ticker, editDateInputRef.current?.value || null)}
                 disabled={savingDate}
                 className="p-1.5 bg-blue-600 hover:bg-blue-500 text-foreground rounded-lg transition-colors"
                 title="Guardar Fecha"
@@ -273,7 +274,6 @@ export const EarningsView: React.FC = () => {
             <button
               onClick={() => {
                 setEditingTicker(row.ticker);
-                setEditDateValue(row.confirmed_date || '');
               }}
               className={`${row.confirmed_date ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'} p-1 text-slate-400 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground rounded hover:bg-slate-100 dark:hover:bg-secondary/50 transition-all`}
               title={row.confirmed_date ? 'Modificar fecha confirmada' : 'Ingresar fecha confirmada'}
@@ -285,7 +285,7 @@ export const EarningsView: React.FC = () => {
         );
       },
     }),
-  ], [editingTicker, editDateValue, savingDate]);
+  ], [editingTicker, savingDate]);
 
   const table = useReactTable({
     data: filteredEarnings,
