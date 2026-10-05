@@ -412,17 +412,22 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
     };
   }, [data, chartTheme]);
 
-  // ECharts Option: Correlation Matrix Heatmap (Blue-to-Red Diverging Palette)
+  // ECharts Option: Correlation Matrix Heatmap (Everforest diverging palette)
   const heatmapOption = useMemo(() => {
     if (!data?.corr_matrix) {
       return {};
     }
     const tickers = Object.keys(data.corr_matrix);
-    const heatmapData: [number, number, number][] = [];
+    const largeMatrix = tickers.length >= 16;
+    const heatmapData: any[] = [];
 
     tickers.forEach((t1, i) => {
       tickers.forEach((t2, j) => {
-        heatmapData.push([i, j, Number(data.corr_matrix[t1][t2].toFixed(2))]);
+        const correlation = Number(data.corr_matrix[t1][t2].toFixed(2));
+        heatmapData.push({
+          value: [i, j, correlation],
+          ...(i === j ? { itemStyle: { color: chartTheme.correlationDiagonal } } : {}),
+        });
       });
     });
 
@@ -435,29 +440,39 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
         borderWidth: 1,
         textStyle: { color: chartTheme.tooltipText, fontSize: 11 },
         formatter: (params: any) => {
-          const t1 = tickers[params.data[0]];
-          const t2 = tickers[params.data[1]];
-          const corr = params.data[2];
-          let desc = 'Correlación neutra (alta diversificación)';
-          if (corr <= -0.2) desc = 'Correlación inversa (cobertura / hedge)';
-          else if (corr >= 0.7) desc = 'Alta correlación (riesgo de concentración)';
-          else if (corr >= 0.4) desc = 'Correlación moderada';
-          
-          return `<b>${t1} ↔ ${t2}</b><br/>Coeficiente Pearson: <b>${corr > 0 ? '+' : ''}${corr}</b><br/><span style="color:${chartTheme.textMuted};font-size:10px;">${desc}</span>`;
+          const value = Array.isArray(params.value) ? params.value : params.data?.value;
+          if (!Array.isArray(value)) return '';
+          const [i, j, corr] = value;
+          const t1 = tickers[i];
+          const t2 = tickers[j];
+          let desc = i === j ? 'Diagonal: el activo consigo mismo' : 'Correlación débil o cercana a cero';
+          if (i !== j && corr <= -0.7) desc = 'Correlación inversa fuerte';
+          else if (i !== j && corr <= -0.4) desc = 'Correlación inversa moderada';
+          else if (i !== j && corr >= 0.7) desc = 'Correlación directa fuerte (posible concentración)';
+          else if (i !== j && corr >= 0.4) desc = 'Correlación directa moderada';
+
+          return `<b>${t1} ↔ ${t2}</b><br/>Coeficiente Pearson: <b>${corr > 0 ? '+' : ''}${corr.toFixed(2)}</b><br/><span style="color:${chartTheme.textMuted};font-size:10px;">${desc}</span>`;
         }
       },
-      grid: { left: 60, right: 60, top: 20, bottom: 55 },
+      grid: { left: largeMatrix ? 76 : 60, right: 30, top: 20, bottom: largeMatrix ? 95 : 55 },
       xAxis: {
         type: 'category',
         data: tickers,
-        axisLabel: { color: chartTheme.textPrimary, fontSize: 11, fontWeight: 'bold' },
+        axisLabel: {
+          color: chartTheme.textPrimary,
+          fontSize: largeMatrix ? 10 : 11,
+          fontWeight: 'bold',
+          rotate: largeMatrix ? 45 : 0,
+          interval: 0,
+          hideOverlap: false,
+        },
         axisLine: { lineStyle: { color: chartTheme.axisLine } },
         splitArea: { show: false }
       },
       yAxis: {
         type: 'category',
         data: tickers,
-        axisLabel: { color: chartTheme.textPrimary, fontSize: 11, fontWeight: 'bold' },
+        axisLabel: { color: chartTheme.textPrimary, fontSize: 11, fontWeight: 'bold', hideOverlap: false },
         axisLine: { lineStyle: { color: chartTheme.axisLine } },
         splitArea: { show: false }
       },
@@ -467,20 +482,17 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
         calculable: true,
         orient: 'horizontal',
         left: 'center',
-        bottom: 0,
+        bottom: largeMatrix ? 8 : 0,
         inRange: {
           color: [
-            '#1d4ed8', // -1.0 (Azul royal - Máxima Descorrelación/Hedge)
-            '#3b82f6', // -0.5 (Azul eléctrico)
-            '#38bdf8', // -0.2 (Cyan / Celeste)
-            '#e2e8f0', //  0.0 (Neutro / Blanco pizarra)
-            '#fde047', // +0.3 (Amarillo suave)
-            '#fb923c', // +0.6 (Naranja)
-            '#ef4444', // +0.8 (Rojo)
-            '#991b1b'  // +1.0 (Rojo oscuro - Máxima Correlación)
+            chartTheme.correlationNegative,
+            chartTheme.correlationNegativeMid,
+            chartTheme.correlationNeutral,
+            chartTheme.correlationPositiveMid,
+            chartTheme.correlationPositive,
           ]
         },
-        text: ['+1.0 (Alta/Rojo)', '-1.0 (Inversa/Azul)'],
+        text: ['+1.0 (Directa fuerte)', '-1.0 (Inversa fuerte)'],
         textStyle: { color: chartTheme.textMuted, fontSize: 10, fontWeight: 'bold' }
       },
       series: [{
@@ -488,19 +500,24 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
         type: 'heatmap',
         data: heatmapData,
         label: {
-          show: true,
-          color: '#ffffff',
-          textBorderColor: 'rgba(0, 0, 0, 0.75)',
-          textBorderWidth: 2.5,
+          show: !largeMatrix,
+          color: chartTheme.textPrimary,
+          textBorderColor: chartTheme.scatterAssetLabelBorder,
+          textBorderWidth: 1.5,
           fontFamily: 'monospace',
-          fontSize: 11,
+          fontSize: tickers.length >= 12 ? 9 : 11,
           fontWeight: 'bold',
-          formatter: (p: any) => (p.data[2] > 0 ? `+${p.data[2].toFixed(2)}` : p.data[2].toFixed(2))
+          formatter: (params: any) => {
+            const value = Array.isArray(params.value) ? params.value : params.data?.value;
+            if (!Array.isArray(value) || value[0] === value[1]) return '';
+            const correlation = Number(value[2]);
+            return correlation > 0 ? `+${correlation.toFixed(2)}` : correlation.toFixed(2);
+          }
         },
         itemStyle: {
           borderColor: chartTheme.cardBorder,
-          borderWidth: 1.5,
-          borderRadius: 4
+          borderWidth: 1,
+          borderRadius: 2
         }
       }]
     };
@@ -536,6 +553,9 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
   if (!data) {
     return null;
   }
+
+  const correlationCount = Object.keys(data.corr_matrix || {}).length;
+  const heatmapHeight = Math.max(450, correlationCount * 22 + (correlationCount >= 16 ? 145 : 100));
 
   return (
     <>
@@ -584,9 +604,10 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
 
       {data.corr_matrix && (
         <div className="glass-panel p-6 rounded-2xl flex flex-col relative overflow-hidden mb-6">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 relative z-10">Matriz de Correlación Cruzada</h3>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1 relative z-10">Matriz de Correlación Cruzada</h3>
+          <p className="mb-3 text-xs text-muted-foreground relative z-10">Turquesa: inversa · oscuro: cercana a cero · coral: directa. Desde 16 activos, pasá sobre una celda para ver su valor exacto.</p>
           <div className="flex-1 w-full overflow-x-auto relative z-10 pb-4 custom-scrollbar">
-            <div style={{ minWidth: `${Math.max(800, Object.keys(data.corr_matrix).length * 65 + 150)}px`, height: '450px' }}>
+            <div style={{ minWidth: `${Math.max(800, correlationCount * 65 + 150)}px`, height: `${heatmapHeight}px` }}>
               <ReactECharts echarts={echarts} option={heatmapOption} style={{ height: '100%', width: '100%' }} notMerge={true} opts={{ renderer: 'svg' }} />
             </div>
           </div>

@@ -388,7 +388,6 @@ def analyze_rotation(
     
     portfolios = load_portfolios()
     target_pf = portfolio_data or portfolios.get(target_pf_key, portfolios.get(DEFAULT_PORTFOLIO_MODE, {}))
-    pf_mode = target_pf.get("mode", "weights")
     target_weights = target_pf.get("weights") or target_pf.get("assets", {})
     target_alloc = target_pf.get("asset_allocation", {}) if isinstance(target_pf, dict) else {}
     fi_assets = target_pf.get("fixed_income_assets", {})
@@ -574,9 +573,7 @@ def analyze_rotation(
             display_price = market_quote_100
         else:
             target_weight = norm_target_weights.get(tk, 0.0)
-            if pf_mode == "nominals":
-                target_noms = int(target_weights.get(tk, 0))
-            elif mcm_info and tk in mcm_base_nominals:
+            if mcm_info and tk in mcm_base_nominals:
                 target_noms = mcm_base_nominals.get(tk, 0) * mcm_multiplier
             elif price > 0 and target_weight > 0:
                 target_noms = max(0, int(round((capital_base_equity * (target_weight / target_equity_pct)) / price))) if target_equity_pct > 0 else 0

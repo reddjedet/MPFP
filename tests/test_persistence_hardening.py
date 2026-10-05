@@ -94,13 +94,26 @@ def test_bulk_update_con_cash_0_explicito_pone_a_cero():
 
 
 # Bug 15: load_portfolios siempre sembrar bmb si falta
-def test_load_portfolios_siempre_sembrar_bmb_si_falta(tmp_path):
+def test_load_portfolios_siembra_bmb_solo_si_el_catalogo_esta_vacio(tmp_path):
+    """
+    `bmb` se siembra únicamente cuando no hay ninguna cartera. Si el usuario la borra
+    a propósito no debe resucitar en la siguiente lectura.
+    """
     orig_db = ps._db
     try:
-        ps._db = ap.AtomicJsonDatabase(tmp_path / "portfolios_no_bmb.json")
-        ps._db.save({"otra_cartera": {"mode": "weights", "assets": {"AAPL": 100.0}}})
+        db = ap.AtomicJsonDatabase(tmp_path / "portfolios_no_bmb.json")
+
+        # Catálogo vacío -> se siembra la cartera por defecto.
+        ps._db = db
+        db.save({})
         loaded = ps.load_portfolios()
         assert "bmb" in loaded
+
+        # Catálogo con otras carteras y sin bmb -> NO se resucita.
+        ps._db = ap.AtomicJsonDatabase(tmp_path / "portfolios_vacias_bmb.json")
+        ps._db.save({"otra_cartera": {"mode": "weights", "assets": {"AAPL": 100.0}}})
+        loaded = ps.load_portfolios()
+        assert "bmb" not in loaded
         assert "otra_cartera" in loaded
     finally:
         ps._db = orig_db

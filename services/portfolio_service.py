@@ -17,7 +17,122 @@ TRASH_DB_PATH = data_file("portfolios_trash.json")
 _trash_db = SQLiteTableStore("portfolios_trash", TRASH_DB_PATH)
 MAX_TRASH_CAPACITY = 7
 
-RESERVED_PORTFOLIO_NAMES = frozenset({"bmb", "bal"})
+
+def is_portfolio_name_taken(name: str) -> bool:
+    """
+    Un nombre de cartera está reservado cuando ya existe una cartera viva con ese
+    nombre, o cuando ese nombre sigue presente en la papelera.
+
+    No hay una lista fija de nombres protegidos: lo que protege a `bmb` es estar
+    viva, no su nombre. Si se borra, el nombre vuelve a estar disponible.
+    """
+    from services.security_service import sanitize_portfolio_name
+
+    clean = sanitize_portfolio_name(name)
+    if not clean:
+        return False
+    if clean in load_portfolios():
+        return True
+    return any(
+        item.get("id") == clean or item.get("name") == clean
+        for item in load_portfolios_trash()
+    )
+
+
+def find_non_cedear_tickers(tickers) -> list[str]:
+    """
+    Devuelve los tickers que NO son CEDEARs de BYMA.
+
+    La validación usa el catálogo local de `cedear_ratios`, que no depende de BYMA ni
+    de Yahoo: seguir funcionando cuando esas fuentes están caídas es justamente el
+    motivo para no consultarlas acá.
+    """
+    from services.cedear_service import load_cedear_ratios
+
+    try:
+        catalog = set(load_cedear_ratios().keys())
+    except Exception:
+        # Si el catálogo no se puede leer, no se bloquea al usuario: la validación
+        # es una ayuda, no una barrera de disponibilidad.
+        return []
+
+    if not catalog:
+        return []
+
+    invalid = []
+    for ticker in tickers:
+        clean = str(ticker).strip().upper()
+        if not clean:
+            continue
+        if clean not in catalog and clean.replace("-", ".") not in catalog:
+            invalid.append(clean)
+    return sorted(set(invalid))
+
+
+def normalize_weights_dict(assets: dict) -> tuple[dict | None, str | None]:
+    """
+    Escala los pesos objetivo a una suma de 100 y rechaza carteras sin peso real.
+
+    `calculate_portfolio` y `calculate_portfolio_mcm` ya normalizan por su cuenta
+    antes de calcular, así que escalar acá no altera ningún resultado: solo
+    garantiza que lo persistido sea siempre una cartera válida.
+    """
+    if not assets:
+        return None, "La cartera no tiene activos."
+
+    clean: dict[str, float] = {}
+    for ticker, raw in assets.items():
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            return None, f"El peso de '{ticker}' no es un numero valido."
+        if value < 0:
+            return None, f"El peso de '{ticker}' no puede ser negativo."
+        clean[ticker] = value
+
+    total = sum(clean.values())
+    if total <= 0:
+        return None, "La cartera tiene todos los pesos en cero. Asignale un peso mayor a 0 a al menos un activo."
+
+    if abs(total - 100.0) < 1e-9:
+        return {t: round(v, 6) for t, v in clean.items()}, None
+    return {t: round(v * 100.0 / total, 6) for t, v in clean.items()}, None
+
+
+def _snapshot_positions(pf_clean: str) -> dict:
+    """Fotografía tenencias, bonos y efectivo de una cartera antes de purgarla."""
+    from services.rotation_service import load_user_holdings
+
+    data = load_user_holdings(pf_clean)
+    return {
+        "holdings": data.get("holdings", {}) or {},
+        "fixed_income_holdings": data.get("fixed_income_holdings", {}) or {},
+        "cash_ars": data.get("cash_ars", 0.0) or 0.0,
+    }
+
+
+def _purge_positions(pf_clean: str) -> None:
+    """Deja la cartera en cero: sin tenencias, sin bonos, sin efectivo."""
+    from services.rotation_service import save_user_holdings
+
+    save_user_holdings(
+        {"holdings": {}, "fixed_income_holdings": {}, "cash_ars": 0.0},
+        portfolio_key=pf_clean,
+    )
+
+
+def _apply_positions(pf_clean: str, entry: dict) -> None:
+    """Vuelca una foto de posiciones sobre una cartera viva."""
+    from services.rotation_service import save_user_holdings
+
+    save_user_holdings(
+        {
+            "holdings": entry.get("holdings", {}) or {},
+            "fixed_income_holdings": entry.get("fixed_income_holdings", {}) or {},
+            "cash_ars": entry.get("cash_ars", 0.0) or 0.0,
+        },
+        portfolio_key=pf_clean,
+    )
 
 def load_portfolios_trash() -> list[dict]:
     """Carga la lista de carteras en papelera de reciclaje."""
@@ -35,11 +150,12 @@ def save_portfolios_trash(data: list[dict]) -> None:
 def move_portfolio_to_trash(pf_clean: str) -> dict:
     """
     Traslada una cartera activa a la papelera de reciclaje.
-    Si la papelera supera las 7 carteras, la más antigua se elimina definitivamente (FIFO).
-    """
-    if pf_clean.lower() in RESERVED_PORTFOLIO_NAMES:
-        return {"success": False, "error": "No se puede eliminar el portfolio predeterminado (BMB o BAL)."}
 
+    La entrada recuerda objetivos, tenencias, bonos y efectivo, de modo que pueda
+    restaurarse tal cual —incluso bajo otro nombre—. Lo que sale del catálogo
+    activo queda purgado: la cartera pasa a estar en cero.
+    Si la papelera supera MAX_TRASH_CAPACITY, la más antigua se descarta (FIFO).
+    """
     portfolios_data = load_portfolios()
     if pf_clean not in portfolios_data:
         return {"success": False, "error": f"La cartera '{pf_clean}' no existe."}
@@ -47,19 +163,22 @@ def move_portfolio_to_trash(pf_clean: str) -> dict:
     pf_data = portfolios_data.pop(pf_clean)
     save_portfolios(portfolios_data)
 
-    trash = load_portfolios_trash()
-    # Filtrar si ya existía una entrada previa con el mismo id
-    trash = [item for item in trash if item.get("id") != pf_clean]
+    # Fotografiar antes de purgar: la papelera es la única copia de las posiciones.
+    snapshot = _snapshot_positions(pf_clean)
+    _purge_positions(pf_clean)
 
-    entry = {
+    trash = [item for item in load_portfolios_trash() if item.get("id") != pf_clean]
+    trash.append({
         "id": pf_clean,
         "name": pf_clean,
         "data": pf_data,
+        "holdings": snapshot["holdings"],
+        "fixed_income_holdings": snapshot["fixed_income_holdings"],
+        "cash_ars": snapshot["cash_ars"],
         "deleted_at": datetime.now().isoformat(),
         "asset_count": len(pf_data.get("assets", {})),
         "mode": pf_data.get("mode", "weights")
-    }
-    trash.append(entry)
+    })
     save_portfolios_trash(trash)
 
     updated_trash = load_portfolios_trash()
@@ -70,9 +189,13 @@ def move_portfolio_to_trash(pf_clean: str) -> dict:
         "max_capacity": MAX_TRASH_CAPACITY
     }
 
-def restore_portfolio_from_trash(pf_clean: str) -> dict:
+def restore_portfolio_from_trash(pf_clean: str, new_name: str | None = None) -> dict:
     """
-    Rescata/restaura una cartera desde la papelera de reciclaje al catálogo activo.
+    Restaura una cartera desde la papelera, opcionalmente bajo otro nombre.
+
+    Con `new_name` la cartera vuelve con los mismos objetivos, tenencias, bonos y
+    efectivo, pero archivada bajo el nombre elegido por el usuario. La entrada
+    original permanece en la papelera: restaurar no la consume.
     """
     trash = load_portfolios_trash()
     found = None
@@ -84,19 +207,37 @@ def restore_portfolio_from_trash(pf_clean: str) -> dict:
     if not found:
         return {"success": False, "error": f"La cartera '{pf_clean}' no se encuentra en la papelera."}
 
-    # Remover de la papelera
-    trash = [item for item in trash if item.get("id") != pf_clean and item.get("name") != pf_clean]
-    _trash_db.save(trash)
+    target = pf_clean
+    if new_name:
+        from services.security_service import sanitize_portfolio_name
 
-    # Reinsertar en portfolios activos
+        target = sanitize_portfolio_name(new_name)
+        if not target:
+            return {"success": False, "error": "Nombre de cartera no valido."}
+        if is_portfolio_name_taken(target):
+            return {
+                "success": False,
+                "error": f"El nombre '{target}' ya esta en uso. Elegi otro nombre."
+            }
+
     portfolios_data = load_portfolios()
-    portfolios_data[pf_clean] = found.get("data", {"mode": "weights", "assets": {}})
+    portfolios_data[target] = found.get("data", {"mode": "weights", "assets": {}})
     save_portfolios(portfolios_data)
+    _apply_positions(target, found)
+
+    # Volver con el nombre propio consume la entrada (la cartera regresa). Copiarla
+    # bajo otro nombre la deja en la papelera: sigue siendo una entrada recuperable.
+    if target == pf_clean:
+        remaining = [
+            item for item in load_portfolios_trash()
+            if item.get("id") != pf_clean and item.get("name") != pf_clean
+        ]
+        _trash_db.save(remaining)
 
     return {
         "success": True,
-        "restored": pf_clean,
-        "portfolio": portfolios_data[pf_clean]
+        "restored": target,
+        "portfolio": portfolios_data[target]
     }
 
 def delete_permanently_from_trash(pf_clean: str) -> dict:
@@ -111,10 +252,9 @@ def delete_permanently_from_trash(pf_clean: str) -> dict:
 def load_portfolios() -> dict:
     data = _db.load()
 
-    # Garantizar que el portfolio predeterminado exista si la base de datos está vacía o no tiene bmb
-    if not data or "bmb" not in data:
-        if not data:
-            data = {}
+    # La cartera por defecto solo se siembra cuando el catálogo está vacío. Si el
+    # usuario borra 'bmb' a propósito no debe resucitar en la próxima lectura.
+    if not data:
         data["bmb"] = {
             "mode": "weights",
             "assets": {
@@ -287,44 +427,20 @@ def calculate_portfolio(weights: dict, data: dict, anchor_ticker: str, anchor_qt
     return result
 
 def calculate_portfolio_data(pf_data: dict, data: dict, anchor_ticker: str = None, anchor_qty: int = None) -> list[dict] | None:
-    mode = pf_data.get("mode", "weights")
+    """
+    Construye la tabla objetivo de la cartera.
+
+    Las carteras se definen exclusivamente por pesos porcentuales. El antiguo modo
+    `nominals` (definir la cartera por cantidades) se retiró: el módulo de
+    Reporting de Tenencias ya deriva los nominales objetivo desde los pesos y expone
+    el faltante contra las posiciones reales, de modo que el dato queda cubierto.
+    """
     assets = pf_data.get("assets", {})
-    
+
     if not assets:
         return None
-        
-    if mode == "nominals":
-        # Modo cantidades nominales fijas
-        result = []
-        actual_total_value = 0.0
-        for ticker, qty in assets.items():
-            d = data.get(ticker)
-            if not d or not d.get("local"):
-                continue
-            price = d["local"]
-            value = qty * price
-            actual_total_value += value
-            result.append({
-                "ticker": ticker,
-                "weight": 0.0, # Se calculará como el peso real
-                "price": round(price, 2),
-                "adr_price": d.get("adr"),
-                "ratio": d.get("ratio"),
-                "qty": qty,
-                "value": round(value, 2),
-                "rsi": d.get("rsi")
-            })
-            
-        for item in result:
-            real_w = (safe_div(item['value'], actual_total_value) * 100) if actual_total_value else 0
-            item["weight"] = round(real_w, 2) # Para nominales, el peso objetivo coincide con el real
-            item["real_weight"] = round(real_w, 2)
-            item["error"] = 0.0
-            
-        return result
-    else:
-        # Modo pesos objetivo estándar
-        return calculate_portfolio(assets, data, anchor_ticker, anchor_qty)
+
+    return calculate_portfolio(assets, data, anchor_ticker, anchor_qty)
 
 def calculate_portfolio_rsi(result: list[dict]) -> dict | None:
     """
@@ -836,26 +952,17 @@ def _portfolio_sma(weights, lookup, sma_field):
 
 
 def get_effective_weights(pf_data: dict, lookup_prices: dict) -> dict:
-    mode = pf_data.get("mode", "weights")
+    """
+    Normaliza los pesos objetivo a una suma de 1.
+
+    Siempre se opera sobre porcentajes: la rama histórica `nominals` (ponderar por
+    cantidad × precio) se retiró junto con el ingreso de carteras por nominales.
+    """
     assets = pf_data.get("assets", {})
-    if mode == "nominals":
-        vals = {}
-        for t, qty in assets.items():
-            r = lookup_prices.get(t.upper())
-            price = r.get("close") if r else None
-            if price is not None:
-                vals[t] = qty * price
-            else:
-                vals[t] = 0.0
-        total_v = sum(vals.values())
-        if total_v == 0:
-            return {t: safe_div(1.0, len(assets)) for t in assets}
-        return {t: safe_div(v, total_v) for t, v in vals.items()}
-    else:
-        total_w = sum(assets.values())
-        if total_w == 0:
-            return {t: safe_div(1.0, len(assets)) for t in assets}
-        return {t: safe_div(w, total_w) for t, w in assets.items()}
+    total_w = sum(assets.values())
+    if total_w == 0:
+        return {t: safe_div(1.0, len(assets)) for t in assets}
+    return {t: safe_div(w, total_w) for t, w in assets.items()}
 
 
 def get_portfolio_fixed_income_summary(pf_name: str) -> dict:
@@ -1179,14 +1286,13 @@ def get_portfolio_rebalance_data(
         from services.exceptions import PortfolioNotFoundError; raise PortfolioNotFoundError(f"El portfolio '{pf_clean}' no existe.")
         
     pf_data = portfolios[pf_clean]
-    mode = pf_data.get("mode", "weights")
     weights = pf_data.get("assets", {})
     
     if not weights:
         from services.exceptions import DomainValidationError; raise DomainValidationError("El portfolio seleccionado no contiene activos.")
     
     data = get_multiple_tickers_data(list(weights.keys()))
-    mcm_info = calculate_portfolio_mcm(weights, data) if mode == "weights" else None
+    mcm_info = calculate_portfolio_mcm(weights, data)
     
     saved_anchor = pf_data.get("anchor")
     saved_qty = pf_data.get("qty")
@@ -1311,7 +1417,7 @@ def get_portfolio_rebalance_data(
 
     return {
         "pf_type": pf_clean,
-        "mode": mode,
+        "mode": "weights",  # toda cartera se define por pesos (modo nominals retirado)
         "anchor": anchor_clean,
         "qty": qty_clean,
         "weights": weights,

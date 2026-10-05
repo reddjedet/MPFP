@@ -48,6 +48,7 @@ const areaConfigs = {
     name: 'Lab',
     tabs: [
       { id: 'frontera', label: 'Frontera Eficiente', icon: FlaskConical },
+      { id: 'comparacion', label: 'Comparar portfolios', icon: ArrowLeftRight },
       { id: 'valuacion', label: 'Valuación', icon: Calculator },
       { id: 'performance', label: 'Backtest Performance', icon: BarChart3 }
     ]

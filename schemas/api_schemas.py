@@ -278,7 +278,20 @@ class PortfolioCreateResponse(BaseModel):
     assets: Dict[str, float]
 
 class TrashListResponse(BaseModel):
+    """
+    Listado de la papelera. `count` y `max_capacity` deben declararse explícitamente:
+    FastAPI descarta del cuerpo cualquier campo no presente en el response_model, y
+    sin ellos el cliente no puede mostrar "3 de 7".
+    """
+    success: bool = True
+    count: int = 0
+    max_capacity: int = 7
     trash: List[Dict[str, Any]]
+
+
+class RestoreAsRequest(BaseModel):
+    """Nombre destino para restaurar una cartera de la papelera bajo otro nombre."""
+    new_name: str = Field(..., min_length=1, max_length=30, description="Nombre de la cartera a crear.")
 
 class RenamePortfolioResponse(BaseModel):
     success: bool
@@ -291,6 +304,7 @@ class ImportPortfoliosResponse(BaseModel):
     error: Optional[str] = None
     imported_count: Optional[int] = None
     portfolios: Optional[Dict[str, Any]] = None
+    skipped: Optional[List[str]] = None
 
 class DeletePortfolioResponse(BaseModel):
     success: bool

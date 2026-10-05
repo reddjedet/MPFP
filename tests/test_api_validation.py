@@ -5,7 +5,11 @@ from fastapi.testclient import TestClient
 
 from main import app
 import services.portfolio_service as ps
-from services.portfolio_service import save_portfolios, load_portfolios
+from services.portfolio_service import (
+    load_portfolios,
+    save_portfolios,
+    save_portfolios_trash,
+)
 
 
 @pytest.fixture
@@ -50,19 +54,32 @@ def test_bulk_update_valido_devuelve_200(client):
     assert data["data"]["holdings"]["GGAL"]["nominals"] == 10
 
 
-def test_import_no_puede_crear_cartera_reservada_bal(client):
+def test_import_crea_bal_porque_ya_no_esta_reservada(client):
+    """
+    `bal` ya no es un nombre protegido: lo único que bloquea es que exista una
+    cartera viva o una entrada en la papelera con ese nombre.
+    """
     payload = {
-        "bal": {"mode": "weights", "assets": {"GGAL": 100.0}},
+        "bal": {"mode": "weights", "assets": {"AAPL": 100.0}},
         "valida": {"mode": "weights", "assets": {"AAPL": 100.0}}
     }
     content = json.dumps(payload).encode("utf-8")
     files = {"file": ("portfolios.json", io.BytesIO(content), "application/json")}
+
+    # El estado de la papelera debe ser parte del escenario del test y no
+    # depender de que exista en el snapshot de datos del entorno.
+    save_portfolios_trash([{"id": "valida", "name": "valida"}])
+
     r = client.post("/api/portfolios/import_json", files=files)
     assert r.status_code == 200
+    body = r.json()
     pfs = load_portfolios()
-    # 'bal' no debe haber sido importada/sobrescrita desde el archivo
-    # (solo carteras no reservadas se importan)
-    assert "valida" in pfs
+    # `bal` ya no está reservada: se importa.
+    assert "bal" in pfs
+    # `valida` sigue en la papelera, así que su nombre está reservado y se omite,
+    # pero el endpoint lo informa en vez de descartarlo en silencio.
+    assert "valida" not in pfs
+    assert "valida" in body["skipped"]
 
 
 def test_create_json_no_sobrescribe_cartera_existente(client):

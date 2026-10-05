@@ -1,11 +1,99 @@
 import React, { useMemo, useState } from 'react';
 import { queryClient } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
-import { Plus, Upload, Trash2, AlertTriangle, Save, Download, Layers, Wallet, TrendingUp, TrendingDown, Landmark } from 'lucide-react';
+import { Plus, Upload, Trash2, Hourglass, AlertTriangle, Save, Download, Layers, Wallet, TrendingUp, TrendingDown, Landmark } from 'lucide-react';
 import { Dropdown } from '../ui/Dropdown';
 import { CreatePortfolioModal } from './CreatePortfolioModal';
+import { PortfolioTrashPanel } from './PortfolioTrashPanel';
 import { useHoldingsManager } from '@/hooks/useHoldingsManager';
 import { HoldingsManagerChart } from './HoldingsManagerChart';
+
+export interface ImportTrashAsset { ticker: string; weight: number }
+
+const isNumberish = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const sumOf = (a: Record<string, number>): number => Object.values(a).reduce((x, y) => x + y, 0);
+
+/** Cartera detectada en el JSON pegado. `name: null` = hay que pedirle el nombre. */
+export interface DetectedPortfolio { name: string | null; assets: Record<string, number> }
+
+export type ParsedImport =
+  | { ok: false; reason: string }
+  | { ok: true; portfolios: DetectedPortfolio[]; totalAssets: number; weightSum: number; allZero: boolean };
+
+/**
+ * Interpreta el JSON que el usuario pega, sin pegarle al servidor.
+ *
+ * Devuelve qué falta para poder importar: un mapa plano de activos o una envoltura
+ * `{"assets": {...}}` describen UNA sola cartera cuyo nombre no viene en el JSON, así
+ * que hay que pedirlo. El backend aplica exactamente las mismas reglas; esto solo
+ * evita el viaje de ida y vuelta para preguntar lo mismo.
+ */
+export function parseImportJson(raw: string): ParsedImport {
+  const text = raw.trim();
+  if (!text) return { ok: false, reason: 'Pegá el JSON que querés importar.' };
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return {
+      ok: false,
+      reason: 'Eso no es un JSON válido. Si copiaste solo una parte, agregá las llaves { } que encloses todo.',
+    };
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, reason: 'El JSON debe ser un objeto entre llaves { }, no una lista.' };
+  }
+
+  const obj = parsed as Record<string, unknown>;
+  const entries = Object.entries(obj);
+  const build = (pf: DetectedPortfolio[]): ParsedImport => ({
+    ok: true,
+    portfolios: pf,
+    totalAssets: pf.reduce((a, p) => a + Object.keys(p.assets).length, 0),
+    weightSum: sumOf(Object.assign({}, ...pf.map(p => p.assets))),
+    allZero: pf.every(p => sumOf(p.assets) <= 0),
+  });
+
+  // Mapa plano: { "AAPL": 50, "MSFT": 50 } → una cartera, sin nombre.
+  if (entries.length > 0 && entries.every(([, v]) => isNumberish(v))) {
+    return build([{ name: null, assets: Object.fromEntries(entries) as Record<string, number> }]);
+  }
+
+  // Envoltura: { "assets": {...} } o { "mode": ..., "assets": {...} } → una cartera, sin nombre.
+  const wrapper = obj.assets;
+  if (
+    typeof wrapper === 'object' && wrapper !== null && !Array.isArray(wrapper) &&
+    Object.keys(wrapper).length > 0 && Object.values(wrapper).every(isNumberish)
+  ) {
+    return build([{ name: null, assets: wrapper as Record<string, number> }]);
+  }
+
+  // Caso normal: una o más carteras nombradas.
+  const found: DetectedPortfolio[] = [];
+  for (const [key, value] of entries) {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) continue;
+    const inner = value as Record<string, unknown>;
+    const candidate = (typeof inner.assets === 'object' && inner.assets !== null && !Array.isArray(inner.assets))
+      ? inner.assets as Record<string, unknown>
+      : inner;
+    const numeric = Object.fromEntries(
+      Object.entries(candidate).filter(([, v]) => isNumberish(v))
+    ) as Record<string, number>;
+    if (Object.keys(numeric).length === 0) continue;
+    found.push({ name: key, assets: numeric });
+  }
+
+  if (found.length === 0) {
+    return {
+      ok: false,
+      reason: 'No encontré activos. Revisá que el JSON tenga esta forma: { "mi_cartera": { "AAPL": 50, "MSFT": 50 } }',
+    };
+  }
+
+  return build(found);
+}
 
 export function HoldingsManagerView({ hideHeader = false, compact = false }: { hideHeader?: boolean, compact?: boolean } = {}) {
   const hm = useHoldingsManager();
@@ -25,6 +113,119 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
   const [fiPendingDelete, setFiPendingDelete] = useState<string | null>(null);
   const [fiPendingRemove, setFiPendingRemove] = useState<string | null>(null);
   const [fiNewTicker, setFiNewTicker] = useState<string>('');
+  const [showTrash, setShowTrash] = useState<boolean>(false);
+  const [importing, setImporting] = useState<boolean>(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importNeedsName, setImportNeedsName] = useState<boolean>(false);
+  const [importName, setImportName] = useState<string>('');
+  const [importPreview, setImportPreview] = useState<ParsedImport | null>(null);
+
+  /** Rellena el textarea con un ejemplo (los botones de formato admitido). */
+  const fillImportExample = (value: string) => {
+    const ta = document.getElementById('import-json-textarea') as HTMLTextAreaElement | null;
+    if (ta) {
+      ta.value = value;
+      handleImportTextChange(value);
+      ta.focus();
+    }
+  };
+
+  /** Analiza el JSON pegado en vivo y muestra qué falta completar. */
+  const handleImportTextChange = (value: string) => {
+    if (!value.trim()) {
+      setImportPreview(null);
+      setImportError(null);
+      setImportNeedsName(false);
+      return;
+    }
+    const parsed = parseImportJson(value);
+    setImportPreview(parsed);
+    if (!parsed.ok) {
+      setImportError(parsed.reason);
+      setImportNeedsName(false);
+    } else {
+      setImportError(null);
+      setImportNeedsName(parsed.portfolios.some(p => p.name === null));
+    }
+  };
+
+  /**
+   * Importa el JSON pegado.
+   *
+   * El backend responde 200 incluso cuando la importación falla, así que el éxito se
+   * decide leyendo `success` del cuerpo, no el código HTTP. Antes de enviar se valida
+   * en local con `parseImportJson`, que además detecta si falta el nombre.
+   */
+  const handleImportJson = async () => {
+    const ta = document.getElementById('import-json-textarea') as HTMLTextAreaElement | null;
+    if (!ta || !ta.value.trim()) {
+      setImportError('Pegá el JSON que querés importar.');
+      return;
+    }
+
+    const parsed = parseImportJson(ta.value);
+    if (!parsed.ok) {
+      setImportError(parsed.reason);
+      return;
+    }
+    if (parsed.allZero) {
+      setImportError('Todos los pesos están en cero. Asignale un peso mayor a 0 a al menos un activo.');
+      return;
+    }
+    if (parsed.portfolios.some(p => p.name === null) && !importName.trim()) {
+      setImportError('Poné un nombre para la cartera.');
+      return;
+    }
+
+    setImportError(null);
+    setImporting(true);
+    try {
+      const blob = new Blob([ta.value], { type: 'application/json' });
+      const fd = new FormData();
+      fd.append('file', blob, 'import.json');
+      if (importName.trim()) fd.append('name', importName.trim());
+
+      const res = await fetch('/api/portfolios/import_json', { method: 'POST', body: fd });
+      const data = await res.json().catch(() => ({}));
+
+      if (data.needs_name) {
+        setImportNeedsName(true);
+        setImporting(false);
+        return;
+      }
+
+      if (!res.ok || data.success === false) {
+        setImportError(data.error || 'No se pudo importar el JSON.');
+        setImporting(false);
+        return;
+      }
+
+      const imported = data.imported_count ?? 0;
+      const skipped: string[] = data.skipped || [];
+      let msg = imported === 1
+        ? 'Se importó 1 cartera.'
+        : `Se importaron ${imported} carteras.`;
+      if (skipped.length > 0) {
+        msg += ` Omitidas: ${skipped.join(', ')}.`;
+      }
+
+      setShowImportModal(false);
+      setImportNeedsName(false);
+      setImportName('');
+      setImportPreview(null);
+      setFeedback({
+        kind: skipped.length > 0 && imported === 0 ? 'error' : 'success',
+        msg,
+      });
+      queryClient.invalidateQueries({ queryKey: ['portfolios-list'] });
+      setRetryTick((t) => t + 1);
+    } catch (e) {
+      console.error(e);
+      setImportError('Error de red al importar el portafolio.');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const fiTargetTickers = Object.keys(fiTargetWeights);
   const fiTargetRows = useMemo(
@@ -156,6 +357,15 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
               >
                 <Plus className="w-4 h-4 text-foreground" />
               </button>
+              <button
+                type="button"
+                title="Papelera de carteras"
+                aria-label="Abrir papelera de carteras"
+                onClick={() => setShowTrash(true)}
+                className="p-2 min-h-9 min-w-9 flex items-center justify-center bg-secondary hover:bg-border rounded-lg transition-colors border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <Hourglass className="w-4 h-4 text-muted-foreground" />
+              </button>
             </div>
           </div>
         </div>
@@ -163,7 +373,7 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
         <div className="flex items-center gap-3">
           <button 
             type="button"
-            onClick={() => setShowImportModal(true)}
+            onClick={() => { setImportError(null); setImportNeedsName(false); setImportName(''); setImportPreview(null); setShowImportModal(true); }}
             className="flex items-center gap-2 px-4 py-2 min-h-9 bg-secondary hover:bg-border rounded-lg text-sm font-medium transition-colors border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <Upload className="w-4 h-4" /> Importar
@@ -668,6 +878,8 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
 
       </div>
 
+      <PortfolioTrashPanel open={showTrash} onClose={() => setShowTrash(false)} />
+
       <CreatePortfolioModal 
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
@@ -805,47 +1017,98 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
       {showImportModal && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div role="dialog" aria-modal="true" aria-label="Importar portafolio via JSON" className="bg-card border border-border rounded-2xl p-6 max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh]">
-            <h3 className="text-lg font-bold text-foreground mb-2">Importar Portafolio via JSON</h3>
-            <textarea 
+            <h3 className="text-lg font-bold text-foreground mb-1">Importar Portafolio via JSON</h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Pega un mapa de activos o uno o varios portfolios. No hace falta indicar el modo: todo se guarda como pesos.
+            </p>
+            <textarea
               id="import-json-textarea"
-              className="w-full h-32 bg-background border border-border rounded-lg p-4 text-sm font-mono text-foreground focus:outline-none focus:border-foreground mb-6"
-              placeholder="Pega el JSON aquí..."
+              className="w-full h-32 bg-background border border-border rounded-lg p-4 text-sm font-mono text-foreground focus:outline-none focus:border-foreground mb-3"
+              onChange={e => handleImportTextChange(e.target.value)}
+              placeholder='Pega el JSON aquí'
             />
+
+            {!importPreview?.ok && (
+              <div className="mb-3">
+                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1.5">
+                  Formatos admitidos
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => fillImportExample('{"AAPL": 50, "MSFT": 30, "GGAL": 20}')}
+                    className="text-left px-3 py-2 rounded-lg bg-secondary hover:bg-border border border-border font-mono text-[11px] text-foreground transition-colors"
+                  >
+                    &#123; "AAPL": 50, "MSFT": 30, "GGAL": 20 &#125;
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fillImportExample('{\n  "mi_cartera": { "AAPL": 50, "MSFT": 50 }\n}')}
+                    className="text-left px-3 py-2 rounded-lg bg-secondary hover:bg-border border border-border font-mono text-[11px] text-foreground transition-colors"
+                  >
+                    &#123; "mi_cartera": &#123; "AAPL": 50, "MSFT": 50 &#125; &#125;
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {importPreview?.ok && (
+              <div className="mb-3 px-3 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10">
+                <p className="text-xs text-emerald-300 font-bold">
+                  {importPreview.portfolios.length === 1 && importPreview.portfolios[0].name
+                    ? `Cartera "${importPreview.portfolios[0].name}"`
+                    : `${importPreview.portfolios.length} cartera${importPreview.portfolios.length === 1 ? '' : 's'}`}
+                  {' · '}
+                  {importPreview.totalAssets} activo{importPreview.totalAssets === 1 ? '' : 's'}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Suma de pesos: {importPreview.weightSum.toFixed(2)}%
+                  {Math.abs(importPreview.weightSum - 100) > 0.01
+                    ? ' → se va a ajustar a 100% al guardar'
+                    : ''}
+                </p>
+              </div>
+            )}
+
+            {importNeedsName && (
+              <div className="mb-3">
+                <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1 block">
+                  Nombre de la cartera
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={importName}
+                  onChange={e => setImportName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleImportJson(); }}
+                  className="w-full h-9 px-3 rounded-lg bg-background border border-border text-xs font-mono text-foreground outline-none focus:border-foreground"
+                  placeholder="mi_cartera"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  El JSON es un solo mapa de activos, así que el nombre hay que indicarlo.
+                </p>
+              </div>
+            )}
+
+            {importError && (
+              <div className="mb-3 px-3 py-2 rounded-lg text-xs border border-rose-500/30 bg-rose-500/10 text-rose-400">
+                {importError}
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-3 mt-auto">
-              <button 
-                onClick={() => setShowImportModal(false)}
+              <button
+                onClick={() => { setShowImportModal(false); setImportError(null); setImportNeedsName(false); }}
                 className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-secondary transition-colors"
               >
                 Cancelar
               </button>
-              <button 
-                onClick={async () => {
-                  const ta = document.getElementById('import-json-textarea') as HTMLTextAreaElement;
-                  if (!ta || !ta.value) return;
-                  try {
-                    const blob = new Blob([ta.value], { type: 'application/json' });
-                    const fd = new FormData();
-                    fd.append('file', blob, 'import.json');
-                    const res = await fetch('/api/portfolios/import_json', {
-                      method: 'POST',
-                      body: fd
-                    });
-                    if (res.ok) {
-                      setShowImportModal(false);
-                      setFeedback({ kind: 'success', msg: 'Portafolio importado.' });
-                      queryClient.invalidateQueries({ queryKey: ['portfolios-list'] });
-                      setRetryTick((t) => t + 1);
-                    } else {
-                      setFeedback({ kind: 'error', msg: 'El backend rechazó la importación del JSON.' });
-                    }
-                  } catch (e) {
-                    console.error(e);
-                    setFeedback({ kind: 'error', msg: 'Error de red al importar el portafolio.' });
-                  }
-                }}
-                className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-bold hover:opacity-90 transition-opacity flex items-center gap-2"
+              <button
+                onClick={handleImportJson}
+                disabled={importing}
+                className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-bold hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50"
               >
-                <Upload className="w-4 h-4" /> Importar
+                <Upload className="w-4 h-4" /> {importing ? 'Importando...' : 'Importar'}
               </button>
             </div>
           </div>

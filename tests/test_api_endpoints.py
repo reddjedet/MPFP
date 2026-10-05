@@ -185,19 +185,27 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertIn("error", resp.text)
 
-    def test_portfolio_create_protected_override(self):
+    def test_portfolio_create_rejects_existing_name(self):
+        """
+        No hay nombres reservados por lista fija: lo que protege a una cartera es que
+        ya exista. Crear un duplicado debe rechazarse con 409.
+        """
         resp = self.client.post("/api/portfolios/create_json", json={
             "name": "bmb",
             "mode": "weights",
             "weights_str": "AAPL: 100"
         })
-        self.assertEqual(resp.status_code, 200)
-        self.assertIn("No puedes sobreescribir el portfolio predeterminado", resp.text)
+        self.assertEqual(resp.status_code, 409)
+        self.assertIn("bmb", resp.text)
 
-    def test_portfolio_delete_protected(self):
+    def test_portfolio_delete_is_always_allowed(self):
+        """
+        Borrar ya no está bloqueado por nombre: `bmb` está protegida mientras esté
+        viva, no por su nombre. El borrado la manda a la papelera.
+        """
         resp = self.client.delete("/api/portfolios/delete_json/bmb")
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("No se puede eliminar el portfolio predeterminado", resp.text)
+        self.assertTrue(resp.json()["success"])
 
     def test_portfolio_import_invalid_json(self):
         file_content = b"Not a JSON content"
@@ -486,16 +494,10 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(data[0]["perf_w"], 0.25)
 
     def test_portfolio_trash_lifecycle_and_fifo_capacity(self):
-        """Verifica la papelera de reciclaje de portfolios, límite FIFO de 7 y restauración."""
+        """Verifica la papelera: límite FIFO de 7, snapshot de posiciones y restauración."""
         from services.portfolio_service import save_portfolios, load_portfolios, save_portfolios_trash
 
-        # 1. Intentar eliminar cartera predeterminada (debe retornar success: False)
-        resp_protected = self.client.delete("/api/portfolios/delete_json/bmb")
-        self.assertEqual(resp_protected.status_code, 200)
-        self.assertFalse(resp_protected.json().get("success"))
-        self.assertIn("No se puede eliminar el portfolio predeterminado", resp_protected.json().get("error"))
-
-        # 2. Crear una cartera activa de prueba
+        # 1. Crear una cartera activa de prueba
         pfs = load_portfolios()
         pfs["cartera_test_trash"] = {
             "mode": "weights",
@@ -599,6 +601,35 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertGreaterEqual(s["cash_ars"], 0)
 
 
+    def test_create_forces_weights_mode(self):
+        """
+        El ingreso por nominales fue retirado. Aunque un cliente antiguo mande
+        mode="nominals", la cartera debe quedar persistida como weights.
+        """
+        resp = self.client.post("/api/portfolios/create_json", json={
+            "name": "legacy_nominals_pf", "mode": "nominals", "weights_str": "AAPL:60, AXP:40"
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()["success"])
+
+        stored = load_portfolios()["legacy_nominals_pf"]
+        self.assertEqual(stored["mode"], "weights")
+        self.assertEqual(stored["assets"], {"AAPL": 60.0, "AXP": 40.0})
+
+    def test_update_weights_forces_weights_mode(self):
+        """Mismo contrato en la actualización de una cartera existente."""
+        self.client.post("/api/portfolios/create_json", json={
+            "name": "mode_flip_pf", "mode": "weights", "weights_str": "AAPL:100"
+        })
+        resp = self.client.post("/api/portfolios/weights_json/mode_flip_pf", json={
+            "mode": "nominals", "weights_str": "AAPL:50, AXP:50"
+        })
+        self.assertEqual(resp.status_code, 200)
+
+        stored = load_portfolios()["mode_flip_pf"]
+        self.assertEqual(stored["mode"], "weights")
+        self.assertEqual(stored["assets"], {"AAPL": 50.0, "AXP": 50.0})
+
     def test_fixed_income_target_normalizes_and_derives_weights(self):
         """
         El usuario informa el tamaño del sleeve y el reparto en pesos RELATIVOS a renta fija.
@@ -606,7 +637,7 @@ class TestAPIEndpoints(unittest.TestCase):
         de modo que los tres campos nunca queden desincronizados.
         """
         self.client.post("/api/portfolios/create_json", json={
-            "name": "fi_target_pf", "mode": "weights", "weights_str": "GGAL:60, YPF:40"
+            "name": "fi_target_pf", "mode": "weights", "weights_str": "AAPL:60, AXP:40"
         })
 
         resp = self.client.post("/api/portfolios/fixed_income_target_json/fi_target_pf", json={
@@ -638,12 +669,12 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertIn("S30S6", exp["fixed_income_assets"])
         self.assertAlmostEqual(exp["asset_allocation"]["equity_weight"], 60.0, places=2)
         # No debe tocar los pesos de renta variable
-        self.assertIn("GGAL", exp["assets"])
+        self.assertIn("AAPL", exp["assets"])
 
     def test_fixed_income_target_rejects_non_fixed_income_ticker(self):
         """El objetivo de renta fija solo admite instrumentos de renta fija."""
         self.client.post("/api/portfolios/create_json", json={
-            "name": "fi_bad_ticker", "mode": "weights", "weights_str": "GGAL:100"
+            "name": "fi_bad_ticker", "mode": "weights", "weights_str": "AAPL:100"
         })
         resp = self.client.post("/api/portfolios/fixed_income_target_json/fi_bad_ticker", json={
             "fixed_income_weight": 30.0,
@@ -658,7 +689,7 @@ class TestAPIEndpoints(unittest.TestCase):
     def test_fixed_income_target_rejects_duplicate_ticker(self):
         """Ticker repetido en el objetivo → 400, sin persistir nada."""
         self.client.post("/api/portfolios/create_json", json={
-            "name": "fi_dupe", "mode": "weights", "weights_str": "GGAL:100"
+            "name": "fi_dupe", "mode": "weights", "weights_str": "AAPL:100"
         })
         resp = self.client.post("/api/portfolios/fixed_income_target_json/fi_dupe", json={
             "fixed_income_weight": 30.0,
@@ -676,7 +707,7 @@ class TestAPIEndpoints(unittest.TestCase):
         revirtiendo la renta fija al estado "invisible para el motor".
         """
         self.client.post("/api/portfolios/create_json", json={
-            "name": "fi_off_pf", "mode": "weights", "weights_str": "GGAL:100"
+            "name": "fi_off_pf", "mode": "weights", "weights_str": "AAPL:100"
         })
         on = self.client.post("/api/portfolios/fixed_income_target_json/fi_off_pf", json={
             "fixed_income_weight": 50.0,
@@ -730,8 +761,8 @@ class TestAPIEndpoints(unittest.TestCase):
         payload = {
             "roundtrip_pf": {
                 "mode": "weights",
-                "assets": {"GGAL": 40.0, "YPF": 60.0},
-                "anchor": "GGAL",
+                "assets": {"AAPL": 40.0, "AXP": 60.0},
+                "anchor": "AAPL",
                 "qty": 5,
                 "asset_allocation": {
                     "equity_weight": 70.0,
@@ -755,7 +786,7 @@ class TestAPIEndpoints(unittest.TestCase):
         exp_resp = self.client.get("/api/portfolios/export_json/roundtrip_pf")
         self.assertEqual(exp_resp.status_code, 200)
         exp_data = exp_resp.json().get("roundtrip_pf", {})
-        self.assertEqual(exp_data.get("anchor"), "GGAL")
+        self.assertEqual(exp_data.get("anchor"), "AAPL")
         self.assertEqual(exp_data.get("qty"), 5)
         self.assertEqual(exp_data.get("asset_allocation", {}).get("equity_weight"), 70.0)
         self.assertIn("S30S6", exp_data.get("fixed_income_assets", {}))

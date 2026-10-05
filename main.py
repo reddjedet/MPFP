@@ -12,7 +12,8 @@ from routers import (
     valuation, 
     markowitz, 
     rotation,
-    indices
+    indices,
+    portfolio_comparison
 )
 from services.portfolio_service import load_portfolios
 from services.security_service import get_cors_configuration
@@ -187,6 +188,7 @@ def _serve_spa_index():
 # Include routers
 app.include_router(cedears.router, prefix="/api/cedears", tags=["cedears"])
 app.include_router(portfolios.router, prefix="/api/portfolios", tags=["portfolios"])
+app.include_router(portfolio_comparison.router, prefix="/api/portfolios", tags=["portfolio-comparison"])
 app.include_router(earnings.router, prefix="/api/earnings", tags=["earnings"])
 app.include_router(valuation.router, prefix="/api/valuation", tags=["valuation"])
 app.include_router(fixed_income.router, prefix="/api/fixed_income", tags=["fixed_income"])

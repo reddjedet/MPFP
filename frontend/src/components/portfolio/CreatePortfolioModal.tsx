@@ -18,7 +18,8 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
   onCreated,
 }) => {
   const [name, setName] = useState('');
-  const [mode, setMode] = useState<'weights' | 'nominals'>('weights');
+  // Las carteras se definen exclusivamente por pesos porcentuales.
+  const mode = 'weights';
   const [inputFormat, setInputFormat] = useState<'rows' | 'text'>('rows');
   const [rows, setRows] = useState<AssetRow[]>([
     { ticker: 'AAPL', value: 30 },
@@ -34,7 +35,7 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
   const totalWeight = rows.reduce((acc, r) => acc + (Number(r.value) || 0), 0);
 
   const handleAddRow = () => {
-    setRows([...rows, { ticker: '', value: mode === 'weights' ? 10 : 1 }]);
+    setRows([...rows, { ticker: '', value: 10 }]);
   };
 
   const handleRemoveRow = (idx: number) => {
@@ -170,30 +171,6 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
                 className="h-9 px-3 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
               />
             </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Modo de Asignación</label>
-              <div className="flex rounded-lg bg-white/5 p-0.5 border border-white/10 h-9">
-                <button
-                  type="button"
-                  onClick={() => setMode('weights')}
-                  className={`flex-1 text-[11px] font-bold rounded-md transition-all ${
-                    mode === 'weights' ? 'bg-blue-600 text-white shadow-sm' : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  Pesos (%)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode('nominals')}
-                  className={`flex-1 text-[11px] font-bold rounded-md transition-all ${
-                    mode === 'nominals' ? 'bg-blue-600 text-white shadow-sm' : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  Nominales
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* Formato de entrada */}
@@ -232,7 +209,7 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
                   <input
                     type="number"
                     step="any"
-                    placeholder={mode === 'weights' ? '%' : 'Cant'}
+                    placeholder="%"
                     value={row.value}
                     onChange={e => handleRowChange(idx, 'value', e.target.value)}
                     className="flex-1 h-8 px-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-mono"
@@ -258,8 +235,7 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
                   <Plus className="w-3.5 h-3.5" /> Agregar Activo
                 </button>
 
-                {mode === 'weights' && (
-                  <div className="flex items-center gap-2 text-xs font-mono">
+                <div className="flex items-center gap-2 text-xs font-mono">
                     <span className={Math.abs(totalWeight - 100) < 0.1 ? 'text-emerald-400 font-bold' : 'text-amber-400'}>
                       Total: {totalWeight.toFixed(1)}%
                     </span>
@@ -273,7 +249,6 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
                       </button>
                     )}
                   </div>
-                )}
               </div>
             </div>
           ) : (

@@ -76,19 +76,32 @@ class TestPortfolioCalculations(unittest.TestCase):
         self.assertAlmostEqual(aapl_item["real_weight"], 50.0, places=1)
         self.assertAlmostEqual(msft_item["real_weight"], 50.0, places=1)
 
-    def test_calculate_portfolio_nominals_mode(self):
+    def test_calculate_portfolio_data_ignores_legacy_nominals_mode(self):
+        """
+        El modo `nominals` se retiró: las carteras se definen solo por pesos.
+        Un payload que aún traiga mode="nominals" debe tratarse como weights.
+        """
         pf_data = {
             "mode": "nominals",
-            "assets": {"AAPL": 10, "MSFT": 5}
+            "assets": {"AAPL": 50.0, "MSFT": 50.0}
         }
-        res = calculate_portfolio_data(pf_data, self.mock_data)
+        res = calculate_portfolio_data(pf_data, self.mock_data, "AAPL", 10)
         self.assertIsNotNone(res)
         self.assertEqual(len(res), 2)
-        
+
         aapl_item = next(x for x in res if x["ticker"] == "AAPL")
-        self.assertEqual(aapl_item["qty"], 10)
-        self.assertEqual(aapl_item["value"], 10000.0)
-        self.assertEqual(aapl_item["error"], 0.0)
+        msft_item = next(x for x in res if x["ticker"] == "MSFT")
+        # Semántica de pesos: 50/50 repartido sobre el capital del ancla.
+        self.assertAlmostEqual(aapl_item["real_weight"], 50.0, places=1)
+        self.assertAlmostEqual(msft_item["real_weight"], 50.0, places=1)
+
+    def test_calculate_portfolio_data_always_uses_weights(self):
+        """Sin mode explícito el resultado es idéntico al de weights."""
+        weights = {"AAPL": 50.0, "MSFT": 50.0}
+        res = calculate_portfolio_data({"assets": weights}, self.mock_data, "AAPL", 10)
+        self.assertIsNotNone(res)
+        aapl_item = next(x for x in res if x["ticker"] == "AAPL")
+        self.assertAlmostEqual(aapl_item["real_weight"], 50.0, places=1)
 
     def test_calculate_portfolio_missing_anchor(self):
         weights = {"AAPL": 50.0, "MSFT": 50.0}

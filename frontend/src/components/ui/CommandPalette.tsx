@@ -190,6 +190,17 @@ const COMMON_BONDS = [
       keywords: ['markowitz', 'frontera', 'optimizacion', 'sharpe', 'riesgo', 'varianza']
     },
     {
+      id: 'nav-portfolio-comparison',
+      title: 'Comparar portfolios cargados',
+      subtitle: 'Métricas, rendimientos y composición de dos portfolios',
+      category: 'navigation',
+      icon: ArrowLeftRight,
+      badge: 'Laboratorio',
+      badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+      action: () => { onNavigate('markowitz', 'comparacion'); onClose(); },
+      keywords: ['comparar', 'carteras', 'portfolios', 'cagr', 'sharpe', 'sortino', 'drawdown']
+    },
+    {
       id: 'nav-valuation',
       title: 'Valuación Fundamental Adaptativa',
       subtitle: 'Modelos por sector: DCF/FCF, Bancos, Holdings, Industrial, Energía',

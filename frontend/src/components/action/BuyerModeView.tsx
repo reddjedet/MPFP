@@ -5,13 +5,14 @@ import { useAppStore } from '@/store/useAppStore';
 import { useDraggableScroll } from '@/hooks/useDraggableScroll';
 
 export function BuyerModeView() {
-  const { toggleBuyerMode } = useAppStore();
+  const { toggleBuyerMode, openTickerDrawer } = useAppStore();
   const selectedPf = useAppStore(s => s.selectedPf);
   const setSelectedPf = useAppStore(s => s.setSelectedPf);
   const [portfolios, setPortfolios] = useState<Record<string, any>>({});
   const [quotes, setQuotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDeepScanning, setIsDeepScanning] = useState(false);
+  const [scanMsg, setScanMsg] = useState<string | null>(null);
   const scrollRef = useDraggableScroll<HTMLDivElement>();
 
   useEffect(() => {
@@ -54,20 +55,40 @@ export function BuyerModeView() {
 
   const handleDeepScan = async () => {
     setIsDeepScanning(true);
+    setScanMsg(null);
     try {
       const res = await fetch('/api/cedears/quotes_json?tickers=ALL_BYMA');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.quotes) {
-          setQuotes(prev => {
-            const existing = new Map(prev.map(q => [q.symbol, q]));
-            data.quotes.forEach((q: any) => existing.set(q.symbol, q));
-            return Array.from(existing.values());
-          });
-        }
+      if (!res.ok) {
+        setScanMsg('No se pudo consultar el panel de BYMA. Revisá la conexión e intentá de nuevo.');
+        return;
       }
+      const data = await res.json();
+      const incoming: any[] = data.quotes || [];
+
+      if (incoming.length === 0) {
+        setScanMsg('BYMA no devolvió ningún CEDEAR. El panel puede estar caído o fuera de horario.');
+        return;
+      }
+
+      // Se cuenta contra el estado actual (no dentro del updater) para evitar
+      // doble conteo: React puede invocar el updater más de una vez.
+      const known = new Set(quotes.map(q => q.symbol));
+      const added = incoming.filter(q => !known.has(q.symbol)).length;
+
+      setQuotes(prev => {
+        const existing = new Map(prev.map(q => [q.symbol, q]));
+        incoming.forEach((q: any) => existing.set(q.symbol, q));
+        return Array.from(existing.values());
+      });
+
+      setScanMsg(
+        added > 0
+          ? `BYMA aportó ${added} CEDEAR${added === 1 ? '' : 's'} nuevo${added === 1 ? '' : 's'} al universo.`
+          : `Sin novedades: BYMA no devolvió CEDEARs adicionales a los ${known.size} ya cargados.`
+      );
     } catch (err) {
-      console.error("Error deep scanning", err);
+      console.error('Error deep scanning', err);
+      setScanMsg('Error de conexión al consultar el panel de BYMA.');
     } finally {
       setIsDeepScanning(false);
     }
@@ -89,9 +110,11 @@ export function BuyerModeView() {
     return sources.sort((a, b) => a.rsi - b.rsi); // Lowest RSI first
   })();
 
-  // Calculate underperforming assets globally (RSI <= 35)
+  // Oportunidades FUERA de cualquier cartera (RSI <= 35). Se excluyen los activos
+  // que ya se poseen porque esa información la muestra la columna "Oportunidades
+  // en Cartera"; incluirlos acá duplicaba filas bajo el título "Destinos Estratégicos".
   const buyCandidates = quotes
-    .filter(q => q.rsi !== null && q.rsi <= 35)
+    .filter(q => q.rsi !== null && q.rsi <= 35 && !q.in_portfolio)
     .sort((a, b) => a.rsi - b.rsi)
     .slice(0, 10); // top 10 most oversold
 
@@ -193,13 +216,13 @@ export function BuyerModeView() {
                   <ArrowRight className="w-4 h-4 text-muted-foreground" />
                   Oportunidades de Compra (RSI &lt; 35)
                 </h3>
-                <p className="text-xs text-muted-foreground mb-4">Top 10 activos con mayor nivel de sobreventa en todo el catálogo.</p>
+                <p className="text-xs text-muted-foreground mb-4">Top 10 activos con mayor nivel de sobreventa que NO tenés en ninguna cartera.</p>
                 
                 <div className="space-y-3">
                   {buyCandidates.length === 0 && <p className="text-sm text-muted-foreground">No hay activos sobrevendidos actualmente.</p>}
                   {buyCandidates.map(cand => (
                     <div key={cand.symbol} className="border border-border rounded-xl overflow-hidden">
-                      <div className="p-3 bg-background flex items-center justify-between cursor-pointer hover:bg-secondary/50 transition-colors">
+                      <div className="p-3 bg-background flex items-center justify-between transition-colors">
                         <div className="flex items-center gap-3">
                           <span className="font-bold text-foreground">{cand.symbol}</span>
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-positive/10 text-positive">
@@ -208,7 +231,11 @@ export function BuyerModeView() {
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="font-mono text-sm font-bold text-foreground">${(cand.local || cand.cedear_usd || 0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
-                          <button className="text-positive font-bold hover:underline text-xs flex items-center gap-1">
+                          <button
+                            onClick={() => openTickerDrawer(cand.symbol)}
+                            title={`Ver ficha 360° de ${cand.symbol}`}
+                            className="text-positive font-bold hover:underline text-xs flex items-center gap-1"
+                          >
                             Evaluar <ArrowRight className="w-3 h-3" />
                           </button>
                         </div>
@@ -217,6 +244,18 @@ export function BuyerModeView() {
                   ))}
                 </div>
                 
+                {scanMsg && (
+                  <p
+                    className={`mt-3 text-xs rounded-lg px-3 py-2 border ${
+                      scanMsg.startsWith('BYMA aportó')
+                        ? 'text-positive bg-positive/10 border-positive/30'
+                        : 'text-amber-300 bg-amber-500/10 border-amber-500/30'
+                    }`}
+                  >
+                    {scanMsg}
+                  </p>
+                )}
+
                 {!isDeepScanning ? (
                   <button 
                     onClick={handleDeepScan}

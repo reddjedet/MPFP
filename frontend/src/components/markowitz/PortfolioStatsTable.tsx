@@ -58,7 +58,8 @@ export const PortfolioStatsTable: React.FC<PortfolioStatsTableProps> = ({ data }
 
   const formatPct = (val?: number | null, isPlus = true) => {
     if (val === undefined || val === null || isNaN(val)) return '—';
-    const pctVal = val * 100;
+    // El backend ya entrega estos campos expresados en porcentaje (0-100).
+    const pctVal = val;
     const sign = pctVal > 0 && isPlus ? '+' : '';
     return `${sign}${pctVal.toFixed(2).replace('.', ',')}%`;
   };

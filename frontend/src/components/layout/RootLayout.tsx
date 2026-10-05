@@ -19,6 +19,7 @@ const MarketIndicesView = React.lazy(() => import('../market/MarketIndicesView')
 const MarkowitzLab = React.lazy(() => import('../markowitz/MarkowitzLab').then(m => ({ default: m.MarkowitzLab })));
 const ValuationView = React.lazy(() => import('../markowitz/ValuationView').then(m => ({ default: m.ValuationView })));
 const PerformanceView = React.lazy(() => import('../markowitz/PerformanceView').then(m => ({ default: m.PerformanceView })));
+const PortfolioComparisonView = React.lazy(() => import('../markowitz/PortfolioComparisonView').then(m => ({ default: m.PortfolioComparisonView })));
 const BuyerModeView = React.lazy(() => import('../action/BuyerModeView').then(m => ({ default: m.BuyerModeView })));
 const SellerModeView = React.lazy(() => import('../action/SellerModeView').then(m => ({ default: m.SellerModeView })));
 
@@ -86,6 +87,8 @@ export function RootLayout() {
       case 'frontera':
       case 'markowitz':
         return <MarkowitzLab />;
+      case 'comparacion':
+        return <PortfolioComparisonView />;
       case 'valuacion':
       case 'valuation':
         return <ValuationView />;

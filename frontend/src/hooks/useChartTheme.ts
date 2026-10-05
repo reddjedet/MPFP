@@ -10,6 +10,12 @@ export interface ChartThemeTokens {
   tooltipBorder: string;
   tooltipShadow: string;
   cardBorder: string;
+  correlationNegative: string;
+  correlationNegativeMid: string;
+  correlationNeutral: string;
+  correlationPositiveMid: string;
+  correlationPositive: string;
+  correlationDiagonal: string;
   calLineColor: string;
   sharpeOptimalColor: string;
   benchmarkColor: string;
@@ -32,6 +38,12 @@ export function useChartTheme(): ChartThemeTokens {
     tooltipBorder: '#475258',
     tooltipShadow: 'none',
     cardBorder: '#475258',
+    correlationNegative: '#7fbbb3',
+    correlationNegativeMid: '#9db5a6',
+    correlationNeutral: '#343f44',
+    correlationPositiveMid: '#d69975',
+    correlationPositive: '#e67e80',
+    correlationDiagonal: '#475258',
     calLineColor: '#dbbc7f',
     sharpeOptimalColor: '#dbbc7f',
     benchmarkColor: '#e69875',

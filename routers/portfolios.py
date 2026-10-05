@@ -2,7 +2,7 @@ import json
 import logging
 logger = logging.getLogger(__name__)
 from typing import Optional, Any, Dict, List
-from fastapi import APIRouter, Request, UploadFile, File
+from fastapi import APIRouter, Request, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from schemas.api_schemas import (
     BulkQuickUpdateAssetRequest,
@@ -16,6 +16,7 @@ from schemas.api_schemas import (
     PortfolioRebalanceResponse,
     PortfolioCreateResponse,
     TrashListResponse,
+    RestoreAsRequest,
     RenamePortfolioResponse,
     ImportPortfoliosResponse,
     SuccessEnvelope,
@@ -42,7 +43,9 @@ from services.portfolio_service import (
     restore_portfolio_from_trash,
     delete_permanently_from_trash,
     MAX_TRASH_CAPACITY,
-    RESERVED_PORTFOLIO_NAMES
+    is_portfolio_name_taken,
+    normalize_weights_dict,
+    find_non_cedear_tickers
 )
 from services.security_service import (
     sanitize_ticker,
@@ -212,9 +215,21 @@ def update_portfolio_weights_json(pf_type: str, body: PortfolioWeightsRequest):
     if err:
         return JSONResponse({"success": False, "error": err}, status_code=400)
 
+    new_weights, err = normalize_weights_dict(new_weights)
+    if err:
+        return JSONResponse({"success": False, "error": err}, status_code=400)
+
+    invalid = find_non_cedear_tickers(new_weights.keys())
+    if invalid:
+        return JSONResponse({
+            "success": False,
+            "error": f"Estos tickers no son CEDEARs de BYMA: {', '.join(invalid)}. Corregí la cartera e intentá de nuevo."
+        }, status_code=400)
+
     pf_data = portfolios_data[pf_clean]
     pf_data["assets"] = new_weights
-    pf_data["mode"] = "nominals" if body.mode == "nominals" else "weights"
+    # El modo por nominales fue retirado: toda cartera se define por pesos.
+    pf_data["mode"] = "weights"
     portfolios_data[pf_clean] = pf_data
     save_portfolios(portfolios_data)
 
@@ -346,22 +361,30 @@ async def create_custom_portfolio(request: Request):
     if not name_clean:
         return JSONResponse({"success": False, "error": "Nombre de portfolio inválido. Solo letras minúsculas, números y guiones bajos (máx 30 caracteres)."})
         
-    if name_clean in RESERVED_PORTFOLIO_NAMES:
-        return JSONResponse({"success": False, "error": "No puedes sobreescribir el portfolio predeterminado (BMB o BAL)."})
-        
-    mode_clean = "nominals" if req_mode == "nominals" else "weights"
-    
+    if is_portfolio_name_taken(name_clean):
+        return JSONResponse({
+            "success": False,
+            "error": f"Ya existe un portfolio llamado '{name_clean}' o ese nombre sigue reservado en la papelera."
+        }, status_code=409)
+
+    mode_clean = "weights"
+
     new_weights, err = parse_weights_string(req_weights_str or "")
     if err:
         return JSONResponse({"success": False, "error": err})
-        
-    portfolios_data = load_portfolios()
-    if name_clean in portfolios_data:
+
+    new_weights, err = normalize_weights_dict(new_weights)
+    if err:
+        return JSONResponse({"success": False, "error": err})
+
+    invalid = find_non_cedear_tickers(new_weights.keys())
+    if invalid:
         return JSONResponse({
             "success": False,
-            "error": f"Ya existe un portfolio llamado '{name_clean}'. Usa otro nombre o renombra el existente."
-        }, status_code=409)
+            "error": f"Estos tickers no son CEDEARs de BYMA: {', '.join(invalid)}. Corregí la cartera e intentá de nuevo."
+        }, status_code=400)
 
+    portfolios_data = load_portfolios()
     portfolios_data[name_clean] = {
         "mode": mode_clean,
         "assets": new_weights
@@ -401,6 +424,26 @@ def restore_custom_portfolio(pf_type: str):
         return JSONResponse(res, status_code=404)
     return DeletePortfolioResponse(**res)
 
+
+@router.post("/restore_as_json/{pf_type}", response_model=SuccessEnvelope)
+def restore_portfolio_as_new(pf_type: str, body: RestoreAsRequest):
+    """
+    Restaura una cartera de la papelera bajo un nombre nuevo, conservando objetivos,
+    tenencias, bonos y efectivo. La entrada original sigue en la papelera.
+    """
+    pf_clean = sanitize_portfolio_name(pf_type)
+    if not pf_clean:
+        return JSONResponse({"success": False, "error": "Nombre de portfolio no válido."}, status_code=400)
+
+    target = sanitize_portfolio_name(body.new_name or "")
+    if not target:
+        return JSONResponse({"success": False, "error": "El nombre destino no es válido."}, status_code=400)
+
+    res = restore_portfolio_from_trash(pf_clean, new_name=target)
+    if not res.get("success"):
+        return JSONResponse(res, status_code=409)
+    return JSONResponse({"success": True, "restored": res["restored"], "portfolio": res["portfolio"]})
+
 @router.delete("/trash_json/{pf_type}", response_model=SuccessEnvelope)
 def purge_portfolio_from_trash(pf_type: str):
     pf_clean = sanitize_portfolio_name(pf_type)
@@ -417,18 +460,12 @@ def rename_custom_portfolio(body: RenamePortfolioRequest):
     if not old_clean or not new_clean:
         return JSONResponse({"success": False, "error": "Nombre de portfolio no válido."}, status_code=400)
 
-    if old_clean in RESERVED_PORTFOLIO_NAMES:
-        return JSONResponse({"success": False, "error": "No se puede renombrar un portfolio predeterminado (BMB/BAL)."}, status_code=400)
-
-    if new_clean in RESERVED_PORTFOLIO_NAMES:
-        return JSONResponse({"success": False, "error": "No puedes usar nombres reservados (BMB/BAL)."}, status_code=400)
-
     portfolios_data = load_portfolios()
     if old_clean not in portfolios_data:
         return JSONResponse({"success": False, "error": f"El portfolio '{old_clean}' no existe."}, status_code=404)
 
-    if new_clean != old_clean and new_clean in portfolios_data:
-        return JSONResponse({"success": False, "error": f"Ya existe un portfolio llamado '{new_clean}'."}, status_code=400)
+    if new_clean != old_clean and is_portfolio_name_taken(new_clean):
+        return JSONResponse({"success": False, "error": f"El nombre '{new_clean}' ya está en uso."}, status_code=400)
 
     # 1. Migrar en portfolios.json
     pf_content = portfolios_data.pop(old_clean)
@@ -448,7 +485,10 @@ def rename_custom_portfolio(body: RenamePortfolioRequest):
     return RenamePortfolioResponse(success=True, old_name=old_clean, new_name=new_clean)
 
 @router.post("/import_json", response_model=ImportPortfoliosResponse)
-async def import_custom_portfolios(file: UploadFile = File(...)):
+async def import_custom_portfolios(
+    file: UploadFile = File(...),
+    name: Optional[str] = Form(None),
+):
     try:
         content = await file.read(MAX_FILE_SIZE_BYTES + 1)
         if len(content) > MAX_FILE_SIZE_BYTES:
@@ -461,20 +501,62 @@ async def import_custom_portfolios(file: UploadFile = File(...)):
             
         if not isinstance(imported_data, dict):
             return JSONResponse({"success": False, "error": "El formato JSON debe ser un objeto (diccionario) con los nombres de portfolios."})
-            
+
+        # Un mapa plano {TICKER: valor} describe UNA sola cartera. En ese caso el
+        # nombre no viene en el JSON y hay que pedirlo, en vez de tomar cada ticker
+        # por el nombre de una cartera (lo que antes no importaba nada en silencio).
+        if imported_data and all(
+            isinstance(v, (int, float)) and not isinstance(v, bool)
+            for v in imported_data.values()
+        ):
+            if not name:
+                return JSONResponse({
+                    "success": False,
+                    "error": "El JSON es un mapa de activos (TICKER: valor). Indicá el nombre de la cartera.",
+                    "needs_name": True,
+                })
+            imported_data = {name: {"mode": "weights", "assets": imported_data}}
+        elif (
+            "assets" in imported_data
+            and isinstance(imported_data.get("assets"), dict)
+            and all(
+                isinstance(v, (int, float)) and not isinstance(v, bool)
+                for v in imported_data["assets"].values()
+            )
+        ):
+            # Envoltura de un solo portfolio: {"assets": {...}} o
+            # {"mode": "weights", "assets": {...}}. Antes se tomaba la palabra
+            # "assets" como nombre de cartera y se creaba una llamada "assets".
+            single = {"mode": imported_data.get("mode", "weights"), "assets": imported_data["assets"]}
+            if not name:
+                return JSONResponse({
+                    "success": False,
+                    "error": "El JSON describe una sola cartera. Indicá el nombre de la cartera.",
+                    "needs_name": True,
+                })
+            imported_data = {name: single}
+
         sanitized_portfolios = {}
+        skipped: List[str] = []
         for pf_name, data_item in imported_data.items():
             pf_name_clean = sanitize_portfolio_name(pf_name)
-            if not pf_name_clean or pf_name_clean in RESERVED_PORTFOLIO_NAMES:
+            if not pf_name_clean:
+                skipped.append(str(pf_name))
+                continue
+            if is_portfolio_name_taken(pf_name_clean):
+                # Ya existe viva o sigue en la papelera: no se puede reimportar.
+                skipped.append(pf_name_clean)
                 continue
                 
             if isinstance(data_item, dict) and "assets" in data_item:
-                mode = "nominals" if data_item.get("mode") == "nominals" else "weights"
+                # El modo por nominales fue retirado: se ignora el del JSON importado.
+                mode = "weights"
                 assets = data_item.get("assets", {})
             elif isinstance(data_item, dict):
                 mode = "weights"
                 assets = data_item
             else:
+                skipped.append(pf_name_clean)
                 continue
                 
             clean_assets = {}
@@ -488,6 +570,11 @@ async def import_custom_portfolios(file: UploadFile = File(...)):
                             pass
                             
             if clean_assets:
+                # Misma regla que al crear: los pesos se persisten normalizados a 100.
+                clean_assets, norm_err = normalize_weights_dict(clean_assets)
+                if norm_err:
+                    skipped.append(f"{pf_name_clean} ({norm_err})")
+                    continue
                 entry = {
                     "mode": mode,
                     "assets": clean_assets
@@ -536,12 +623,43 @@ async def import_custom_portfolios(file: UploadFile = File(...)):
                 sanitized_portfolios[pf_name_clean] = entry
                 
         if not sanitized_portfolios:
+            # Si hubo carteras omitidas, Saying which ones y por qué: un error genérico
+            # hace que el usuario no entienda por qué no se importó nada.
+            if skipped:
+                detail = "; ".join(skipped[:5])
+                more = f" (y {len(skipped) - 5} más)" if len(skipped) > 5 else ""
+                return JSONResponse({
+                    "success": False,
+                    "imported_count": 0,
+                    "skipped": skipped,
+                    "error": f"No se importó ninguna cartera. Omitidas: {detail}{more}.",
+                })
             return JSONResponse({"success": False, "error": "No se encontraron portfolios válidos para importar en el archivo."})
-            
+
+        # Regla de todo-o-nada: si algún ticker del archivo no es CEDEAR, no se importa
+        # nada. Importar la mitad deja carteras a medio construir, que es peor.
+        invalid = find_non_cedear_tickers(
+            tk for entry in sanitized_portfolios.values() for tk in (entry.get("assets") or {})
+        )
+        if invalid:
+            return JSONResponse({
+                "success": False,
+                "imported_count": 0,
+                "error": (
+                    f"Estos tickers no son CEDEARs de BYMA: {', '.join(invalid)}. "
+                    "No se importó ninguna cartera."
+                ),
+            }, status_code=400)
+
         current_data = load_portfolios()
         current_data.update(sanitized_portfolios)
         save_portfolios(current_data)
-        return ImportPortfoliosResponse(success=True, imported_count=len(sanitized_portfolios), portfolios=sanitized_portfolios)
+        return ImportPortfoliosResponse(
+            success=True,
+            imported_count=len(sanitized_portfolios),
+            portfolios=sanitized_portfolios,
+            skipped=skipped,
+        )
     except Exception as e:
         return JSONResponse({"success": False, "error": f"Error al procesar el archivo: {str(e)}"})
 
