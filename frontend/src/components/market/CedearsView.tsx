@@ -42,7 +42,6 @@ interface CedearQuote {
   earnings_badge?: {
     badge_text: string;
     badge_class: string;
-    target_month_name?: string;
   } | null;
   gf_value?: number | null;
   gf_signal?: {

@@ -1,10 +1,58 @@
-import pandas as pd
+import math
 from typing import Dict, Any
+
+import numpy as np
+import pandas as pd
 
 from services.portfolio_service import load_portfolios
 from services.rotation_service import load_user_holdings
 from services.markowitz_service import fetch_historical_returns_and_cov
 from services.cedear_service import get_multiple_tickers_data
+
+TRADING_DAYS_PER_YEAR = 252
+
+def calculate_one_year_risk_metrics(
+    portfolio_returns: pd.Series,
+    benchmark_returns: pd.Series,
+) -> dict[str, float | None]:
+    """Calcula beta, volatilidad y drawdown con un año de retornos diarios."""
+    aligned_returns = pd.concat(
+        [
+            pd.to_numeric(portfolio_returns, errors="coerce").rename("portfolio"),
+            pd.to_numeric(benchmark_returns, errors="coerce").rename("benchmark"),
+        ],
+        axis=1,
+    ).replace([np.inf, -np.inf], np.nan).dropna().tail(TRADING_DAYS_PER_YEAR)
+
+    unavailable = {
+        "beta": None,
+        "annualized_volatility_pct": None,
+        "max_drawdown_pct": None,
+    }
+    if len(aligned_returns) < TRADING_DAYS_PER_YEAR:
+        return unavailable
+
+    portfolio_window = aligned_returns["portfolio"]
+    benchmark_window = aligned_returns["benchmark"]
+    benchmark_variance = float(benchmark_window.var(ddof=1))
+    beta = (
+        float(portfolio_window.cov(benchmark_window) / benchmark_variance)
+        if benchmark_variance > 0
+        else None
+    )
+    annualized_volatility_pct = float(
+        portfolio_window.std(ddof=1) * math.sqrt(TRADING_DAYS_PER_YEAR) * 100.0
+    )
+
+    portfolio_nav = (1.0 + portfolio_window).cumprod().reset_index(drop=True)
+    portfolio_nav = pd.concat([pd.Series([1.0]), portfolio_nav], ignore_index=True)
+    max_drawdown_pct = float(((portfolio_nav / portfolio_nav.cummax()) - 1.0).min() * 100.0)
+
+    return {
+        "beta": beta,
+        "annualized_volatility_pct": annualized_volatility_pct,
+        "max_drawdown_pct": max_drawdown_pct,
+    }
 
 def calculate_backtest_performance(pf_type: str, chart_period: str = "ytd") -> Dict[str, Any]:
     portfolios = load_portfolios()
@@ -124,9 +172,7 @@ def calculate_backtest_performance(pf_type: str, chart_period: str = "ytd") -> D
         
     alpha = port_inc - bench_inc
     
-    cov_val = port_rets.cov(bench_rets)
-    var_val = bench_rets.var()
-    beta = float(cov_val / var_val) if var_val > 0 else 1.0
+    one_year_risk = calculate_one_year_risk_metrics(port_rets, bench_rets)
     
     # Slice series for sparkline based on chart_period
     sparkline_port = port_series
@@ -171,7 +217,11 @@ def calculate_backtest_performance(pf_type: str, chart_period: str = "ytd") -> D
             "3m": round(port_3m, 3),
             "ytd": round(port_ytd, 3),
             "12m": round(port_12m, 3),
-            "beta": round(beta, 2)
+            "beta": round(one_year_risk["beta"], 2) if one_year_risk["beta"] is not None else None,
+            "annualized_volatility_pct": round(one_year_risk["annualized_volatility_pct"], 2)
+            if one_year_risk["annualized_volatility_pct"] is not None else None,
+            "max_drawdown_pct": round(one_year_risk["max_drawdown_pct"], 2)
+            if one_year_risk["max_drawdown_pct"] is not None else None,
         },
         "sparkline": sparkline
     }

@@ -15,7 +15,7 @@ export interface Ticker360InitialData {
   price?: number | null;
   ratio?: number | string;
   rsi?: number | null;
-  earnings_badge?: { badge_text?: string; badge_class?: string; target_month_name?: string; text?: string; class?: string; is_urgent?: boolean; [key: string]: unknown } | null;
+  earnings_badge?: { badge_text?: string; badge_class?: string; text?: string; class?: string; is_urgent?: boolean; [key: string]: unknown } | null;
   gf_value?: number | null;
   gf_signal?: string | number | boolean | Record<string, unknown> | null;
   discount_pct?: number | null;

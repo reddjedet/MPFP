@@ -64,13 +64,6 @@ export const PortfolioSummaryCards: React.FC<Props> = ({ title, pfKey, totalValu
   const portWidth = `${Math.min((Math.abs(portReturn) / maxReturn) * 100, 100)}%`;
   const benchWidth = `${Math.min((Math.abs(benchReturn) / maxReturn) * 100, 100)}%`;
 
-  const periodLabel = {
-    '1m': 'Último Mes',
-    '3m': 'Últimos 3 Meses',
-    'ytd': 'YTD (Este Año)',
-    '1y': 'Último Año'
-  }[chartPeriod] || 'Último Año';
-
   return (
     <div className="bg-card text-foreground p-5 rounded-2xl shadow-sm flex flex-col gap-4 border border-border w-full">
       <div className="flex justify-between items-start">
@@ -123,7 +116,7 @@ export const PortfolioSummaryCards: React.FC<Props> = ({ title, pfKey, totalValu
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-2 mt-2 pt-4 border-t border-border text-center">
+      <div className="grid grid-cols-3 gap-2 mt-2 pt-4 border-t border-border text-center">
         <div className="flex flex-col gap-0.5">
           <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">3M</p>
           <p className={`text-xs font-mono font-bold ${data.metrics['3m'] >= 0 ? 'text-positive' : 'text-negative'}`}>{data.metrics['3m'] > 0 ? '+' : ''}{formatPercent(data.metrics['3m'])}</p>
@@ -136,9 +129,29 @@ export const PortfolioSummaryCards: React.FC<Props> = ({ title, pfKey, totalValu
           <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">1Y</p>
           <p className={`text-xs font-mono font-bold ${data.metrics['12m'] >= 0 ? 'text-positive' : 'text-negative'}`}>{data.metrics['12m'] > 0 ? '+' : ''}{formatPercent(data.metrics['12m'])}</p>
         </div>
-        <div className="flex flex-col gap-0.5">
-          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Beta</p>
-          <p className="text-xs font-mono font-bold text-foreground">{data.metrics.beta.toFixed(2)}</p>
+      </div>
+
+      <div className="pt-3 border-t border-border">
+        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-2">
+          Riesgo de renta variable · USD · Último año
+        </p>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="flex flex-col gap-0.5" title={`Sensibilidad frente a ${data.benchmark || 'SPY'} en los últimos 12 meses`}>
+            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Beta vs {data.benchmark || 'SPY'}</p>
+            <p className="text-xs font-mono font-bold text-foreground">{data.metrics.beta?.toFixed(2) ?? '—'}</p>
+          </div>
+          <div className="flex flex-col gap-0.5" title="Desviación estándar de los retornos diarios, anualizada con 252 ruedas">
+            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Volatilidad</p>
+            <p className="text-xs font-mono font-bold text-foreground">
+              {typeof data.metrics.annualized_volatility_pct === 'number' ? `${data.metrics.annualized_volatility_pct.toFixed(1)}%` : '—'}
+            </p>
+          </div>
+          <div className="flex flex-col gap-0.5" title="Mayor caída desde un máximo previo durante los últimos 12 meses">
+            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Máx. drawdown</p>
+            <p className="text-xs font-mono font-bold text-foreground">
+              {typeof data.metrics.max_drawdown_pct === 'number' ? `${data.metrics.max_drawdown_pct.toFixed(1)}%` : '—'}
+            </p>
+          </div>
         </div>
       </div>
     </div>

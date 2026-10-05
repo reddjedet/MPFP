@@ -173,26 +173,22 @@ def get_single_cedear_json(ticker: str, portfolio: Optional[str] = Query(None)):
 
     # Detalle de balance
     cal_item = earnings_cal.get(ticker_clean)
-    earnings_detail = None
     if not cal_item and ticker_clean == "BRKB":
         cal_item = earnings_cal.get("BRK.B")
-    if cal_item:
-        st = calculate_earnings_status(ticker_clean, cal_item)
-        if st.get("company"):
-            company_name = st.get("company")
-        delta_d = st.get("delta_days")
-        earnings_detail = {
-            "company": st.get("company", company_name),
-            "fiscal_close": st.get("fiscal_close", "—"),
-            "typical_window": st.get("typical_window", "—"),
-            "confirmed_date": st.get("confirmed_date_formatted", "—"),
-            "delta_days": delta_d,
-            "target_month_name": st.get("target_month_name", ""),
-            "status_text": st.get("status_text", ""),
-            "status_tier": st.get("status_tier", ""),
-            "badge_class": st.get("badge_class", ""),
-            "is_urgent": delta_d is not None and 0 <= delta_d < 14
-        }
+    cal_item = cal_item or {"company": company_name}
+    earnings_status = calculate_earnings_status(ticker_clean, cal_item)
+    if earnings_status.get("company") != ticker_clean:
+        company_name = earnings_status["company"]
+    delta_d = earnings_status.get("delta_days")
+    earnings_detail = {
+        "company": company_name,
+        "confirmed_date": earnings_status.get("confirmed_date_formatted", "—"),
+        "delta_days": delta_d,
+        "status_text": earnings_status.get("status_text", "Sin fecha confirmada"),
+        "status_tier": earnings_status.get("status_tier", "unconfirmed"),
+        "badge_class": earnings_status.get("badge_class", "badge-unconfirmed"),
+        "is_urgent": delta_d is not None and 0 <= delta_d < 14
+    }
 
     # Tenencia en cartera activa
     user_holdings = load_user_holdings(portfolio)

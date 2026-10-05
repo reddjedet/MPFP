@@ -8,7 +8,8 @@ import json
 from services.earnings_service import load_earnings_calendar, _db as _earnings_db
 from services.fair_value_service import load_fair_values, _db as _gf_db
 from services.valuation_service import load_user_valuation_inputs, _user_inputs_db as _val_db
-from services.portfolio_service import load_portfolios, _db as _pf_db, load_portfolios_trash, _trash_db
+from services.portfolio_service import load_portfolios, get_all_portfolio_tickers, _db as _pf_db, load_portfolios_trash, _trash_db
+from services.cedear_service import load_cedear_ratios
 from services.ppc_service import load_ppc_values, _db as _ppc_db
 from services.pfcf_service import load_pfcf_values, _db as _pfcf_db
 from services.rotation_service import load_user_holdings, _db as _holdings_db
@@ -291,6 +292,26 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertIn("NVDA", resp.text)
         self.assertIn("2026-08-28", resp.text)
 
+    def test_cedear_detail_does_not_estimate_unconfirmed_report_dates(self):
+        stored_tickers = set(load_earnings_calendar())
+        ticker = next(
+            ticker for ticker in load_cedear_ratios()
+            if ticker not in stored_tickers
+        )
+        with patch(
+            "routers.cedears.get_ticker_data",
+            return_value={"adr": 100.0, "local": 1000.0, "rsi": 50.0},
+        ):
+            response = self.client.get(f"/api/cedears/quote_json/{ticker}")
+
+        self.assertEqual(response.status_code, 200)
+        detail = response.json()["earnings_detail"]
+        self.assertEqual(detail["confirmed_date"], "—")
+        self.assertEqual(detail["status_text"], "Sin fecha confirmada")
+        self.assertNotIn("typical_window", detail)
+        self.assertNotIn("target_month_name", detail)
+        self.assertIsNone(response.json()["earnings_badge"])
+
     def test_portfolio_ppc_update(self):
         resp = self.client.post("/api/portfolios/quick_update_json", json={
             "ticker": "COST",
@@ -412,8 +433,23 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(resp_earn.status_code, 200)
         earn_data = resp_earn.json()
         self.assertIn("earnings", earn_data)
-        self.assertIn("heatmap", earn_data)
         self.assertIn("stats", earn_data)
+        self.assertIn("unconfirmed_count", earn_data["stats"])
+        expected_tickers = {
+            "BRK.B" if ticker.upper() == "BRKB" else ticker.upper()
+            for ticker in set(load_cedear_ratios()) | set(get_all_portfolio_tickers())
+        }
+        self.assertEqual({item["ticker"] for item in earn_data["earnings"]}, expected_tickers)
+        expected_portfolio_tickers = {
+            "BRK.B" if ticker.upper() == "BRKB" else ticker.upper()
+            for ticker in get_all_portfolio_tickers()
+        }
+        self.assertEqual(
+            {item["ticker"] for item in earn_data["earnings"] if item["in_portfolio"]},
+            expected_portfolio_tickers,
+        )
+        self.assertTrue(all("report_months" not in item for item in earn_data["earnings"]))
+        self.assertTrue(all("typical_window" not in item for item in earn_data["earnings"]))
 
         # 4. Renta Fija
         resp_rf = self.client.get("/api/fixed_income/curve_json?category=lecap")
@@ -794,4 +830,3 @@ class TestAPIEndpoints(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

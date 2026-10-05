@@ -1,10 +1,12 @@
 import unittest
 from datetime import date
+from unittest.mock import patch
 from services.earnings_service import (
     load_earnings_calendar,
     calculate_earnings_status,
     get_all_earnings_summary,
     save_confirmed_earnings_date,
+    get_ticker_earnings_badge,
     _db
 )
 
@@ -35,64 +37,77 @@ class TestEarningsService(unittest.TestCase):
     def setUp(self):
         self.calendar = load_earnings_calendar()
         
-    def test_calendar_loads_27_companies(self):
-        self.assertEqual(len(self.calendar), 27)
+    def test_calendar_loads_existing_user_dates(self):
         self.assertIn("NVDA", self.calendar)
         self.assertIn("DE", self.calendar)
         self.assertIn("MSFT", self.calendar)
         self.assertIn("GOOGL", self.calendar)
         self.assertIn("COST", self.calendar)
-        
-    def test_earnings_status_august(self):
-        # Mes de prueba: 8 (Agosto)
-        curr_m = 8
-        
-        def _clean_item(tk):
-            d = dict(self.calendar[tk])
-            d.pop("confirmed_date", None)
-            return d
-        
-        # DE reporta en Agosto -> pronto reporte
-        de_status = calculate_earnings_status("DE", _clean_item("DE"), curr_m)
-        self.assertEqual(de_status["months_diff"], 0)
-        self.assertTrue(de_status["is_active"])
-        self.assertEqual(de_status["status_tier"], "current_month")
-        self.assertEqual(de_status["status_text"], "pronto reporte")
-        
-        # NVDA reporta en Agosto -> pronto reporte
-        nvda_status = calculate_earnings_status("NVDA", _clean_item("NVDA"), curr_m)
-        self.assertEqual(nvda_status["months_diff"], 0)
-        self.assertTrue(nvda_status["is_active"])
-        self.assertEqual(nvda_status["status_tier"], "current_month")
-        self.assertEqual(nvda_status["status_text"], "pronto reporte")
 
-        # COST reporta en Septiembre (mes 9) -> reporta @septiembre
-        cost_status = calculate_earnings_status("COST", _clean_item("COST"), curr_m)
-        self.assertEqual(cost_status["months_diff"], 1)
-        self.assertTrue(cost_status["is_active"])
-        self.assertEqual(cost_status["status_tier"], "next_month")
-        self.assertEqual(cost_status["status_text"], "reporta @septiembre")
+    def test_unconfirmed_status_ignores_legacy_historical_months(self):
+        item = {
+            "company": "Empresa de prueba",
+            "report_months": [8, 11],
+            "typical_window": "Finales de Agosto",
+        }
+        status = calculate_earnings_status(
+            "TEST", item, current_month=8, ref_date=date(2026, 8, 15)
+        )
 
-        # MSFT reporta en Octubre (mes 10) -> en 2 meses (no activo)
-        msft_status = calculate_earnings_status("MSFT", _clean_item("MSFT"), curr_m)
-        self.assertEqual(msft_status["months_diff"], 2)
-        self.assertFalse(msft_status["is_active"])
-        self.assertEqual(msft_status["status_tier"], "later")
-        self.assertEqual(msft_status["status_text"], "en 2 meses (octubre)")
+        self.assertEqual(status["status_tier"], "unconfirmed")
+        self.assertEqual(status["status_text"], "Sin fecha confirmada")
+        self.assertIsNone(status["delta_days"])
+        self.assertFalse(status["is_active"])
+        self.assertNotIn("report_months", status)
+        self.assertNotIn("typical_window", status)
 
-    def test_ticker_badge_lookup_discreet(self):
-        curr_m = 8
-        
-        # Test con item limpio sin fecha confirmada
-        raw_nvda = dict(self.calendar["NVDA"])
-        raw_nvda.pop("confirmed_date", None)
-        status_nvda = calculate_earnings_status("NVDA", raw_nvda, curr_m)
-        self.assertEqual(status_nvda["badge_class"], "pill-imminent")
-        
-        raw_cost = dict(self.calendar["COST"])
-        raw_cost.pop("confirmed_date", None)
-        status_cost = calculate_earnings_status("COST", raw_cost, curr_m)
-        self.assertEqual(status_cost["badge_class"], "pill-soon")
+    def test_earnings_badge_requires_confirmed_date(self):
+        historical_only = {"report_months": [8], "typical_window": "Agosto"}
+        self.assertIsNone(
+            get_ticker_earnings_badge(
+                "NVDA", ref_date=date(2026, 8, 15), cal={"NVDA": historical_only}
+            )
+        )
+
+        confirmed = {"confirmed_date": "2026-08-28"}
+        badge = get_ticker_earnings_badge(
+            "NVDA", ref_date=date(2026, 8, 15), cal={"NVDA": confirmed}
+        )
+        self.assertIsNotNone(badge)
+        self.assertEqual(badge["badge_text"], "⚡ reporta 28/08")
+
+    def test_confirmed_date_in_next_month_keeps_calendar_month_filter(self):
+        status = calculate_earnings_status(
+            "TEST",
+            {"confirmed_date": "2026-09-02"},
+            ref_date=date(2026, 8, 25),
+        )
+        self.assertEqual(status["status_tier"], "next_month")
+        self.assertEqual(status["delta_days"], 8)
+
+    def test_summary_uses_union_of_cedears_and_portfolio_tickers(self):
+        with (
+            patch("services.cedear_service.load_cedear_ratios", return_value={"NEW": 1}),
+            patch("services.portfolio_service.get_all_portfolio_tickers", return_value=["PORT"]),
+        ):
+            summary = get_all_earnings_summary(ref_date=date(2026, 8, 15))
+
+        self.assertEqual({item["ticker"] for item in summary}, {"NEW", "PORT"})
+        self.assertTrue(all(item["status_tier"] == "unconfirmed" for item in summary))
+        in_portfolio = {item["ticker"]: item["in_portfolio"] for item in summary}
+        self.assertTrue(in_portfolio["PORT"])
+        self.assertFalse(in_portfolio["NEW"])
+
+    def test_save_date_for_eligible_ticker_and_clear_it(self):
+        with (
+            patch("services.cedear_service.load_cedear_ratios", return_value={"NEW": 1}),
+            patch("services.portfolio_service.get_all_portfolio_tickers", return_value=["PORT"]),
+        ):
+            self.assertTrue(save_confirmed_earnings_date("PORT", "2026-09-01"))
+            self.assertEqual(load_earnings_calendar()["PORT"]["confirmed_date"], "2026-09-01")
+            self.assertTrue(save_confirmed_earnings_date("PORT", None))
+            self.assertNotIn("confirmed_date", load_earnings_calendar()["PORT"])
+            self.assertFalse(save_confirmed_earnings_date("UNKNOWN", "2026-09-01"))
 
     def test_save_and_calculate_confirmed_date(self):
 
@@ -104,7 +119,7 @@ class TestEarningsService(unittest.TestCase):
         self.assertEqual(status["confirmed_date"], "2026-08-28")
         self.assertEqual(status["delta_days"], 13)
         self.assertEqual(status["status_tier"], "current_month")
-        self.assertEqual(status["status_text"], "⚡ reporta en 13d (28/08)")
+        self.assertEqual(status["status_text"], "reporta en 13d (28/08)")
         self.assertEqual(status["badge_class"], "pill-imminent pill-event")
         self.assertTrue(status["is_active"])
 
@@ -113,7 +128,7 @@ class TestEarningsService(unittest.TestCase):
         cost_status = calculate_earnings_status("COST", load_earnings_calendar()["COST"], current_month=8, ref_date=ref_today)
         self.assertEqual(cost_status["status_tier"], "next_month")
         self.assertEqual(cost_status["confirmed_date"], "2026-09-24")
-        self.assertEqual(cost_status["status_text"], "reporta 24/09")
+        self.assertEqual(cost_status["status_text"], "reporta el 24/09/2026")
 
     def test_confirmed_date_today_and_past(self):
         ref_today = date(2026, 8, 19)

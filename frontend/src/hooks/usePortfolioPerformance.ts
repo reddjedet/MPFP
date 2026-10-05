@@ -9,7 +9,9 @@ export interface PerformanceData {
     '3m': number;
     'ytd': number;
     '12m': number;
-    beta: number;
+    beta: number | null;
+    annualized_volatility_pct: number | null;
+    max_drawdown_pct: number | null;
   };
   sparkline: Array<{
     date: string;

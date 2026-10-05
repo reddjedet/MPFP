@@ -340,31 +340,29 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = () => {
             {earningsDetail ? (
               <div className="space-y-1.5 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Próximo Reporte:</span>
+                  <span className="text-muted-foreground">Fecha de Reporte:</span>
                   <span className="font-bold text-foreground font-mono">
-                    {earningsDetail.confirmed_date !== '—' 
+                    {earningsDetail.confirmed_date && earningsDetail.confirmed_date !== '—'
                       ? `${earningsDetail.confirmed_date} (Confirmada)`
-                      : `Mes de ${earningsDetail.target_month_name || '—'}`}
+                      : 'Sin fecha confirmada'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Tiempo restante:</span>
+                  <span className="text-muted-foreground">Estado:</span>
                   <span className={`font-bold font-mono ${
-                    earningsDetail.delta_days !== null && earningsDetail.delta_days < 14
+                    earningsDetail.delta_days !== null && earningsDetail.delta_days >= 0 && earningsDetail.delta_days < 14
                       ? 'text-orange-400' 
                       : 'text-muted-foreground'
                   }`}>
-                    {earningsDetail.delta_days !== null 
-                      ? (earningsDetail.delta_days === 0 ? '🚨 ¡Reporta hoy!' : `${earningsDetail.delta_days} días restantes`)
-                      : earningsDetail.status_text || '—'}
+                    {earningsDetail.delta_days === null || earningsDetail.delta_days === undefined
+                      ? earningsDetail.status_text || 'Sin fecha confirmada'
+                      : earningsDetail.delta_days === 0
+                        ? '🚨 ¡Reporta hoy!'
+                        : earningsDetail.delta_days > 0
+                          ? `${earningsDetail.delta_days} días restantes`
+                          : `Reportó hace ${Math.abs(earningsDetail.delta_days)} días`}
                   </span>
                 </div>
-                {earningsDetail.typical_window && earningsDetail.typical_window !== '—' && (
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span>Ventana típica:</span>
-                    <span>{earningsDetail.typical_window}</span>
-                  </div>
-                )}
               </div>
             ) : earningsBadge ? (
               <div className="flex items-center justify-between text-xs">
@@ -372,7 +370,7 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = () => {
                 <span className="font-bold text-orange-400">{earningsBadge.badge_text || 'Pronto reporte'}</span>
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Sin balance confirmado en las próximas semanas.</p>
+              <p className="text-xs text-muted-foreground">Sin fecha de reporte confirmada ingresada.</p>
             )}
           </div>
 

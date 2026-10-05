@@ -1,24 +1,4 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import ReactEChartsCore from 'echarts-for-react/lib/core';
-import * as echarts from 'echarts/core';
-import { HeatmapChart } from 'echarts/charts';
-import {
-  TooltipComponent,
-  VisualMapComponent,
-  GridComponent
-} from 'echarts/components';
-import { CanvasRenderer } from 'echarts/renderers';
-import { useChartTheme } from '@/hooks/useChartTheme';
-
-echarts.use([
-  HeatmapChart,
-  TooltipComponent,
-  VisualMapComponent,
-  GridComponent,
-  CanvasRenderer
-]);
-
-const ReactECharts = (ReactEChartsCore as any)?.default || ReactEChartsCore;
 import { 
   createColumnHelper, 
   flexRender, 
@@ -31,32 +11,22 @@ import {
   Calendar, 
   Clock, 
   CheckCircle2, 
-  AlertCircle, 
   Search, 
   RefreshCw, 
-  CalendarDays, 
   Edit3, 
   Save, 
   X,
-  Flame,
-  LayoutList,
-  Layers
+  Flame
 } from 'lucide-react';
 
 interface EarningsItem {
   ticker: string;
   company: string;
-  fiscal_close?: string;
-  report_months_text?: string;
-  report_months: number[];
-  typical_window?: string;
+  in_portfolio: boolean;
   confirmed_date?: string | null;
   confirmed_date_formatted?: string | null;
-  target_month?: number;
-  target_month_name?: string;
-  months_diff?: number;
   delta_days?: number | null;
-  status_tier: 'current_month' | 'next_month' | 'later' | 'past';
+  status_tier: 'current_month' | 'next_month' | 'later' | 'past' | 'unconfirmed';
   status_text: string;
   badge_class: string;
   is_active: boolean;
@@ -67,18 +37,13 @@ interface EarningsResponse {
   current_month: number;
   current_month_name: string;
   next_month_name: string;
-  months_es: string[];
-  months_full_es: string[];
   earnings: EarningsItem[];
-  heatmap: {
-    tickers: string[];
-    data: number[][];
-  };
   stats: {
     current_month_count: number;
     next_month_count: number;
     later_count: number;
     past_count: number;
+    unconfirmed_count: number;
     total_count: number;
   };
 }
@@ -90,6 +55,8 @@ export const EarningsView: React.FC = () => {
   const [activeTier, setActiveTier] = useState<string>('all');
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showRest, setShowRest] = useState<boolean>(false);
   
   // Date Editing modal / inline state
   const [editingTicker, setEditingTicker] = useState<string | null>(null);
@@ -98,6 +65,7 @@ export const EarningsView: React.FC = () => {
 
   const fetchEarningsData = async () => {
     setRefreshing(true);
+    setErrorMessage(null);
     try {
       const res = await fetch('/api/earnings/summary_json');
       if (!res.ok) throw new Error('Error al cargar cronograma de reportes');
@@ -105,6 +73,7 @@ export const EarningsView: React.FC = () => {
       setData(json);
     } catch (e) {
       console.error(e);
+      setErrorMessage('No se pudo cargar el calendario. Intenta actualizarlo nuevamente.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -117,29 +86,43 @@ export const EarningsView: React.FC = () => {
 
   const handleSaveDate = async (ticker: string, confirmedDate: string | null) => {
     setSavingDate(true);
+    setErrorMessage(null);
     try {
       const res = await fetch('/api/earnings/save_date_json', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticker, confirmed_date: confirmedDate || null })
       });
-      if (res.ok) {
-        setEditingTicker(null);
-        await fetchEarningsData();
-      }
+      if (!res.ok) throw new Error('No se pudo guardar la fecha');
+      setEditingTicker(null);
+      await fetchEarningsData();
     } catch (e) {
       console.error(e);
+      setErrorMessage('No se pudo guardar la fecha confirmada. Verifica el valor e inténtalo nuevamente.');
     } finally {
       setSavingDate(false);
     }
   };
 
-  // Filtered earnings list
+  const visibleEarnings = useMemo(() => {
+    if (!data?.earnings) return [];
+    return showRest ? data.earnings : data.earnings.filter(item => item.in_portfolio);
+  }, [data, showRest]);
+
+  const visibleStats = useMemo(() => ({
+    current_month_count: visibleEarnings.filter(item => item.status_tier === 'current_month').length,
+    next_month_count: visibleEarnings.filter(item => item.status_tier === 'next_month').length,
+    later_count: visibleEarnings.filter(item => item.status_tier === 'later').length,
+    past_count: visibleEarnings.filter(item => item.status_tier === 'past').length,
+    unconfirmed_count: visibleEarnings.filter(item => item.status_tier === 'unconfirmed').length,
+    total_count: visibleEarnings.length,
+  }), [visibleEarnings]);
+
+  const restCount = data?.earnings.filter(item => !item.in_portfolio).length ?? 0;
+
+  // Search and status filters apply only to the currently visible universe.
   const filteredEarnings = useMemo(() => {
-    if (!data?.earnings) {
-      return [];
-    }
-    return data.earnings.filter(item => {
+    return visibleEarnings.filter(item => {
       // Search
       const q = searchFilter.toLowerCase().trim();
       const matchesSearch = !q || item.ticker.toLowerCase().includes(q) || item.company.toLowerCase().includes(q);
@@ -150,9 +133,10 @@ export const EarningsView: React.FC = () => {
       if (activeTier === 'next_month') return item.status_tier === 'next_month';
       if (activeTier === 'later') return item.status_tier === 'later';
       if (activeTier === 'past') return item.status_tier === 'past';
+      if (activeTier === 'unconfirmed') return item.status_tier === 'unconfirmed';
       return true;
     });
-  }, [data, searchFilter, activeTier]);
+  }, [visibleEarnings, searchFilter, activeTier]);
 
   // TanStack Table columns
   const columnHelper = createColumnHelper<EarningsItem>();
@@ -164,7 +148,9 @@ export const EarningsView: React.FC = () => {
         return (
           <div className="flex flex-col">
             <span className="font-extrabold text-slate-900 dark:text-foreground text-sm tracking-wide">{row.ticker}</span>
-            <span className="text-[11px] text-slate-500 dark:text-muted-foreground font-medium">{row.company}</span>
+            {row.company !== row.ticker && (
+              <span className="text-[11px] text-slate-500 dark:text-muted-foreground font-medium">{row.company}</span>
+            )}
           </div>
         );
       },
@@ -202,7 +188,7 @@ export const EarningsView: React.FC = () => {
           badgeText = `hace ${Math.abs(d)} días`;
           badgeStyle = 'bg-zinc-800/60 text-muted-foreground border-zinc-700 font-mono';
         } else {
-          badgeText = row.status_text || (row.target_month_name ? `Mes de ${row.target_month_name}` : '—');
+          badgeText = row.status_text || '—';
           badgeStyle = isCurrent 
             ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
             : isNext 
@@ -227,14 +213,9 @@ export const EarningsView: React.FC = () => {
                 {row.confirmed_date ? (
                   <>Fecha exacta: <strong className="text-blue-300 font-bold">{row.confirmed_date_formatted || row.confirmed_date}</strong> (Confirmada)</>
                 ) : (
-                  <>Fecha tentativa: <strong className="text-amber-300 font-medium">No confirmada aún</strong></>
+                  <>Fecha: <strong className="text-amber-300 font-medium">Sin confirmar</strong></>
                 )}
               </div>
-              {row.typical_window && (
-                <div className="text-[10px] text-muted-foreground">
-                  Ventana histórica habitual: {row.typical_window}
-                </div>
-              )}
               {d !== null && d !== undefined && (
                 <div className="text-[10px] text-muted-foreground border-t border-border pt-1 mt-0.5 font-mono">
                   {d >= 0 ? `Faltan exactamente ${d} días corridos` : `Reportó hace ${Math.abs(d)} días`}
@@ -287,34 +268,20 @@ export const EarningsView: React.FC = () => {
                 {row.confirmed_date_formatted || row.confirmed_date}
               </span>
             ) : (
-              <span className="text-slate-400 dark:text-zinc-600 font-mono text-xs">No fijada</span>
+              <span className="text-slate-400 dark:text-zinc-600 font-mono text-xs">Sin fecha confirmada</span>
             )}
             <button
               onClick={() => {
                 setEditingTicker(row.ticker);
                 setEditDateValue(row.confirmed_date || '');
               }}
-              className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground rounded hover:bg-slate-100 dark:hover:bg-secondary/50 transition-all"
-              title="Modificar fecha exacta"
+              className={`${row.confirmed_date ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'} p-1 text-slate-400 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground rounded hover:bg-slate-100 dark:hover:bg-secondary/50 transition-all`}
+              title={row.confirmed_date ? 'Modificar fecha confirmada' : 'Ingresar fecha confirmada'}
+              aria-label={row.confirmed_date ? `Modificar fecha de ${row.ticker}` : `Ingresar fecha de ${row.ticker}`}
             >
               <Edit3 className="w-3.5 h-3.5" />
             </button>
           </div>
-        );
-      },
-    }),
-    columnHelper.accessor('typical_window', {
-      header: 'VENTANA HISTÓRICA',
-      cell: info => <span className="text-xs text-slate-600 dark:text-muted-foreground font-medium">{info.getValue() || '—'}</span>,
-    }),
-    columnHelper.accessor('report_months_text', {
-      header: 'CICLO TRIMESTRAL',
-      cell: info => {
-        const val = info.getValue();
-        return (
-          <span className="text-[11px] font-mono text-slate-600 dark:text-muted-foreground bg-slate-100 dark:bg-black/30 px-2 py-1 rounded border border-slate-200 dark:border-border">
-            {val || '—'}
-          </span>
         );
       },
     }),
@@ -329,91 +296,19 @@ export const EarningsView: React.FC = () => {
     getSortedRowModel: getSortedRowModel(),
   });
 
-  const chartTheme = useChartTheme();
-
-  // ECharts: Heatmap Option
-  const heatmapOption = useMemo(() => {
-    if (!data?.heatmap) {
-      return {};
-    }
-    const months = data.months_es || [];
-    const tickers = data.heatmap.tickers || [];
-    const rawData = data.heatmap.data || [];
-
-    const emptyColor = chartTheme.isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc';
-    const habitColor = chartTheme.isDark ? '#1e3a8a' : '#bfdbfe';
-    const confirmedColor = chartTheme.isDark ? '#0082ff' : '#2563eb';
-
-    return {
-      backgroundColor: 'transparent',
-      tooltip: {
-        position: 'top',
-        backgroundColor: chartTheme.tooltipBg,
-        borderColor: chartTheme.tooltipBorder,
-        borderWidth: 1,
-        textStyle: { color: chartTheme.tooltipText, fontSize: 11 },
-        formatter: (params: any) => {
-          const m = months[params.data[0]];
-          const t = tickers[params.data[1]];
-          const status = params.data[2] === 2 ? 'Fecha Confirmada' : (params.data[2] === 1 ? 'Mes Habitual' : 'Sin reporte');
-          return `<strong>${t}</strong> • ${m}<br/>${status}`;
-        }
-      },
-      grid: {
-        top: 20,
-        bottom: 25,
-        left: 60,
-        right: 15,
-      },
-      xAxis: {
-        type: 'category',
-        data: months,
-        splitArea: { show: false },
-        axisLabel: { color: chartTheme.textMuted, fontSize: 10, fontWeight: 'bold' },
-        axisLine: { lineStyle: { color: chartTheme.axisLine } }
-      },
-      yAxis: {
-        type: 'category',
-        data: tickers,
-        axisLabel: { color: chartTheme.textPrimary, fontSize: 9, fontWeight: 'bold' },
-        axisLine: { lineStyle: { color: chartTheme.axisLine } }
-      },
-      visualMap: {
-        min: 0,
-        max: 2,
-        show: false,
-        inRange: {
-          color: [emptyColor, habitColor, confirmedColor]
-        }
-      },
-      series: [
-        {
-          name: 'Calendario',
-          type: 'heatmap',
-          data: rawData,
-          itemStyle: {
-            borderColor: chartTheme.cardBorder,
-            borderWidth: 1.5,
-            borderRadius: 3
-          }
-        }
-      ]
-    };
-  }, [data, chartTheme]);
-
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12">
       {/* Top Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-foreground flex items-center gap-3">
-            Calendario de Reportes Trimestrales
+            Calendario de Reportes
             <span className="text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/30">
               Earnings Hub
             </span>
           </h1>
           <p className="text-sm text-slate-600 dark:text-muted-foreground mt-1">
-            Seguimiento de fechas de balances, alertas inminentes y matriz de ciclos corporativos.
+            Fechas confirmadas ingresadas por el usuario y empresas pendientes de completar.
           </p>
         </div>
 
@@ -427,15 +322,21 @@ export const EarningsView: React.FC = () => {
         </button>
       </div>
 
+      {errorMessage && (
+        <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+          {errorMessage}
+        </div>
+      )}
+
       {loading && !data ? (
         <div className="bg-card border border-border h-80 rounded-2xl flex flex-col items-center justify-center gap-3 text-slate-500 dark:text-muted-foreground">
           <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
-          <span className="text-sm font-medium">Calculando fechas y ciclos de reportes trimestrales...</span>
+          <span className="text-sm font-medium">Cargando fechas de reportes...</span>
         </div>
       ) : data ? (
         <>
           {/* Status KPI Summary Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {/* Este Mes */}
             <div 
               onClick={() => setActiveTier('current_month')}
@@ -446,7 +347,7 @@ export const EarningsView: React.FC = () => {
                 <Flame className="w-4 h-4 text-negative dark:text-negative" />
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-foreground mt-1 tabular-nums">
-                {data.stats.current_month_count}
+                {visibleStats.current_month_count}
               </div>
               <span className="text-[10px] text-slate-500 dark:text-muted-foreground mt-1 font-mono">Reportes inminentes</span>
             </div>
@@ -458,12 +359,12 @@ export const EarningsView: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-600 dark:text-muted-foreground uppercase tracking-wider">Próximo Mes ({data.next_month_name})</span>
-                <CalendarDays className="w-4 h-4 text-orange-500 dark:text-orange-400" />
+                <Calendar className="w-4 h-4 text-orange-500 dark:text-orange-400" />
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-foreground mt-1 tabular-nums">
-                {data.stats.next_month_count}
+                {visibleStats.next_month_count}
               </div>
-              <span className="text-[10px] text-slate-500 dark:text-muted-foreground mt-1 font-mono">Próxima ventana</span>
+              <span className="text-[10px] text-slate-500 dark:text-muted-foreground mt-1 font-mono">Fecha confirmada</span>
             </div>
 
             {/* Más Adelante */}
@@ -476,9 +377,9 @@ export const EarningsView: React.FC = () => {
                 <Clock className="w-4 h-4 text-blue-500 dark:text-foreground" />
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-foreground mt-1 tabular-nums">
-                {data.stats.later_count}
+                {visibleStats.later_count}
               </div>
-              <span className="text-[10px] text-slate-500 dark:text-muted-foreground mt-1 font-mono">Ciclos posteriores</span>
+              <span className="text-[10px] text-slate-500 dark:text-muted-foreground mt-1 font-mono">Fecha exacta confirmada</span>
             </div>
 
             {/* Ya Reportaron */}
@@ -491,26 +392,24 @@ export const EarningsView: React.FC = () => {
                 <CheckCircle2 className="w-4 h-4 text-slate-400 dark:text-muted-foreground" />
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-foreground mt-1 tabular-nums">
-                {data.stats.past_count}
+                {visibleStats.past_count}
               </div>
               <span className="text-[10px] text-slate-500 dark:text-muted-foreground mt-1 font-mono">Reportes pasados</span>
             </div>
-          </div>
-
-          {/* Heatmap Section */}
-          <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-3">
+          {/* Sin fecha confirmada */}
+          <div
+            onClick={() => setActiveTier('unconfirmed')}
+            className={`bg-card border border-border p-4 rounded-2xl cursor-pointer transition-all ${activeTier === 'unconfirmed' ? 'border-amber-400 bg-amber-50/50 dark:border-amber-500/50 dark:bg-amber-500/10 scale-[1.02] shadow-sm' : 'border-slate-200 dark:border-border hover:border-slate-300 dark:hover:border-border'}`}
+          >
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 dark:text-foreground uppercase tracking-wider flex items-center gap-2">
-                  <Layers className="w-3.5 h-3.5 text-blue-500 dark:text-foreground" />
-                  Matriz Térmica de Reportes Trimestrales (12 Meses)
-                </h3>
-                <p className="text-[11px] text-slate-600 dark:text-muted-foreground mt-0.5">
-                  Mapa de calor anual: las celdas brillantes representan fechas confirmadas.
-                </p>
-              </div>
+              <span className="text-xs font-bold text-slate-600 dark:text-muted-foreground uppercase tracking-wider">Sin fecha confirmada</span>
+              <Calendar className="w-4 h-4 text-amber-500 dark:text-amber-400" />
             </div>
-            <ReactECharts echarts={echarts} option={heatmapOption} style={{ height: '340px' }} />
+            <div className="text-2xl font-black text-slate-900 dark:text-foreground mt-1 tabular-nums">
+              {visibleStats.unconfirmed_count}
+            </div>
+            <span className="text-[10px] text-slate-500 dark:text-muted-foreground mt-1 font-mono">Pendientes de ingresar</span>
+          </div>
           </div>
 
           {/* Table Controls & Filter Bar */}
@@ -518,15 +417,25 @@ export const EarningsView: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-black uppercase tracking-wider text-slate-900 dark:text-foreground">
-                  Cronograma Detallado de Balances
+                  Fechas de Reportes
                 </h2>
                 <p className="text-xs text-slate-600 dark:text-muted-foreground mt-0.5">
-                  Pasa el cursor sobre la fecha para fijar o modificar la fecha confirmada de cualquier activo.
+                  Por defecto se muestran las carteras activas. Puedes ampliar la lista con el resto del catálogo CEDEAR.
                 </p>
               </div>
 
               {/* Search & Tabs */}
               <div className="flex flex-wrap items-center gap-3">
+                {restCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRest(value => !value)}
+                    aria-pressed={showRest}
+                    className="h-9 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 text-xs font-bold transition-colors"
+                  >
+                    {showRest ? 'Ocultar el resto' : `Mostrar el resto (${restCount})`}
+                  </button>
+                )}
                 <div className="relative">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-muted-foreground" />
                   <input
@@ -543,19 +452,25 @@ export const EarningsView: React.FC = () => {
                     onClick={() => setActiveTier('all')}
                     className={`px-3 py-1.5 rounded-lg transition-colors ${activeTier === 'all' ? 'bg-blue-600 text-foreground shadow-sm' : 'text-slate-600 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-foreground hover:bg-slate-200/60 dark:hover:bg-secondary/50'}`}
                   >
-                    Todos ({data.stats.total_count})
+                    Todos ({visibleStats.total_count})
                   </button>
                   <button
                     onClick={() => setActiveTier('current_month')}
                     className={`px-3 py-1.5 rounded-lg transition-colors ${activeTier === 'current_month' ? 'bg-blue-600 text-foreground shadow-sm' : 'text-slate-600 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-foreground hover:bg-slate-200/60 dark:hover:bg-secondary/50'}`}
                   >
-                    Este Mes ({data.stats.current_month_count})
+                    Este Mes ({visibleStats.current_month_count})
                   </button>
                   <button
                     onClick={() => setActiveTier('next_month')}
                     className={`px-3 py-1.5 rounded-lg transition-colors ${activeTier === 'next_month' ? 'bg-blue-600 text-foreground shadow-sm' : 'text-slate-600 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-foreground hover:bg-slate-200/60 dark:hover:bg-secondary/50'}`}
                   >
-                    Próximo ({data.stats.next_month_count})
+                    Próximo ({visibleStats.next_month_count})
+                  </button>
+                  <button
+                    onClick={() => setActiveTier('unconfirmed')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors ${activeTier === 'unconfirmed' ? 'bg-blue-600 text-foreground shadow-sm' : 'text-slate-600 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-foreground hover:bg-slate-200/60 dark:hover:bg-secondary/50'}`}
+                  >
+                    Sin fecha ({visibleStats.unconfirmed_count})
                   </button>
                 </div>
               </div>
@@ -585,6 +500,13 @@ export const EarningsView: React.FC = () => {
                       ))}
                     </tr>
                   ))}
+                  {table.getRowModel().rows.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="p-8 text-center text-sm text-slate-500 dark:text-muted-foreground">
+                        No hay empresas para este filtro.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
