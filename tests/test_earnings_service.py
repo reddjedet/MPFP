@@ -149,7 +149,14 @@ class TestEarningsService(unittest.TestCase):
         self.assertFalse(status_past["is_active"])
 
         # Verificar ordenamiento: NVDA (hoy) al principio, DE (pasado) al final
-        summary = get_all_earnings_summary(current_month=8, ref_date=ref_today)
+        with patch(
+            "services.earnings_service.load_earnings_calendar",
+            return_value={
+                "NVDA": {"confirmed_date": "2026-08-19"},
+                "DE": {"confirmed_date": "2026-08-15"},
+            },
+        ):
+            summary = get_all_earnings_summary(current_month=8, ref_date=ref_today)
         tickers_ordered = [x["ticker"] for x in summary]
         self.assertEqual(tickers_ordered[0], "NVDA")
         self.assertEqual(tickers_ordered[-1], "DE")

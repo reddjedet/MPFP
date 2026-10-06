@@ -6,6 +6,7 @@ Ejecuta un diagnóstico integral de salud, ciberseguridad, datos y pruebas del p
 
 import sys
 import json
+import os
 import time
 import subprocess
 from pathlib import Path
@@ -246,22 +247,23 @@ def check_security():
 
 def run_test_suite():
     print_header("3. Ejecución de la Suite de Pruebas Automatizadas")
-    # Subproceso obligatorio (INC-09): en un intérprete limpio, tests/__init__.py
-    # activa el aislamiento de persistencia ANTES de importar services. En proceso,
-    # services ya tendría las rutas de producción ligadas y los fixtures escribirían
-    # sobre datos reales. '-t .' garantiza importar tests como paquete.
+    # Subproceso limpio y runner canónico. Sin override heredado, tests/__init__.py
+    # crea un snapshot aislado antes de importar services.
+    test_env = os.environ.copy()
+    test_env.pop("MPFP_DATA_DIR", None)
     proc = subprocess.run(
-        [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", ".", "-p", "test_*.py"],
+        [sys.executable, "-m", "pytest", "tests/", "-q"],
         cwd=str(ROOT_DIR),
         capture_output=True,
         text=True,
+        env=test_env,
     )
     output = (proc.stderr or "") + (proc.stdout or "")
     tail = "\n".join(output.splitlines()[-6:])
 
     if proc.returncode == 0:
-        ran_line = next((l for l in output.splitlines() if l.startswith("Ran ")), "")
-        print(f"\n  ✅ Suite de pruebas en subproceso aislado: {ran_line or 'OK'}")
+        summary = next((line for line in reversed(output.splitlines()) if " passed" in line), "OK")
+        print(f"\n  ✅ Suite pytest en subproceso aislado: {summary}")
         return True
     else:
         print("\n  ❌ La suite de pruebas falló (subproceso aislado):")
@@ -269,6 +271,11 @@ def run_test_suite():
         return False
 
 def main():
+    # El diagnóstico puede bootstrapear una base vacía. Garantizar que suceda
+    # en un snapshot temporal, incluso cuando se invoca fuera del runner canónico.
+    from tests._isolation import ensure_isolated_data_dir
+    ensure_isolated_data_dir()
+
     print("\n" + "🚀" * 30)
     print("      INICIANDO AUDITORÍA INTEGRAL DE MPFP")
     print("   (Máquina de Planes, Finanzas y Portfolios)")

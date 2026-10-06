@@ -13,6 +13,44 @@ echo "       Unified Automated Verification Pipeline"
 echo "======================================================="
 
 FAILED=0
+PYTHON_BIN="${PYTHON_BIN:-${DIR}/venv/bin/python}"
+if [ ! -x "${PYTHON_BIN}" ]; then PYTHON_BIN="python3"; fi
+SCRATCH_DIR="${DIR}/scratch"
+mkdir -p "${SCRATCH_DIR}"
+DATA_SNAPSHOT=""
+CLEAN_DATA_DIR=""
+AUDIT_DATA_DIR=""
+cleanup() {
+    [ -z "${DATA_SNAPSHOT}" ] || rm -f -- "${DATA_SNAPSHOT}"
+    [ -z "${CLEAN_DATA_DIR}" ] || rm -rf -- "${CLEAN_DATA_DIR}"
+    [ -z "${AUDIT_DATA_DIR}" ] || rm -rf -- "${AUDIT_DATA_DIR}"
+}
+trap cleanup EXIT
+DATA_SNAPSHOT="$(mktemp "${SCRATCH_DIR}/.data-snapshot.XXXXXX")"
+CLEAN_DATA_DIR="$(mktemp -d "${SCRATCH_DIR}/clean-data.XXXXXX")"
+AUDIT_DATA_DIR="$(mktemp -d "${SCRATCH_DIR}/audit-data.XXXXXX")"
+
+snapshot_data() {
+    if [ -d "${DIR}/data" ]; then
+        find "${DIR}/data" -type f -print0 | sort -z | xargs -0 -r sha256sum
+    fi
+}
+
+copy_tracked_data() {
+    local destination="$1"
+    local tracked_file relative_path
+    while IFS= read -r -d '' tracked_file; do
+        relative_path="${tracked_file#data/}"
+        if [ "${relative_path}" = "${tracked_file}" ] || [ ! -f "${DIR}/${tracked_file}" ]; then
+            echo "FAIL: Missing tracked data file: ${tracked_file}"
+            return 1
+        fi
+        mkdir -p "${destination}/$(dirname "${relative_path}")"
+        cp -- "${DIR}/${tracked_file}" "${destination}/${relative_path}"
+    done < <(git -C "${DIR}" ls-files -z -- data)
+}
+
+snapshot_data > "${DATA_SNAPSHOT}"
 
 # 1. Frontend / TypeScript Verification (if present)
 if [ -d "${DIR}/frontend" ] && [ -f "${DIR}/frontend/package.json" ]; then
@@ -30,33 +68,14 @@ fi
 echo ""
 echo "[Step 2] Running automated test suite..."
 
-# Test Isolation invariant: tests must never mutate production data/
-# La comparación corre SIEMPRE (incluso si el suite falla) y con baseline vacío
-# si data/ no existía al inicio: todo archivo posterior cuenta como mutación.
-snapshot_data() {
-    if [ -d "${DIR}/data" ]; then
-        find "${DIR}/data" -type f -exec md5sum {} + | sort -k2
-    fi
-}
-DATA_SNAPSHOT="$(mktemp)"
-trap 'rm -f "${DATA_SNAPSHOT}"' EXIT
-snapshot_data > "${DATA_SNAPSHOT}"
-
 if [ -d "${DIR}/tests" ]; then
-    if [ -x "${DIR}/venv/bin/pytest" ]; then
-        if "${DIR}/venv/bin/pytest" tests/ -v; then
-            echo "PASS: Automated test suite passed."
-        else
-            echo "FAIL: Automated test suite failed."
-            FAILED=1
-        fi
+    # No heredar overrides del shell: tests/__init__.py crea snapshot temporal
+    # únicamente con archivos rastreados y rechaza rutas dentro de data/ real.
+    if env -u MPFP_DATA_DIR "${PYTHON_BIN}" -m pytest tests/ -v; then
+        echo "PASS: Automated test suite passed."
     else
-        if "${DIR}/venv/bin/python" -m unittest discover -s tests -p "test_*.py" -v; then
-            echo "PASS: Automated test suite passed."
-        else
-            echo "FAIL: Automated test suite failed."
-            FAILED=1
-        fi
+        echo "FAIL: Automated test suite failed."
+        FAILED=1
     fi
 elif [ -f "${DIR}/Cargo.toml" ]; then
     if cargo test; then
@@ -69,37 +88,23 @@ else
     echo "INFO: No tests/ directory detected; skipping unit test discovery."
 fi
 
-if snapshot_data | diff -q "${DATA_SNAPSHOT}" - > /dev/null; then
-    echo "PASS: Test isolation verified (data/ untouched)."
-else
-    echo "FAIL: Test suite mutated production data/ (Test Isolation violation)."
-    FAILED=1
-fi
-
 # 3. Clean-checkout simulation: only tracked data files are available.
 echo ""
 echo "[Step 3] Running clean-checkout simulation..."
-CLEAN_DATA_DIR="$(mktemp -d)"
-cleanup_clean_data() { rm -rf "${CLEAN_DATA_DIR}"; }
-trap cleanup_clean_data EXIT
-while IFS= read -r tracked_file; do
-    cp "${DIR}/${tracked_file}" "${CLEAN_DATA_DIR}/$(basename "${tracked_file}")"
-done < <(git -C "${DIR}" ls-files data)
-if MPFP_DATA_DIR="${CLEAN_DATA_DIR}" "${PYTHON_BIN:-${DIR}/venv/bin/python}" -m pytest tests/ -q; then
-    echo "PASS: Clean-checkout simulation passed."
+if copy_tracked_data "${CLEAN_DATA_DIR}"; then
+    if MPFP_DATA_DIR="${CLEAN_DATA_DIR}" "${PYTHON_BIN}" -m pytest tests/ -q; then
+        echo "PASS: Clean-checkout simulation passed."
+    else
+        echo "FAIL: Clean-checkout simulation failed."
+        FAILED=1
+    fi
 else
-    echo "FAIL: Clean-checkout simulation failed."
     FAILED=1
 fi
 
 # 4. Security and Hygiene Audits
 echo ""
 echo "[Step 4] Running security & hygiene checks..."
-if [ -x "${DIR}/venv/bin/python" ]; then
-    PYTHON_BIN="${DIR}/venv/bin/python"
-else
-    PYTHON_BIN="${PYTHON_BIN:-python3}"
-fi
 
 if [ -f "${DIR}/scripts/audit_react_hooks.py" ]; then
     if "${PYTHON_BIN}" "${DIR}/scripts/audit_react_hooks.py"; then
@@ -123,12 +128,25 @@ fi
 echo ""
 echo "[Step 4] Running project health & database diagnostic..."
 if [ -f "${DIR}/scripts/audit_project.py" ]; then
-    if "${PYTHON_BIN}" "${DIR}/scripts/audit_project.py"; then
-        echo "PASS: Project diagnostic & database audit healthy."
+    # Diagnosticar con el snapshot versionado; no copiar datos locales/ignorados.
+    if copy_tracked_data "${AUDIT_DATA_DIR}"; then
+        if MPFP_DATA_DIR="${AUDIT_DATA_DIR}" "${PYTHON_BIN}" "${DIR}/scripts/audit_project.py"; then
+            echo "PASS: Project diagnostic & database audit healthy."
+        else
+            echo "FAIL: Project diagnostic flagged errors."
+            FAILED=1
+        fi
     else
-        echo "FAIL: Project diagnostic flagged errors."
         FAILED=1
     fi
+fi
+
+echo ""
+echo "[Final] Verifying production data isolation..."
+if snapshot_data | diff -u "${DATA_SNAPSHOT}" -; then
+    echo "PASS: Production data/ unchanged after suite and audits."
+else
+    echo "FAIL: Production data/ changed (hash diff above)."; FAILED=1
 fi
 
 echo ""
