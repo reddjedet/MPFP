@@ -99,6 +99,7 @@ export function TickerTape() {
   const offsetRef = useRef(0);          // current translateX offset (px, negative = scrolled left)
   const rafRef = useRef<number>(0);     // requestAnimationFrame id
   const lastTimeRef = useRef<number>(0);
+  const isPointerDown = useRef(false);
   const isDragging = useRef(false);
   const isPaused = useRef(false);       // hover OR keyboard focus pauses the auto-scroll
   const didDrag = useRef(false);        // a drag must not trigger the item click
@@ -198,25 +199,30 @@ export function TickerTape() {
 
   // ---- mouse drag handlers ----
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    e.preventDefault();
-    isDragging.current = true;
+    isPointerDown.current = true;
     didDrag.current = false;
-    setGrabbing(true);
     dragStartX.current = e.clientX;
     dragStartOffset.current = offsetRef.current;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }, []);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDragging.current) return;
+    if (!isPointerDown.current) return;
     const dx = e.clientX - dragStartX.current;
-    if (Math.abs(dx) > DRAG_THRESHOLD_PX) didDrag.current = true;
+    if (!isDragging.current) {
+      if (Math.abs(dx) <= DRAG_THRESHOLD_PX) return;
+      didDrag.current = true;
+      isDragging.current = true;
+      setGrabbing(true);
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    }
     offsetRef.current = dragStartOffset.current + dx;
     applyTransform();
   }, [applyTransform]);
 
   const handlePointerUp = useCallback(() => {
-    if (!isDragging.current) return;
+    if (!isPointerDown.current) return;
+    isPointerDown.current = false;
     isDragging.current = false;
     setGrabbing(false);
     // Normalize offset to prevent huge values after user drags far
@@ -230,8 +236,9 @@ export function TickerTape() {
   }, []);
 
   // ---- item click: open the 360 drawer (unless it was a drag) ----
-  const handleItemClick = useCallback((item: TickerTapeItem) => {
-    if (didDrag.current) return;
+  const handleItemClick = useCallback((item: TickerTapeItem) => (e: React.MouseEvent) => {
+    if (didDrag.current && e.detail > 0) return;
+    didDrag.current = false;
     openTickerDrawer(item.ticker, {
       symbol: item.ticker,
       price: item.price,
@@ -279,7 +286,7 @@ export function TickerTape() {
               onPointerLeave={handleItemLeave}
               onFocus={handleItemFocus(item)}
               onBlur={handleItemLeave}
-              onClick={() => handleItemClick(item)}
+              onClick={handleItemClick(item)}
               aria-label={`${item.ticker}, precio ${fmtPrice(item.price)} ${item.currency}, RSI ${item.rsi.toFixed(1)} sobrevendido${item.portfolios.length ? `, carteras ${item.portfolios.join(', ')}` : ''}. Abrir ficha del ticker.`}
               aria-describedby={isAnchored ? TOOLTIP_ID : undefined}
             >
@@ -327,7 +334,7 @@ export function TickerTape() {
               Carteras: {hovered.item.portfolios.join(', ')}
             </div>
           )}
-          <div className="opacity-50 mt-1 text-[9px] uppercase tracking-wider">Click o Enter → ficha del ticker</div>
+          <div className="opacity-50 mt-1 text-[9px] uppercase tracking-wider">Click → ficha del ticker</div>
           <div
             className={cn(
               'absolute left-1/2 -translate-x-1/2 border-4 border-transparent',
