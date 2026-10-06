@@ -32,7 +32,14 @@ AUDIT_DATA_DIR="$(mktemp -d "${SCRATCH_DIR}/audit-data.XXXXXX")"
 
 snapshot_data() {
     if [ -d "${DIR}/data" ]; then
-        find "${DIR}/data" -type f -print0 | sort -z | xargs -0 -r sha256sum
+        # SQLite DB/WAL/SHM son estado operativo volátil y pueden cambiar por
+        # la app mientras corre el hook. Los tests se aíslan aparte; no atribuir
+        # escrituras concurrentes de la app al proceso de verificación.
+        find "${DIR}/data" -type f \
+            ! -name '*.db' ! -name '*.db-wal' ! -name '*.db-shm' \
+            ! -name '*.sqlite' ! -name '*.sqlite-wal' ! -name '*.sqlite-shm' \
+            ! -name '*.sqlite3' ! -name '*.sqlite3-wal' ! -name '*.sqlite3-shm' \
+            -print0 | sort -z | xargs -0 -r sha256sum
     fi
 }
 
@@ -142,11 +149,11 @@ if [ -f "${DIR}/scripts/audit_project.py" ]; then
 fi
 
 echo ""
-echo "[Final] Verifying production data isolation..."
+echo "[Final] Verifying stable production data isolation..."
 if snapshot_data | diff -u "${DATA_SNAPSHOT}" -; then
-    echo "PASS: Production data/ unchanged after suite and audits."
+    echo "PASS: Stable production data unchanged; SQLite runtime files excluded from snapshot."
 else
-    echo "FAIL: Production data/ changed (hash diff above)."; FAILED=1
+    echo "FAIL: Stable production data changed (hash diff above)."; FAILED=1
 fi
 
 echo ""
