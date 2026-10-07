@@ -423,7 +423,7 @@ def analyze_rotation(
             market_data[tk] = d
         else:
             market_data[tk] = {
-                "local": 0.0, "adr": None, "ratio": CEDEAR_RATIOS.get(tk, 1.0), "rsi": None
+                "local": 0.0, "adr": None, "ratio": CEDEAR_RATIOS.get(tk), "rsi": None
             }
 
     # Cómputo de Renta Variable
@@ -544,7 +544,7 @@ def analyze_rotation(
         m = market_data.get(tk, {})
         price = m.get("local", 0.0) or 0.0
         adr_price = m.get("adr")
-        ratio = m.get("ratio", CEDEAR_RATIOS.get(tk, 1.0))
+        ratio = m.get("ratio", CEDEAR_RATIOS.get(tk))
         rsi = m.get("rsi")
         
         is_fi = is_fixed_income_ticker(tk)

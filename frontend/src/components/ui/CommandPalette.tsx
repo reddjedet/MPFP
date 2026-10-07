@@ -242,20 +242,23 @@ const COMMON_BONDS = [
     // 1. Si no hay consulta, mostrar navegación rápida y CEDEARs populares
     if (!q) {
       const topCedears: CommandItem[] = [
-        { ticker: 'SPY', name: 'SPDR S&P 500 ETF Trust', sector: 'Fondo Indexado EE.UU.', ratio: '20:1' },
-        { ticker: 'QQQ', name: 'Invesco QQQ Trust (Nasdaq-100)', sector: 'Fondo Indexado Tech', ratio: '20:1' },
-        { ticker: 'AAPL', name: 'Apple Inc.', sector: 'Tecnología', ratio: '10:1' },
-        { ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Semiconductores', ratio: '24:1' },
-        { ticker: 'MELI', name: 'MercadoLibre Inc.', sector: 'Comercio Electrónico', ratio: '120:1' },
-        { ticker: 'LLY', name: 'Eli Lilly and Company', sector: 'Farmacéutica', ratio: '8:1' },
-        { ticker: 'VIST', name: 'Vista Energy S.A.B. de C.V.', sector: 'Energía / Petróleo', ratio: '3:1' },
+        { ticker: 'SPY', name: 'SPDR S&P 500 ETF Trust', sector: 'Fondo Indexado EE.UU.' },
+        { ticker: 'QQQ', name: 'Invesco QQQ Trust (Nasdaq-100)', sector: 'Fondo Indexado Tech' },
+        { ticker: 'AAPL', name: 'Apple Inc.', sector: 'Tecnología' },
+        { ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Semiconductores' },
+        { ticker: 'MELI', name: 'MercadoLibre Inc.', sector: 'Comercio Electrónico' },
+        { ticker: 'LLY', name: 'Eli Lilly and Company', sector: 'Farmacéutica' },
+        { ticker: 'VIST', name: 'Vista Energy S.A.B. de C.V.', sector: 'Energía / Petróleo' },
       ].map(c => ({
         id: `cedear-${c.ticker}`,
         title: c.ticker,
         subtitle: `${c.name} • ${c.sector}`,
         category: 'cedear' as const,
         icon: TrendingUp,
-        badge: `Ratio ${c.ratio}`,
+        badge: `Ratio ${(() => {
+          const ratio = catalog.find(item => item.ticker === c.ticker)?.ratio;
+          return typeof ratio === 'number' && Number.isFinite(ratio) && ratio > 0 ? `${ratio}:1` : 'N/D';
+        })()}`,
         badgeClass: 'bg-positive/10 text-emerald-300 border-emerald-500/30',
         action: () => {
           openTicker360(c.ticker);

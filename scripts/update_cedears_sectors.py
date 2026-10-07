@@ -19,13 +19,13 @@ PORTFOLIO_SERVICE_FILE = ROOT_DIR / "services" / "portfolio_service.py"
 
 # Ratios conocidos de ETFs de BYMA
 ETF_RATIOS = {
-    "SPY": 20.0, "QQQ": 20.0, "DIA": 20.0, "IWM": 10.0,
+    "SPY": 60.0, "QQQ": 20.0, "DIA": 20.0, "IWM": 10.0,
     "EEM": 5.0,  "EWZ": 2.0,  "XLF": 2.0,  "XLE": 2.0,
-    "XLK": 2.0,  "XLV": 2.0,  "XLU": 2.0,  "ARKK": 10.0,
-    "IBIT": 1.0, "SMH": 1.0,  "URA": 1.0,  "VEA": 1.0,
+    "XLK": 2.0,  "XLV": 2.0,  "XLU": 15.0, "ARKK": 10.0,
+    "IBIT": 1.0, "SMH": 50.0, "URA": 5.0,  "VEA": 1.0,
     "EWJ": 1.0,  "FXI": 1.0,  "ILF": 1.0,  "IVW": 1.0,
     "XLI": 2.0,  "XLB": 2.0,  "XLP": 2.0,  "XLRE": 2.0,
-    "GDX": 1.0,  "GLD": 1.0,  "SLV": 1.0,  "USO": 1.0,
+    "GDX": 1.0,  "GLD": 50.0, "SLV": 1.0,  "USO": 1.0,
     "CCJ": 23.0, "NNE": 1.0
 }
 

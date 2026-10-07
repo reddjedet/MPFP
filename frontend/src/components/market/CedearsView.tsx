@@ -27,7 +27,7 @@ interface CedearCatalogItem {
   ticker: string;
   name: string;
   sector_id: string;
-  ratio: number;
+  ratio: number | null;
 }
 
 interface CedearQuote {
@@ -35,7 +35,7 @@ interface CedearQuote {
   adr: number | null;
   cedear_usd: number | null;
   local: number | null;
-  ratio: number;
+  ratio: number | null;
   rsi: number | null;
   alert: boolean;
   in_portfolio?: boolean;
@@ -65,6 +65,9 @@ const KNOWN_ETFS = new Set([
   'XLB', 'XLC', 'XLE', 'XLF', 'XLI', 'XLK', 'XLP', 'XLRE', 'XLU', 'XLV', 'XLY',
   'FXI', 'ILF', 'IVW', 'EWJ', 'GDX', 'IBIT', 'ARGT'
 ]);
+
+const formatRatio = (ratio: number | null | undefined) =>
+  typeof ratio === 'number' && Number.isFinite(ratio) && ratio > 0 ? `${ratio}:1` : 'No disponible';
 
 const DEFAULT_TICKERS = ["AAPL", "NVDA", "MSFT", "MELI", "LLY", "GOOGL", "AMZN", "SPY", "QQQ", "VIST", "MSTR", "JPM"];
 const SUGGESTED_TICKERS = ["AAPL", "NVDA", "MSFT", "MELI", "LLY", "GOOGL", "AMZN", "TSLA", "META", "SPY", "QQQ", "VIST", "MSTR", "JPM", "KO", "MCD", "BRKB", "AMD", "PLTR", "NU"];
@@ -370,7 +373,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">Ratio {row.ratio}:1</span>
+            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">Ratio {formatRatio(row.ratio)}</span>
           </div>
         );
       },
@@ -611,7 +614,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-secondary/50 text-slate-600 dark:text-muted-foreground border border-slate-200 dark:border-border">
-                            Ratio {item.ratio}:1
+                            Ratio {formatRatio(item.ratio)}
                           </span>
                           {isAdded ? (
                             <span className="text-[10px] text-positive font-semibold">En lista</span>
@@ -757,7 +760,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
                         Cartera
                       </span>
                     )}
-                    <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">Ratio {quote.ratio}:1</span>
+                    <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">Ratio {formatRatio(quote.ratio)}</span>
                   </div>
                   <button
                     onClick={() => handleRemoveTicker(quote.symbol)}

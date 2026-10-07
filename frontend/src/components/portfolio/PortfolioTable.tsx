@@ -24,7 +24,7 @@ interface PortfolioAssetRow {
   diff_pct?: number;
   rsi?: number | null;
   adr_price?: number | null;
-  ratio?: number | string;
+  ratio?: number | string | null;
   is_etf?: boolean;
   earnings_badge?: {
     text?: string;
@@ -59,9 +59,10 @@ interface PortfolioAssetRow {
   } | null;
 }
 
-const formatRatio = (ratio?: number | string) => {
-  if (!ratio || ratio === 'N/A') return '1:1';
+const formatRatio = (ratio?: number | string | null) => {
+  if (ratio === undefined || ratio === null || ratio === '' || ratio === 'N/A') return 'N/D';
   const str = String(ratio);
+  if (!str.includes(':') && (!Number.isFinite(Number(str)) || Number(str) <= 0)) return 'N/D';
   return str.includes(':') ? str : `${str}:1`;
 };
 

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, ArrowRight, ArrowDownRight, ArrowUpRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { useDraggableScroll } from '@/hooks/useDraggableScroll';
+import { BuyerAllocationCalculator } from './BuyerAllocationCalculator';
 
 export function BuyerModeView() {
   const { toggleBuyerMode, openTickerDrawer } = useAppStore();
@@ -167,6 +168,8 @@ export function BuyerModeView() {
               </button>
             ))}
           </div>
+
+          <BuyerAllocationCalculator selectedPf={selectedPf} portfolio={portfolios[selectedPf]} quotes={quotes} />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             

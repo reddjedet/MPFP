@@ -13,7 +13,7 @@ export interface Ticker360InitialData {
   adr_price?: number | null;
   local?: number | null;
   price?: number | null;
-  ratio?: number | string;
+  ratio?: number | string | null;
   rsi?: number | null;
   earnings_badge?: { badge_text?: string; badge_class?: string; text?: string; class?: string; is_urgent?: boolean; [key: string]: unknown } | null;
   gf_value?: number | null;

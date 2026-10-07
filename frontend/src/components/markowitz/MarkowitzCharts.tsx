@@ -423,6 +423,8 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
 
     tickers.forEach((t1, i) => {
       tickers.forEach((t2, j) => {
+        // La correlación es simétrica: conservar diagonal y triángulo superior.
+        if (j < i) return;
         const correlation = Number(data.corr_matrix[t1][t2].toFixed(2));
         heatmapData.push({
           value: [i, j, correlation],

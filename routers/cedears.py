@@ -1,4 +1,5 @@
 from typing import Optional
+import math
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 from services.portfolio_service import get_all_portfolio_tickers, get_ticker_sector
@@ -11,6 +12,15 @@ from services.pfcf_service import evaluate_fcf_rsi_state, load_pfcf_values
 from services.rotation_service import load_user_holdings
 
 router = APIRouter()
+
+
+def _valid_cedear_ratio(value) -> Optional[float]:
+    """Devuelve un ratio positivo conocido; nunca supone 1:1 si falta."""
+    try:
+        ratio = float(value)
+    except (TypeError, ValueError):
+        return None
+    return ratio if math.isfinite(ratio) and ratio > 0 else None
 
 DEFAULT_WATCHLIST = ["AAPL", "NVDA", "MSFT", "MELI", "LLY", "GOOGL", "AMZN", "SPY", "QQQ", "VIST", "MSTR", "JPM", "PAM"]
 
@@ -27,7 +37,7 @@ def get_all_cedear_tickers():
             "sector_id": sec.get("id", "other"),
             "subsector": sec.get("subsector"),
             "is_etf": sec.get("is_etf", False),
-            "ratio": ratios.get(tk, 1.0)
+            "ratio": _valid_cedear_ratio(ratios.get(tk))
         })
     return JSONResponse({
         "tickers": all_tickers,
@@ -74,8 +84,7 @@ def get_cedears_quotes_json(tickers: str = Query(None)):
     quotes = []
     for tk in clean_list:
         item = tickers_data.get(tk)
-        ratio_raw = CEDEAR_RATIOS.get(tk, 1.0)
-        ratio_val = float(ratio_raw) if isinstance(ratio_raw, (int, float)) and ratio_raw > 0 else 1.0
+        ratio_val = _valid_cedear_ratio(CEDEAR_RATIOS.get(tk))
         in_pf = tk in portfolio_tickers
         sec_info = get_ticker_sector(tk)
         is_etf = bool(sec_info.get("is_etf", False))
@@ -107,12 +116,12 @@ def get_cedears_quotes_json(tickers: str = Query(None)):
         loc_p = item.get("price") if item.get("price") is not None else item.get("local")
         rsi_val = item.get("rsi")
         
-        item_ratio = item.get("ratio")
-        if isinstance(item_ratio, (int, float)) and item_ratio > 0:
-            ratio_val = float(item_ratio)
+        item_ratio = _valid_cedear_ratio(item.get("ratio"))
+        if item_ratio is not None:
+            ratio_val = item_ratio
 
         cedear_usd_val = None
-        if adr_p is not None and ratio_val > 0:
+        if adr_p is not None and ratio_val is not None:
             cedear_usd_val = round(float(adr_p) / ratio_val, 2)
 
         quotes.append({
@@ -210,7 +219,7 @@ def get_single_cedear_json(ticker: str, portfolio: Optional[str] = Query(None)):
         "is_etf": is_etf,
         "adr": adr_p,
         "local": loc_p,
-        "ratio": data.get("ratio", CEDEAR_RATIOS.get(ticker_clean, 1.0)),
+        "ratio": _valid_cedear_ratio(data.get("ratio")) or _valid_cedear_ratio(CEDEAR_RATIOS.get(ticker_clean)),
         "rsi": rsi_val,
         "alert": data.get("alert", False),
         "earnings_badge": get_ticker_earnings_badge(ticker_clean, cal=earnings_cal),
