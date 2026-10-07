@@ -36,9 +36,9 @@ def test_etf_fallbacks_match_ratios_verified_by_caja_de_valores():
     assert {ticker: ETF_RATIOS[ticker] for ticker in expected} == expected
 
 
-def test_every_portfolio_ticker_has_a_positive_ratio():
+def test_every_example_portfolio_ticker_has_a_positive_ratio():
     ratios = _read_json(REPO_ROOT / "data" / "cedear_ratios.json")
-    portfolios = _read_json(REPO_ROOT / "data" / "portfolios.json")
+    portfolios = _read_json(REPO_ROOT / "data" / "portfolios.json.example")
     portfolio_tickers = {
         ticker
         for portfolio in portfolios.values()
