@@ -23,6 +23,8 @@ def test_ratio_registry_contains_confirmed_current_values():
         "XLE": 2.0,
         "XLF": 2.0,
         "XLU": 15.0,
+        "GEV": 1.0,
+        "ISRG": 90.0,
         "SNDK": 170.0,
     }
     for ticker, expected_ratio in expected.items():

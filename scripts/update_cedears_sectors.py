@@ -33,6 +33,24 @@ KNOWN_TICKER_SECTORS = {
     "CCJ": {"id": "energy", "name": "Energía & Materiales", "industry": "Minería y combustible nuclear"},
     "NEE": {"id": "energy", "name": "Energía & Utilities", "industry": "Energía limpia, renovable y eléctrica"},
     "NNE": {"id": "energy", "name": "Energía & Industrial", "industry": "Tecnología nuclear avanzada y microreactores"},
+    "GEV": {"id": "industrials", "name": "Industria & Maquinaria", "industry": "Equipos de generación eléctrica y electrificación"},
+    "ISRG": {"id": "health", "name": "Salud & Farma", "industry": "Equipos médicos y cirugía robótica"},
+    "RTX": {"id": "industrials", "name": "Industria & Maquinaria", "industry": "Aeroespacial y Defensa"},
+    "AMZN": {"id": "consumer_discretionary", "name": "Consumo Discrecional", "industry": "Retail y comercio electrónico"},
+    "MCD": {"id": "consumer_discretionary", "name": "Consumo Discrecional", "industry": "Restaurantes y comida rápida"},
+    "SMH": {"id": "semis", "name": "Semiconductores", "subsector": "Semiconductores", "is_etf": True},
+    "URA": {"id": "energy", "name": "Energía & Utilities", "subsector": "Energía Nuclear", "is_etf": True},
+    "XLB": {"id": "materials", "name": "Minería & Materiales", "subsector": "Materiales", "is_etf": True},
+    "XLC": {"id": "communications", "name": "Comunicaciones", "subsector": "Servicios de comunicación", "is_etf": True},
+    "XLE": {"id": "energy", "name": "Energía & Utilities", "subsector": "Energía & Petróleo", "is_etf": True},
+    "XLF": {"id": "financials", "name": "Finanzas & Fintech", "subsector": "Finanzas & Fintech", "is_etf": True},
+    "XLI": {"id": "industrials", "name": "Industria & Maquinaria", "subsector": "Industria & Maquinaria", "is_etf": True},
+    "XLK": {"id": "tech", "name": "Tecnología & Cloud", "subsector": "Tecnología", "is_etf": True},
+    "XLP": {"id": "staples", "name": "Consumo Masivo", "subsector": "Consumo Masivo", "is_etf": True},
+    "XLRE": {"id": "real_estate", "name": "Bienes Raíces", "subsector": "Bienes Raíces", "is_etf": True},
+    "XLU": {"id": "utilities", "name": "Utilities", "subsector": "Servicios públicos", "is_etf": True},
+    "XLV": {"id": "health", "name": "Salud & Farma", "subsector": "Salud & Farma", "is_etf": True},
+    "XLY": {"id": "consumer_discretionary", "name": "Consumo Discrecional", "subsector": "Consumo Discrecional", "is_etf": True},
     "BRKB": {"id": "financials", "name": "Finanzas & Fintech"},
     "SHOP": {"id": "tech", "name": "Tecnología & Cloud"},
     "T": {"id": "tech", "name": "Tecnología & Telecom"},
@@ -86,7 +104,7 @@ KNOWN_TICKER_SECTORS = {
 }
 
 # Reglas de traducción de TradingView GICS a Macro-Sectores MPFP
-def map_tv_sector(ticker: str, tv_sector: str, tv_industry: str, asset_type: str, existing_mapping: dict | None = None) -> dict[str, str]:
+def map_tv_sector(ticker: str, tv_sector: str, tv_industry: str, asset_type: str, existing_mapping: dict | None = None) -> dict[str, str | bool]:
     t = ticker.upper().strip()
     
     if t in KNOWN_TICKER_SECTORS:
@@ -101,7 +119,7 @@ def map_tv_sector(ticker: str, tv_sector: str, tv_industry: str, asset_type: str
     if t in ["NNE"]:
         return {"id": "energy", "name": "Energía & Industrial", "industry": "Tecnología nuclear avanzada y microreactores"}
     if t in ETF_RATIOS or asset_type == "etf" or t in ["SPY", "QQQ", "DIA", "IWM", "EEM", "EWZ", "XLF", "XLE", "XLK", "XLV", "XLU", "XLI", "XLB", "XLP", "XLRE", "ARKK", "SMH", "URA", "VEA", "EWJ", "FXI", "ILF", "IVW", "GDX", "GLD", "SLV", "USO"]:
-        return {"id": "etfs", "name": "ETFs Indexados"}
+        return {"id": "etfs", "name": "ETFs Indexados", "is_etf": True}
     if t in ["IBIT", "MSTR", "COIN"]:
         return {"id": "crypto", "name": "Criptoactivos"}
     
@@ -118,8 +136,12 @@ def map_tv_sector(ticker: str, tv_sector: str, tv_industry: str, asset_type: str
         return {"id": "health", "name": "Salud & Farma"}
     if any(k in sec for k in ["consumer non-durables", "consumer defensive"]) or any(k in ind for k in ["food", "tobacco", "beverages", "household"]):
         return {"id": "staples", "name": "Consumo Masivo"}
-    if any(k in sec for k in ["retail trade", "consumer services", "consumer durables", "internet retail", "consumer cyclical"]):
-        return {"id": "payments_retail", "name": "Pagos & Retail"}
+    if any(k in sec for k in ["retail trade", "consumer services", "consumer durables", "internet retail", "consumer cyclical", "consumer discretionary"]):
+        return {"id": "consumer_discretionary", "name": "Consumo Discrecional"}
+    if any(k in sec for k in ["communication services", "communications"]):
+        return {"id": "communications", "name": "Comunicaciones"}
+    if "real estate" in sec:
+        return {"id": "real_estate", "name": "Bienes Raíces"}
     if any(k in sec for k in ["energy minerals", "energy", "utilities"]) or any(k in ind for k in ["oil", "gas", "electric", "refining"]):
         return {"id": "energy", "name": "Energía & Utilities"}
     if any(k in sec for k in ["non-energy minerals", "basic materials"]) or any(k in ind for k in ["mining", "steel", "metals", "chemicals", "gold"]):
@@ -298,16 +320,20 @@ def main():
     with open(PORTFOLIO_SERVICE_FILE, "r", encoding="utf-8") as f:
         content = f.read()
 
-    lines = ["SECTOR_MAP: dict[str, dict[str, str]] = {"]
+    lines = ["SECTOR_MAP: dict[str, dict[str, str | bool]] = {"]
     sectors_order = [
         ("tech", "Tecnología & Cloud / Software"),
         ("semis", "Semiconductores & Hardware"),
         ("payments_retail", "Pagos, Retail & Consumo Discrecional"),
+        ("consumer_discretionary", "Consumo Discrecional"),
         ("health", "Salud & Farmacéutica"),
         ("staples", "Consumo Masivo (Staples)"),
         ("financials", "Finanzas, Banca & Fintech"),
         ("industrials", "Industria, Maquinaria & Aeroespacial"),
         ("energy", "Energía, Petróleo & Utilities"),
+        ("utilities", "Utilities"),
+        ("communications", "Comunicaciones"),
+        ("real_estate", "Bienes Raíces"),
         ("materials", "Minería & Materiales"),
         ("etfs", "ETFs Indexados & Globales"),
         ("crypto", "Criptoactivos"),
@@ -321,17 +347,20 @@ def main():
         lines.append(f"    # {sec_label}")
         for k in sorted(sec_tickers):
             v = new_sector_map[k]
-            if "industry" in v:
-                lines.append(f'    "{k}": {{"id": "{v["id"]}", "name": "{v["name"]}", "industry": "{v["industry"]}"}},')
-            else:
-                lines.append(f'    "{k}": {{"id": "{v["id"]}", "name": "{v["name"]}"}},')
+            lines.append(f"    {k!r}: {v!r},")
         lines.append("")
 
     lines.append("}")
     new_map_str = "\n".join(lines)
 
-    pattern = r"SECTOR_MAP: dict\[str, dict\[str, str\]\] = \{.*?\n\}"
-    new_content = re.sub(pattern, new_map_str, content, flags=re.DOTALL)
+    pattern = r"SECTOR_MAP: dict\[str, dict\[str, str \| bool\]\] = \{.*?\n\}"
+    new_content, substitutions = re.subn(pattern, new_map_str, content, flags=re.DOTALL)
+    if substitutions != 1:
+        if substitutions == 0:
+            raise RuntimeError("No se encontró el bloque SECTOR_MAP tipado en portfolio_service.py")
+        raise RuntimeError(
+            f"Se encontraron {substitutions} bloques SECTOR_MAP tipados; se esperaba exactamente uno"
+        )
     
     with open(PORTFOLIO_SERVICE_FILE, "w", encoding="utf-8") as f:
         f.write(new_content)

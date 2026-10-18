@@ -3,10 +3,8 @@
 Contrato de la papelera de carteras y de la política de nombres reservados.
 
 Contexto: se eliminó la lista fija `RESERVED_PORTFOLIO_NAMES` ("bmb", "bal").
-Ahora un nombre está reservado únicamente si existe una cartera viva con ese
-nombre o si sigue presente en la papelera. Además, borrar una cartera la purga
-del catálogo activo pero la papelera recuerda sus posiciones para poder
-restaurarla, incluso bajo otro nombre.
+Al borrar una cartera, la papelera conserva sus posiciones bajo un nombre con
+sufijo `_borrada` y deja libre inmediatamente el nombre original.
 """
 
 import json
@@ -23,6 +21,7 @@ from services.portfolio_service import (
     load_portfolios_trash,
     save_portfolios,
     save_portfolios_trash,
+    _trash_db,
     MAX_TRASH_CAPACITY,
 )
 from services.rotation_service import (
@@ -45,18 +44,61 @@ class TestReservedNamesAreDynamic(unittest.TestCase):
     def test_free_name_is_not_taken(self):
         self.assertFalse(is_portfolio_name_taken("nombre_inexistente_zzz"))
 
-    def test_name_in_trash_is_taken(self):
-        """Mientras la entrada siga en la papelera, su nombre no se puede reusar."""
-        pfs = load_portfolios()
-        pfs["pf_para_papelera"] = {"mode": "weights", "assets": {"AAPL": 100.0}}
-        save_portfolios(pfs)
+    def test_delete_renames_archive_and_releases_original_name(self):
+        original_name = "pf_para_papelera"
+        previous_pfs = load_portfolios()
+        previous_trash = load_portfolios_trash()
+        previous_holdings = load_user_holdings(original_name)
         try:
-            self.client_delete("pf_para_papelera")
-            # Salió del catálogo activo, pero su nombre sigue reservado por la papelera.
-            self.assertNotIn("pf_para_papelera", load_portfolios())
-            self.assertTrue(is_portfolio_name_taken("pf_para_papelera"))
+            pfs = load_portfolios()
+            pfs[original_name] = {"mode": "weights", "assets": {"AAPL": 100.0}}
+            save_portfolios(pfs)
+
+            deleted = self.client_delete(original_name)
+            self.assertEqual(deleted.status_code, 200)
+            archive_name = deleted.json()["moved_to_trash"]
+
+            self.assertEqual(archive_name, f"{original_name}_borrada")
+            self.assertEqual(deleted.json()["released_name"], original_name)
+            self.assertNotIn(original_name, load_portfolios())
+            self.assertFalse(is_portfolio_name_taken(original_name))
+            self.assertTrue(is_portfolio_name_taken(archive_name))
+
+            with TestClient(app) as client:
+                recreated = client.post(
+                    "/api/portfolios/create_json",
+                    json={"name": original_name, "assets": {"AAPL": 100.0}},
+                )
+            self.assertEqual(recreated.status_code, 200)
+            self.assertIn(original_name, load_portfolios())
         finally:
-            self._cleanup()
+            save_portfolios(previous_pfs)
+            save_portfolios_trash(previous_trash)
+            save_user_holdings(previous_holdings, portfolio_key=original_name)
+
+    def test_legacy_trash_entries_are_renamed_and_migrated(self):
+        original_name = "pf_legacy_trash_migration"
+        previous_trash = load_portfolios_trash()
+        try:
+            self.assertNotIn(original_name, load_portfolios())
+            _trash_db.save([{
+                "id": original_name,
+                "name": original_name,
+                "data": {"mode": "weights", "assets": {"AAPL": 100.0}},
+            }])
+
+            self.assertFalse(is_portfolio_name_taken(original_name))
+            entry = load_portfolios_trash()[0]
+            expected_archive_name = f"{original_name[:22]}_borrada"
+            self.assertEqual(entry["id"], expected_archive_name)
+            self.assertEqual(entry["name"], expected_archive_name)
+            self.assertEqual(entry["original_name"], original_name)
+            # La lectura no escribe ni corre el riesgo de sobrescribir una mutación concurrente.
+            self.assertEqual(_trash_db.load()[0]["id"], original_name)
+            save_portfolios_trash(load_portfolios_trash())
+            self.assertEqual(_trash_db.load()[0]["id"], expected_archive_name)
+        finally:
+            save_portfolios_trash(previous_trash)
 
     def client_delete(self, name):
         with TestClient(app) as client:
@@ -136,6 +178,9 @@ class TestTrashSnapshotAndRestore(unittest.TestCase):
             resp = client.delete("/api/portfolios/delete_json/pf_trash_test")
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(resp.json()["success"])
+        archive_name = resp.json()["moved_to_trash"]
+        self.assertEqual(archive_name, "pf_trash_test_borrada")
+        self.assertEqual(resp.json()["released_name"], "pf_trash_test")
 
         # Salió del catálogo activo...
         self.assertNotIn("pf_trash_test", load_portfolios())
@@ -147,7 +192,8 @@ class TestTrashSnapshotAndRestore(unittest.TestCase):
         self.assertEqual(live["cash_ars"], 0.0)
 
         # La papelera recuerda todo.
-        entry = next(t for t in load_portfolios_trash() if t["id"] == "pf_trash_test")
+        entry = next(t for t in load_portfolios_trash() if t["id"] == archive_name)
+        self.assertEqual(entry["original_name"], "pf_trash_test")
         self.assertEqual(entry["data"]["assets"], {"AAPL": 60.0, "MSFT": 40.0})
         self.assertEqual(entry["holdings"], {"AAPL": {"nominals": 10, "ppc": 100.0}})
         self.assertEqual(entry["fixed_income_holdings"], {"S30S6": {"nominals": 500, "ppc": 112.0}})
@@ -156,9 +202,10 @@ class TestTrashSnapshotAndRestore(unittest.TestCase):
     def test_restore_as_new_name_keeps_positions_and_leaves_original(self):
         self._seed()
         with TestClient(app) as client:
-            client.delete("/api/portfolios/delete_json/pf_trash_test")
+            deleted = client.delete("/api/portfolios/delete_json/pf_trash_test")
+            archive_name = deleted.json()["moved_to_trash"]
             resp = client.post(
-                "/api/portfolios/restore_as_json/pf_trash_test",
+                f"/api/portfolios/restore_as_json/{archive_name}",
                 json={"new_name": "pf_trash_copia"},
             )
         self.assertEqual(resp.status_code, 200)
@@ -177,18 +224,56 @@ class TestTrashSnapshotAndRestore(unittest.TestCase):
         self.assertEqual(copy["cash_ars"], 1234.5)
 
         # La entrada original sigue en la papelera: restaurar no la consume.
-        self.assertIn("pf_trash_test", [t["id"] for t in load_portfolios_trash()])
+        self.assertIn(archive_name, [t["id"] for t in load_portfolios_trash()])
 
     def test_restore_as_colliding_name_is_rejected(self):
         self._seed()
         with TestClient(app) as client:
-            client.delete("/api/portfolios/delete_json/pf_trash_test")
+            deleted = client.delete("/api/portfolios/delete_json/pf_trash_test")
+            archive_name = deleted.json()["moved_to_trash"]
             resp = client.post(
-                "/api/portfolios/restore_as_json/pf_trash_test",
+                f"/api/portfolios/restore_as_json/{archive_name}",
                 json={"new_name": "bmb"},
             )
         self.assertEqual(resp.status_code, 409)
         self.assertFalse(resp.json()["success"])
+
+    def test_repeated_deletions_get_unique_archive_names(self):
+        self._seed()
+        save_portfolios_trash([])
+        with TestClient(app) as client:
+            first = client.delete("/api/portfolios/delete_json/pf_trash_test").json()
+            recreated = client.post(
+                "/api/portfolios/create_json",
+                json={"name": "pf_trash_test", "assets": {"AAPL": 100.0}},
+            )
+            self.assertEqual(recreated.status_code, 200)
+            second = client.delete("/api/portfolios/delete_json/pf_trash_test").json()
+
+        self.assertEqual(first["moved_to_trash"], "pf_trash_test_borrada")
+        self.assertEqual(second["moved_to_trash"], "pf_trash_test_borrada_2")
+        self.assertFalse(is_portfolio_name_taken("pf_trash_test"))
+        self.assertEqual(
+            {entry["id"] for entry in load_portfolios_trash()},
+            {"pf_trash_test_borrada", "pf_trash_test_borrada_2"},
+        )
+
+    def test_restore_original_name_rejects_collision_without_overwriting(self):
+        self._seed()
+        with TestClient(app) as client:
+            deleted = client.delete("/api/portfolios/delete_json/pf_trash_test").json()
+            archive_name = deleted["moved_to_trash"]
+            recreated = client.post(
+                "/api/portfolios/create_json",
+                json={"name": "pf_trash_test", "assets": {"AAPL": 100.0}},
+            )
+            self.assertEqual(recreated.status_code, 200)
+            restore = client.post(f"/api/portfolios/restore_json/{archive_name}")
+
+        self.assertEqual(restore.status_code, 409)
+        self.assertEqual(
+            load_portfolios()["pf_trash_test"]["assets"], {"AAPL": 100.0}
+        )
 
     def test_trash_response_exposes_count_and_capacity(self):
         """count y max_capacity deben llegar al cliente (antes se perdían)."""
@@ -266,6 +351,7 @@ class TestTrashPanelContract(unittest.TestCase):
     def test_restore_posts_a_new_name(self):
         self.assertIn("new_name: target", self.src)
         self.assertIn("Restaurar como...", self.src)
+        self.assertIn("original_name", self.src)
 
     def test_purge_requires_confirmation(self):
         self.assertIn("confirmPurge", self.src)

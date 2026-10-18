@@ -311,3 +311,4 @@ class DeletePortfolioResponse(BaseModel):
     message: Optional[str] = None
     error: Optional[str] = None
     moved_to_trash: Optional[str] = None
+    released_name: Optional[str] = None

@@ -98,10 +98,11 @@ export function parseImportJson(raw: string): ParsedImport {
 export function HoldingsManagerView({ hideHeader = false, compact = false }: { hideHeader?: boolean, compact?: boolean } = {}) {
   const hm = useHoldingsManager();
   const {
-    openTickerDrawer, selectedPf, setSelectedPf, loading, loadError, setLoadError, setRetryTick,
+    openTickerDrawer, selectedPf, setSelectedPf, switchPortfolio, loading, loadError, setLoadError, setRetryTick,
     mcmMultiplier, handleMultiplierChange, feedback, setFeedback, showDeleteAlert, setShowDeleteAlert,
     showImportModal, setShowImportModal, showCreateModal, setShowCreateModal, chartMode, setChartMode,
-    holdings, composition, kpis, draftHoldings, handleFieldChange, handleRemoveAsset, handleSaveHoldings,
+    holdings, composition, kpis, draftHoldings, removedAssetTickers, isEditingRef,
+    handleFieldChange, handleRemoveAsset, handleSaveHoldings,
     handleExportJSON, pfNames, isSaving,
     fixedIncomeRows, handleDeleteFixedIncomeHolding, deletingFiTicker,
     fixedIncomeSpecs, availableFiTickers,
@@ -119,6 +120,18 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
   const [importNeedsName, setImportNeedsName] = useState<boolean>(false);
   const [importName, setImportName] = useState<string>('');
   const [importPreview, setImportPreview] = useState<ParsedImport | null>(null);
+
+  const selectPortfolio = (nextPortfolio: string): boolean => {
+    if (nextPortfolio === selectedPf) return true;
+    if (
+      isEditingRef.current
+      && !window.confirm(`Hay cambios sin guardar en "${selectedPf}". Cambiar de cartera los descartará. ¿Continuar?`)
+    ) {
+      return false;
+    }
+    switchPortfolio(nextPortfolio);
+    return true;
+  };
 
   /** Rellena el textarea con un ejemplo (los botones de formato admitido). */
   const fillImportExample = (value: string) => {
@@ -343,7 +356,7 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
               <Dropdown
                 value={selectedPf}
                 options={pfNames.length > 0 ? pfNames : ['Sin carteras']}
-                onChange={(v) => setSelectedPf(v)}
+                onChange={(v) => selectPortfolio(v)}
                 title="Portafolio"
                 minWidth="12rem"
                 disabled={pfNames.length === 0}
@@ -431,7 +444,7 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {holdings.filter((asset: any) => draftHoldings[asset.ticker] !== undefined).map((asset: any) => (
+                  {holdings.filter((asset: any) => !removedAssetTickers[asset.ticker]).map((asset: any) => (
                     <tr key={asset.ticker} className="hover:bg-secondary/30 transition-colors group border-b border-border/50 last:border-0">
                       <td className="px-4 py-2 align-middle">
                         <div className="flex items-center h-full min-h-[40px]">
@@ -883,9 +896,15 @@ export function HoldingsManagerView({ hideHeader = false, compact = false }: { h
       <CreatePortfolioModal 
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onCreated={() => {
+        onCreated={(newPfKey) => {
           setShowCreateModal(false);
-          setFeedback({ kind: 'success', msg: 'Portafolio creado.' });
+          const selected = selectPortfolio(newPfKey);
+          setFeedback({
+            kind: 'success',
+            msg: selected
+              ? 'Portafolio creado y seleccionado.'
+              : `Portafolio ${newPfKey} creado; se conservaron los cambios pendientes en ${selectedPf}.`
+          });
           queryClient.invalidateQueries({ queryKey: ['portfolios-list'] });
           setRetryTick((t) => t + 1);
         }}

@@ -5,6 +5,7 @@ import { useAppStore } from '@/store/useAppStore';
 export interface TrashEntry {
   id: string;
   name: string;
+  original_name?: string;
   mode: string;
   asset_count: number;
   deleted_at: string;
@@ -63,7 +64,7 @@ export const PortfolioTrashPanel: React.FC<{ open: boolean; onClose: () => void 
 
   const startRestore = (entry: TrashEntry) => {
     setRestoring(entry);
-    setNewName(`${entry.id}_2`);
+    setNewName(entry.original_name || entry.id);
     setMessage(null);
   };
 
@@ -179,6 +180,11 @@ export const PortfolioTrashPanel: React.FC<{ open: boolean; onClose: () => void 
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Borrada el {entry.deleted_at ? new Date(entry.deleted_at).toLocaleString('es-AR') : '—'}
                   </p>
+                  {entry.original_name && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Nombre original: <span className="font-mono">{entry.original_name}</span>
+                    </p>
+                  )}
                   <p className="text-[11px] font-mono text-muted-foreground mt-1 truncate">
                     {tickers(entry).join(' · ') || '—'}
                   </p>

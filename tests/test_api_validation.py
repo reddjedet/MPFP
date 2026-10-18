@@ -56,30 +56,44 @@ def test_bulk_update_valido_devuelve_200(client):
 
 def test_import_crea_bal_porque_ya_no_esta_reservada(client):
     """
-    `bal` ya no es un nombre protegido: lo único que bloquea es que exista una
-    cartera viva o una entrada en la papelera con ese nombre.
+    Los nombres originales archivados quedan libres, pero el identificador
+    `nombre_borrada` de la papelera sigue reservado.
     """
     payload = {
         "bal": {"mode": "weights", "assets": {"AAPL": 100.0}},
-        "valida": {"mode": "weights", "assets": {"AAPL": 100.0}}
+        "valida": {"mode": "weights", "assets": {"AAPL": 100.0}},
+        "valida_borrada": {"mode": "weights", "assets": {"AAPL": 100.0}},
     }
     content = json.dumps(payload).encode("utf-8")
     files = {"file": ("portfolios.json", io.BytesIO(content), "application/json")}
 
-    # El estado de la papelera debe ser parte del escenario del test y no
-    # depender de que exista en el snapshot de datos del entorno.
-    save_portfolios_trash([{"id": "valida", "name": "valida"}])
+    previous_pfs = load_portfolios()
+    previous_trash = ps.load_portfolios_trash()
+    try:
+        pfs_before = load_portfolios()
+        pfs_before.pop("bal", None)
+        pfs_before.pop("valida", None)
+        pfs_before.pop("valida_borrada", None)
+        save_portfolios(pfs_before)
+        # El escenario no depende de entradas previas en la papelera.
+        save_portfolios_trash([{
+            "id": "valida_borrada",
+            "name": "valida_borrada",
+            "original_name": "valida",
+        }])
 
-    r = client.post("/api/portfolios/import_json", files=files)
-    assert r.status_code == 200
-    body = r.json()
-    pfs = load_portfolios()
-    # `bal` ya no está reservada: se importa.
-    assert "bal" in pfs
-    # `valida` sigue en la papelera, así que su nombre está reservado y se omite,
-    # pero el endpoint lo informa en vez de descartarlo en silencio.
-    assert "valida" not in pfs
-    assert "valida" in body["skipped"]
+        r = client.post("/api/portfolios/import_json", files=files)
+        assert r.status_code == 200
+        body = r.json()
+        pfs = load_portfolios()
+        # El nombre original y `bal` ya están libres; la clave archivada no.
+        assert "bal" in pfs
+        assert "valida" in pfs
+        assert "valida_borrada" not in pfs
+        assert "valida_borrada" in body["skipped"]
+    finally:
+        save_portfolios(previous_pfs)
+        save_portfolios_trash(previous_trash)
 
 
 def test_create_json_no_sobrescribe_cartera_existente(client):

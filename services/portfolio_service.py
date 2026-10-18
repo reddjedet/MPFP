@@ -16,15 +16,100 @@ _db = SQLiteTableStore("portfolios", DB_PATH)
 TRASH_DB_PATH = data_file("portfolios_trash.json")
 _trash_db = SQLiteTableStore("portfolios_trash", TRASH_DB_PATH)
 MAX_TRASH_CAPACITY = 7
+PORTFOLIO_NAME_MAX_LENGTH = 30
+DELETED_PORTFOLIO_SUFFIX = "_borrada"
+
+
+def _raw_trash_contains_name(name: str) -> bool:
+    """Detecta una cartera borrada incluso en entradas legacy sin `original_name`."""
+    data = _trash_db.load()
+    return isinstance(data, list) and any(
+        isinstance(item, dict)
+        and any(item.get(field) == name for field in ("id", "name", "original_name"))
+        for item in data
+    )
+
+
+def _deleted_portfolio_name(original_name: str, used_names: set[str]) -> str:
+    """Genera un identificador de papelera `nombre_borrada` único y válido."""
+    from services.security_service import sanitize_portfolio_name
+
+    clean_original = sanitize_portfolio_name(original_name) or "cartera"
+    attempt = 1
+    while True:
+        suffix = DELETED_PORTFOLIO_SUFFIX if attempt == 1 else f"{DELETED_PORTFOLIO_SUFFIX}_{attempt}"
+        prefix_length = PORTFOLIO_NAME_MAX_LENGTH - len(suffix)
+        candidate = f"{clean_original[:prefix_length].rstrip('_')}{suffix}"
+        if candidate not in used_names:
+            return candidate
+        attempt += 1
+
+
+def _normalize_trash_entries(entries: list[dict]) -> tuple[list[dict], bool]:
+    """Migra entradas antiguas para liberar su nombre original sin perder el snapshot."""
+    if not entries:
+        return entries, False
+
+    used_names = set(load_portfolios())
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        used_names.update(
+            value
+            for value in (entry.get("id"), entry.get("name"), entry.get("original_name"))
+            if isinstance(value, str) and value
+        )
+
+    normalized: list[dict] = []
+    changed = False
+    for entry in entries:
+        if not isinstance(entry, dict):
+            normalized.append(entry)
+            continue
+
+        item = dict(entry)
+        original_name = item.get("original_name")
+        if not isinstance(original_name, str) or not original_name:
+            original_name = item.get("name") or item.get("id")
+        if not isinstance(original_name, str) or not original_name:
+            normalized.append(item)
+            continue
+
+        archive_name = item.get("id") or item.get("name")
+        if not isinstance(archive_name, str) or not archive_name:
+            archive_name = original_name
+
+        if archive_name == original_name or item.get("name") == original_name:
+            archive_name = _deleted_portfolio_name(original_name, used_names)
+            item["id"] = archive_name
+            item["name"] = archive_name
+            changed = True
+        else:
+            if item.get("id") != archive_name:
+                item["id"] = archive_name
+                changed = True
+            if item.get("name") != archive_name:
+                item["name"] = archive_name
+                changed = True
+
+        if item.get("original_name") != original_name:
+            item["original_name"] = original_name
+            changed = True
+
+        used_names.update((archive_name, original_name))
+        normalized.append(item)
+
+    return normalized, changed
 
 
 def is_portfolio_name_taken(name: str) -> bool:
     """
-    Un nombre de cartera está reservado cuando ya existe una cartera viva con ese
-    nombre, o cuando ese nombre sigue presente en la papelera.
+    Un nombre está reservado si pertenece a una cartera activa o identifica una
+    entrada de papelera. El nombre original guardado en `original_name` queda libre.
 
     No hay una lista fija de nombres protegidos: lo que protege a `bmb` es estar
-    viva, no su nombre. Si se borra, el nombre vuelve a estar disponible.
+    viva, no su nombre. Al borrarla, la entrada pasa a `bmb_borrada` y `bmb` queda
+    disponible de inmediato.
     """
     from services.security_service import sanitize_portfolio_name
 
@@ -36,6 +121,7 @@ def is_portfolio_name_taken(name: str) -> bool:
     return any(
         item.get("id") == clean or item.get("name") == clean
         for item in load_portfolios_trash()
+        if isinstance(item, dict)
     )
 
 
@@ -135,25 +221,28 @@ def _apply_positions(pf_clean: str, entry: dict) -> None:
     )
 
 def load_portfolios_trash() -> list[dict]:
-    """Carga la lista de carteras en papelera de reciclaje."""
+    """Carga una vista normalizada de la papelera sin escribir durante la lectura."""
     data = _trash_db.load()
     if isinstance(data, list):
-        return data
+        normalized, _ = _normalize_trash_entries(data)
+        return normalized
     return []
 
 def save_portfolios_trash(data: list[dict]) -> None:
     """Guarda la lista de carteras en papelera de reciclaje con límite máximo de 7."""
+    normalized, _ = _normalize_trash_entries(data)
     # Aplicar política FIFO: retener solo las últimas MAX_TRASH_CAPACITY carteras
-    pruned = data[-MAX_TRASH_CAPACITY:] if len(data) > MAX_TRASH_CAPACITY else data
+    pruned = normalized[-MAX_TRASH_CAPACITY:] if len(normalized) > MAX_TRASH_CAPACITY else normalized
     _trash_db.save(pruned)
 
 def move_portfolio_to_trash(pf_clean: str) -> dict:
     """
     Traslada una cartera activa a la papelera de reciclaje.
 
-    La entrada recuerda objetivos, tenencias, bonos y efectivo, de modo que pueda
-    restaurarse tal cual —incluso bajo otro nombre—. Lo que sale del catálogo
-    activo queda purgado: la cartera pasa a estar en cero.
+    La entrada recuerda el nombre original, objetivos, tenencias, bonos y efectivo,
+    de modo que pueda restaurarse tal cual —incluso bajo otro nombre—. En la
+    papelera se identifica como `nombre_borrada`, liberando el nombre original.
+    Lo que sale del catálogo activo queda purgado: la cartera pasa a estar en cero.
     Si la papelera supera MAX_TRASH_CAPACITY, la más antigua se descarta (FIFO).
     """
     portfolios_data = load_portfolios()
@@ -167,10 +256,20 @@ def move_portfolio_to_trash(pf_clean: str) -> dict:
     snapshot = _snapshot_positions(pf_clean)
     _purge_positions(pf_clean)
 
-    trash = [item for item in load_portfolios_trash() if item.get("id") != pf_clean]
+    trash = load_portfolios_trash()
+    used_names = set(portfolios_data)
+    for item in trash:
+        if isinstance(item, dict):
+            used_names.update(
+                value
+                for value in (item.get("id"), item.get("name"), item.get("original_name"))
+                if isinstance(value, str) and value
+            )
+    archive_name = _deleted_portfolio_name(pf_clean, used_names)
     trash.append({
-        "id": pf_clean,
-        "name": pf_clean,
+        "id": archive_name,
+        "name": archive_name,
+        "original_name": pf_clean,
         "data": pf_data,
         "holdings": snapshot["holdings"],
         "fixed_income_holdings": snapshot["fixed_income_holdings"],
@@ -184,7 +283,8 @@ def move_portfolio_to_trash(pf_clean: str) -> dict:
     updated_trash = load_portfolios_trash()
     return {
         "success": True,
-        "moved_to_trash": pf_clean,
+        "moved_to_trash": archive_name,
+        "released_name": pf_clean,
         "trash_count": len(updated_trash),
         "max_capacity": MAX_TRASH_CAPACITY
     }
@@ -198,17 +298,29 @@ def restore_portfolio_from_trash(pf_clean: str, new_name: str | None = None) -> 
     original permanece en la papelera: restaurar no la consume.
     """
     trash = load_portfolios_trash()
-    found = None
-    for item in trash:
-        if item.get("id") == pf_clean or item.get("name") == pf_clean:
-            found = item
-            break
+    matches = [
+        item for item in trash
+        if isinstance(item, dict)
+        and (item.get("id") == pf_clean or item.get("name") == pf_clean)
+    ]
+    if not matches:
+        matches = [
+            item for item in trash
+            if isinstance(item, dict) and item.get("original_name") == pf_clean
+        ]
+        if len(matches) > 1:
+            return {
+                "success": False,
+                "error": "Hay varias copias borradas con ese nombre. Usá el identificador de la papelera.",
+                "conflict": True,
+            }
+    found = matches[0] if matches else None
 
     if not found:
         return {"success": False, "error": f"La cartera '{pf_clean}' no se encuentra en la papelera."}
 
-    target = pf_clean
-    if new_name:
+    original_name = found.get("original_name") or found.get("name") or found.get("id") or pf_clean
+    if new_name is not None:
         from services.security_service import sanitize_portfolio_name
 
         target = sanitize_portfolio_name(new_name)
@@ -219,6 +331,18 @@ def restore_portfolio_from_trash(pf_clean: str, new_name: str | None = None) -> 
                 "success": False,
                 "error": f"El nombre '{target}' ya esta en uso. Elegi otro nombre."
             }
+    else:
+        from services.security_service import sanitize_portfolio_name
+
+        target = sanitize_portfolio_name(original_name)
+        if not target:
+            return {"success": False, "error": "El nombre original de la cartera no es válido."}
+        if is_portfolio_name_taken(target):
+            return {
+                "success": False,
+                "error": f"El nombre original '{target}' ya está en uso. Elegí otro nombre para restaurar.",
+                "conflict": True,
+            }
 
     portfolios_data = load_portfolios()
     portfolios_data[target] = found.get("data", {"mode": "weights", "assets": {}})
@@ -227,10 +351,11 @@ def restore_portfolio_from_trash(pf_clean: str, new_name: str | None = None) -> 
 
     # Volver con el nombre propio consume la entrada (la cartera regresa). Copiarla
     # bajo otro nombre la deja en la papelera: sigue siendo una entrada recuperable.
-    if target == pf_clean:
+    if new_name is None:
+        archive_id = found.get("id") or found.get("name")
         remaining = [
             item for item in load_portfolios_trash()
-            if item.get("id") != pf_clean and item.get("name") != pf_clean
+            if item.get("id") != archive_id and item.get("name") != archive_id
         ]
         _trash_db.save(remaining)
 
@@ -245,16 +370,20 @@ def delete_permanently_from_trash(pf_clean: str) -> dict:
     Elimina definitivamente una cartera individual que se encuentra en la papelera.
     """
     trash = load_portfolios_trash()
-    new_trash = [item for item in trash if item.get("id") != pf_clean and item.get("name") != pf_clean]
+    new_trash = [
+        item for item in trash
+        if not isinstance(item, dict)
+        or (item.get("id") != pf_clean and item.get("name") != pf_clean)
+    ]
     _trash_db.save(new_trash)
     return {"success": True, "purged": pf_clean}
 
 def load_portfolios() -> dict:
     data = _db.load()
 
-    # La cartera por defecto solo se siembra cuando el catálogo está vacío. Si el
-    # usuario borra 'bmb' a propósito no debe resucitar en la próxima lectura.
-    if not data:
+    # La cartera por defecto solo se siembra en una instalación vacía. Si BMB fue
+    # borrada y sigue en papelera, no debe reaparecer ni volver a reservar su nombre.
+    if not data and not _raw_trash_contains_name("bmb"):
         data["bmb"] = {
             "mode": "weights",
             "assets": {
@@ -489,14 +618,14 @@ def calculate_portfolio_rsi(result: list[dict]) -> dict | None:
 
 
 # Catálogo Maestro de Macro-Sectores GICS para Cartera
-SECTOR_MAP: dict[str, dict[str, str]] = {
+SECTOR_MAP: dict[str, dict[str, str | bool]] = {
     # Tecnología & Cloud / Software
     "AABA": {"id": "tech", "name": "Tecnología & Cloud"},
     "AAPL": {"id": "tech", "name": "Tecnología & Cloud"},
     "ADBE": {"id": "tech", "name": "Tecnología & Cloud"},
     "ADP": {"id": "tech", "name": "Tecnología & Cloud"},
     "AMX": {"id": "tech", "name": "Tecnología & Telecom"},
-    "AMZN": {"id": "tech", "name": "Tecnología & Cloud"},
+    "AMZN": {"id": "consumer_discretionary", "name": "Consumo Discrecional", "industry": "Retail y comercio electrónico"},
     "ANET": {"id": "tech", "name": "Tecnología & Cloud"},
     "BB": {"id": "tech", "name": "Tecnología & Cloud"},
     "BIDU": {"id": "tech", "name": "Tecnología & Cloud"},
@@ -590,7 +719,7 @@ SECTOR_MAP: dict[str, dict[str, str]] = {
     "JD": {"id": "payments_retail", "name": "Pagos & Retail"},
     "LVS": {"id": "payments_retail", "name": "Pagos & Retail"},
     "MA": {"id": "payments_retail", "name": "Pagos & Retail"},
-    "MCD": {"id": "payments_retail", "name": "Pagos & Retail"},
+    "MCD": {"id": "consumer_discretionary", "name": "Consumo Discrecional", "industry": "Restaurantes y comida rápida"},
     "NKE": {"id": "payments_retail", "name": "Pagos & Retail"},
     "NSAN": {"id": "payments_retail", "name": "Pagos & Retail"},
     "PSO": {"id": "payments_retail", "name": "Pagos & Retail"},
@@ -632,6 +761,7 @@ SECTOR_MAP: dict[str, dict[str, str]] = {
     "PHG": {"id": "health", "name": "Salud & Farma"},
     "TMO": {"id": "health", "name": "Salud & Farma"},
     "UNH": {"id": "health", "name": "Salud & Farma"},
+    "ISRG": {"id": "health", "name": "Salud & Farma", "industry": "Equipos médicos y cirugía robótica"},
 
     # Consumo Masivo (Staples)
     "ABEV": {"id": "staples", "name": "Consumo Masivo"},
@@ -723,7 +853,8 @@ SECTOR_MAP: dict[str, dict[str, str]] = {
     "MMM": {"id": "industrials", "name": "Industria & Maquinaria"},
     "PAC": {"id": "industrials", "name": "Industria & Maquinaria"},
     "PCAR": {"id": "industrials", "name": "Industria & Maquinaria"},
-    "RTX": {"id": "industrials", "name": "Industria & Maquinaria"},
+    "GEV": {"id": "industrials", "name": "Industria & Maquinaria", "industry": "Equipos de generación eléctrica y electrificación"},
+    "RTX": {"id": "industrials", "name": "Industria & Maquinaria", "industry": "Aeroespacial y Defensa"},
     "SIEGY": {"id": "industrials", "name": "Industria & Maquinaria"},
     "UNP": {"id": "industrials", "name": "Industria & Maquinaria"},
 
@@ -811,22 +942,22 @@ SECTOR_MAP: dict[str, dict[str, str]] = {
     "IWM": {"id": "etfs", "name": "ETFs Indexados (Russell 2000)", "subsector": "Small Caps USA", "is_etf": True},
     "QQQ": {"id": "etfs", "name": "ETFs Indexados (Nasdaq 100)", "subsector": "Tecnología & Crecimiento", "is_etf": True},
     "SLV": {"id": "etfs", "name": "ETFs Indexados (Plata)", "subsector": "Metales Preciosos", "is_etf": True},
-    "SMH": {"id": "etfs", "name": "ETFs Indexados (Semiconductores)", "subsector": "Semiconductores", "is_etf": True},
+    "SMH": {"id": "semis", "name": "Semiconductores", "subsector": "Semiconductores", "is_etf": True},
     "SPY": {"id": "etfs", "name": "ETFs Indexados (S&P 500)", "subsector": "Mercado Amplio USA", "is_etf": True},
-    "URA": {"id": "etfs", "name": "ETFs Indexados (Uranio)", "subsector": "Energía Nuclear", "is_etf": True},
+    "URA": {"id": "energy", "name": "Energía & Utilities", "subsector": "Energía Nuclear", "is_etf": True},
     "USO": {"id": "etfs", "name": "ETFs Indexados (Petróleo WTI)", "subsector": "Commodities Energía", "is_etf": True},
     "VEA": {"id": "etfs", "name": "ETFs Indexados (Mercados Desarrollados)", "subsector": "Global Ex-USA", "is_etf": True},
-    "XLB": {"id": "etfs", "name": "ETFs Indexados (Materiales)", "subsector": "Materiales", "is_etf": True},
-    "XLC": {"id": "etfs", "name": "ETFs Indexados (Comunicaciones)", "subsector": "Comunicaciones", "is_etf": True},
-    "XLE": {"id": "etfs", "name": "ETFs Indexados (Energía)", "subsector": "Energía & Petróleo", "is_etf": True},
-    "XLF": {"id": "etfs", "name": "ETFs Indexados (Finanzas)", "subsector": "Finanzas & Fintech", "is_etf": True},
-    "XLI": {"id": "etfs", "name": "ETFs Indexados (Industria)", "subsector": "Industria & Maquinaria", "is_etf": True},
-    "XLK": {"id": "etfs", "name": "ETFs Indexados (Tecnología)", "subsector": "Tecnología", "is_etf": True},
-    "XLP": {"id": "etfs", "name": "ETFs Indexados (Consumo Básico)", "subsector": "Consumo Masivo", "is_etf": True},
-    "XLRE": {"id": "etfs", "name": "ETFs Indexados (Real Estate)", "subsector": "Bienes Raíces", "is_etf": True},
-    "XLU": {"id": "etfs", "name": "ETFs Indexados (Utilities)", "subsector": "Energía & Utilities", "is_etf": True},
-    "XLV": {"id": "etfs", "name": "ETFs Indexados (Salud)", "subsector": "Salud & Farma", "is_etf": True},
-    "XLY": {"id": "etfs", "name": "ETFs Indexados (Consumo Discrecional)", "subsector": "Consumo Discrecional", "is_etf": True},
+    "XLB": {"id": "materials", "name": "Minería & Materiales", "subsector": "Materiales", "is_etf": True},
+    "XLC": {"id": "communications", "name": "Comunicaciones", "subsector": "Servicios de comunicación", "is_etf": True},
+    "XLE": {"id": "energy", "name": "Energía & Utilities", "subsector": "Energía & Petróleo", "is_etf": True},
+    "XLF": {"id": "financials", "name": "Finanzas & Fintech", "subsector": "Finanzas & Fintech", "is_etf": True},
+    "XLI": {"id": "industrials", "name": "Industria & Maquinaria", "subsector": "Industria & Maquinaria", "is_etf": True},
+    "XLK": {"id": "tech", "name": "Tecnología & Cloud", "subsector": "Tecnología", "is_etf": True},
+    "XLP": {"id": "staples", "name": "Consumo Masivo", "subsector": "Consumo Masivo", "is_etf": True},
+    "XLRE": {"id": "real_estate", "name": "Bienes Raíces", "subsector": "Bienes Raíces", "is_etf": True},
+    "XLU": {"id": "utilities", "name": "Utilities", "subsector": "Servicios públicos", "is_etf": True},
+    "XLV": {"id": "health", "name": "Salud & Farma", "subsector": "Salud & Farma", "is_etf": True},
+    "XLY": {"id": "consumer_discretionary", "name": "Consumo Discrecional", "subsector": "Consumo Discrecional", "is_etf": True},
 
     # Criptoactivos
     "COIN": {"id": "crypto", "name": "Criptoactivos"},
@@ -870,6 +1001,8 @@ def calculate_sector_breakdown(result: list[dict]) -> list[dict]:
         
         item["sector_id"] = sec_id
         item["sector_name"] = sec_name
+        item["industry"] = sec_info.get("industry")
+        item["subsector"] = sec_info.get("subsector")
         item["is_etf"] = sec_info.get("is_etf", False)
         
         if sec_id not in sectors:
@@ -888,7 +1021,12 @@ def calculate_sector_breakdown(result: list[dict]) -> list[dict]:
             "target_weight": round(target_w, 2),
             "value": round(val, 2),
             "qty": item.get("qty", 0),
-            "price": item.get("price", 0.0)
+            "price": item.get("price", 0.0),
+            "sector_id": sec_id,
+            "sector_name": sec_name,
+            "industry": sec_info.get("industry"),
+            "subsector": sec_info.get("subsector"),
+            "is_etf": sec_info.get("is_etf", False)
         })
 
     breakdown = list(sectors.values())

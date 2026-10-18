@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Plus, Trash2, Check, AlertCircle, Sparkles, Sliders } from 'lucide-react';
 
 interface AssetRow {
   ticker: string;
-  value: number;
+  value: number | '';
 }
+
+const createBlankRows = (): AssetRow[] =>
+  Array.from({ length: 16 }, () => ({ ticker: '', value: '' }));
 
 interface CreatePortfolioModalProps {
   isOpen: boolean;
@@ -21,21 +24,26 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
   // Las carteras se definen exclusivamente por pesos porcentuales.
   const mode = 'weights';
   const [inputFormat, setInputFormat] = useState<'rows' | 'text'>('rows');
-  const [rows, setRows] = useState<AssetRow[]>([
-    { ticker: 'AAPL', value: 30 },
-    { ticker: 'MSFT', value: 30 },
-    { ticker: 'GOOGL', value: 40 },
-  ]);
-  const [rawText, setRawText] = useState('AAPL: 30, MSFT: 30, GOOGL: 40');
+  const [rows, setRows] = useState<AssetRow[]>(createBlankRows);
+  const [rawText, setRawText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setName('');
+    setInputFormat('rows');
+    setRows(createBlankRows());
+    setRawText('');
+    setError(null);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const totalWeight = rows.reduce((acc, r) => acc + (Number(r.value) || 0), 0);
 
   const handleAddRow = () => {
-    setRows([...rows, { ticker: '', value: 10 }]);
+    setRows([...rows, { ticker: '', value: '' }]);
   };
 
   const handleRemoveRow = (idx: number) => {
@@ -47,16 +55,22 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
     if (field === 'ticker') {
       updated[idx] = { ...updated[idx], ticker: val.toUpperCase().trim() };
     } else {
-      updated[idx] = { ...updated[idx], value: parseFloat(val) || 0 };
+      const parsed = val === '' ? '' : Number(val);
+      updated[idx] = {
+        ...updated[idx],
+        value: parsed === '' || Number.isFinite(parsed) ? parsed : '',
+      };
     }
     setRows(updated);
   };
 
   const handleNormalize = () => {
     if (totalWeight <= 0) return;
-    const normalized = rows.map(r => ({
+    const normalized: AssetRow[] = rows.map(r => ({
       ...r,
-      value: parseFloat(((r.value / totalWeight) * 100).toFixed(2)),
+      value: r.value === ''
+        ? ''
+        : parseFloat(((r.value / totalWeight) * 100).toFixed(2)),
     }));
     setRows(normalized);
   };
@@ -74,13 +88,20 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
     let payloadAssets: Record<string, number> = {};
 
     if (inputFormat === 'rows') {
-      for (const r of rows) {
-        if (!r.ticker) continue;
-        if (r.value <= 0) {
-          setError(`El valor para ${r.ticker} debe ser mayor a 0.`);
+      for (const [idx, r] of rows.entries()) {
+        const ticker = r.ticker.trim().toUpperCase();
+        const hasTicker = ticker.length > 0;
+        const hasValue = r.value !== '';
+        if (!hasTicker && !hasValue) continue;
+        if (!hasTicker) {
+          setError(`Ingrese el ticker de la fila ${idx + 1}.`);
           return;
         }
-        payloadAssets[r.ticker] = r.value;
+        if (r.value === '' || !Number.isFinite(r.value) || r.value <= 0) {
+          setError(`El valor para ${ticker} debe ser mayor a 0.`);
+          return;
+        }
+        payloadAssets[ticker] = r.value;
       }
     } else {
       const parts = rawText.split(',').map(p => p.trim());
@@ -141,7 +162,7 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-black text-white uppercase tracking-wider">Crear Nueva Cartera</h3>
-              <p className="text-[11px] text-zinc-400">Ponderaciones (%) o nominales de activos</p>
+              <p className="text-[11px] text-zinc-400">Ingresá los tickers y sus ponderaciones (%)</p>
             </div>
           </div>
           <button onClick={onClose} className="text-zinc-500 hover:text-white p-1 rounded-lg transition-colors">
@@ -196,7 +217,8 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
           </div>
 
           {inputFormat === 'rows' ? (
-            <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
               {rows.map((row, idx) => (
                 <div key={idx} className="flex items-center gap-2">
                   <input
@@ -225,6 +247,7 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
                   )}
                 </div>
               ))}
+              </div>
 
               <div className="flex items-center justify-between pt-2">
                 <button
@@ -239,7 +262,7 @@ export const CreatePortfolioModal: React.FC<CreatePortfolioModalProps> = ({
                     <span className={Math.abs(totalWeight - 100) < 0.1 ? 'text-emerald-400 font-bold' : 'text-amber-400'}>
                       Total: {totalWeight.toFixed(1)}%
                     </span>
-                    {Math.abs(totalWeight - 100) >= 0.1 && (
+                    {totalWeight > 0 && Math.abs(totalWeight - 100) >= 0.1 && (
                       <button
                         type="button"
                         onClick={handleNormalize}

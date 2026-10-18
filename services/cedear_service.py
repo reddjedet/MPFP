@@ -1,4 +1,6 @@
+import json
 import logging
+import math
 logger = logging.getLogger(__name__)
 import yfinance as yf
 import pandas as pd
@@ -11,6 +13,47 @@ from services.data_paths import data_file
 
 RATIOS_FILE = data_file("cedear_ratios.json")
 _ratios_db = AtomicJsonDatabase(RATIOS_FILE)
+
+# Las bases SQLite ya inicializadas no vuelven a importar automáticamente el JSON seed.
+_CEDEAR_RATIO_BACKFILL_TICKERS = ("GEV", "ISRG")
+
+
+def _backfill_missing_cedear_ratios(ratios_db: AtomicJsonDatabase, seed_ratios: dict) -> None:
+    """Añade al SQLite ratios nuevos del catálogo seed sin pisar valores guardados."""
+    if not isinstance(seed_ratios, dict):
+        return
+
+    stored_ratios = ratios_db.load()
+    if not isinstance(stored_ratios, dict):
+        return
+
+    stored_tickers = {str(ticker).upper() for ticker in stored_ratios}
+    for ticker in _CEDEAR_RATIO_BACKFILL_TICKERS:
+        if ticker in stored_tickers:
+            continue
+
+        ratio = seed_ratios.get(ticker)
+        if isinstance(ratio, bool) or not isinstance(ratio, (int, float)):
+            continue
+        if not math.isfinite(ratio) or ratio <= 0:
+            continue
+
+        ratios_db.set_item(ticker, float(ratio))
+        stored_tickers.add(ticker)
+
+
+def _apply_cedear_ratio_backfill() -> None:
+    """Migra al SQLite existente los CEDEARs añadidos al catálogo versionado."""
+    try:
+        with RATIOS_FILE.open("r", encoding="utf-8") as ratios_file:
+            seed_ratios = json.load(ratios_file)
+        _backfill_missing_cedear_ratios(_ratios_db, seed_ratios)
+    except Exception as exc:
+        logger.warning("No se pudo actualizar el catálogo SQLite de CEDEARs: %s", exc)
+
+
+_apply_cedear_ratio_backfill()
+
 
 def load_cedear_ratios() -> dict[str, float]:
     """Carga los ratios de conversión de CEDEARs desde persistencia atómica."""

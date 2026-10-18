@@ -193,6 +193,87 @@ class TestPortfolioCalculations(unittest.TestCase):
         self.assertEqual(get_ticker_sector("NNE")["industry"], "Tecnología nuclear avanzada y microreactores")
         self.assertEqual(get_ticker_sector("UNKNOWN_XYZ")["id"], "other")
 
+    def test_bdi_ricciardi_holdings_have_sector_mappings(self):
+        expected_sectors = {
+            "GOOGL": "tech",
+            "NVDA": "semis",
+            "META": "tech",
+            "ASML": "semis",
+            "MU": "semis",
+            "AMZN": "consumer_discretionary",
+            "SNDK": "semis",
+            "NBIS": "tech",
+            "GLW": "tech",
+            "CRWV": "tech",
+            "VST": "energy",
+            "XLU": "utilities",
+            "XLV": "health",
+            "ISRG": "health",
+            "VIST": "energy",
+            "GEV": "industrials",
+            "URA": "energy",
+            "MCD": "consumer_discretionary",
+            "RTX": "industrials",
+        }
+        for ticker, expected_sector in expected_sectors.items():
+            with self.subTest(ticker=ticker):
+                self.assertEqual(get_ticker_sector(ticker)["id"], expected_sector)
+
+    def test_sector_etfs_keep_instrument_flag_and_underlying_exposure(self):
+        expected = {
+            "XLV": "health",
+            "XLU": "utilities",
+            "URA": "energy",
+            "SMH": "semis",
+            "XLY": "consumer_discretionary",
+        }
+        for ticker, expected_sector in expected.items():
+            with self.subTest(ticker=ticker):
+                sector = get_ticker_sector(ticker)
+                self.assertEqual(sector["id"], expected_sector)
+                self.assertTrue(sector["is_etf"])
+
+        broad_etf = get_ticker_sector("SPY")
+        self.assertEqual(broad_etf["id"], "etfs")
+        self.assertTrue(broad_etf["is_etf"])
+
+    def test_sector_breakdown_groups_lookthrough_and_keeps_industry_metadata(self):
+        result = [
+            {"ticker": "XLV", "weight": 3.796204, "value": 3.796204},
+            {"ticker": "ISRG", "weight": 3.496503, "value": 3.496503},
+            {"ticker": "GEV", "weight": 3.796204, "value": 3.796204},
+            {"ticker": "AMZN", "weight": 7.392607, "value": 7.392607},
+            {"ticker": "MCD", "weight": 4.195804, "value": 4.195804},
+            {"ticker": "RTX", "weight": 3.496503, "value": 3.496503},
+        ]
+
+        breakdown = calculate_sector_breakdown(result)
+        by_sector = {sector["sector_id"]: sector for sector in breakdown}
+
+        self.assertNotIn("other", by_sector)
+        self.assertEqual(by_sector["health"]["total_target_weight"], 7.29)
+        self.assertEqual(by_sector["consumer_discretionary"]["total_target_weight"], 11.59)
+        self.assertEqual(by_sector["industrials"]["total_target_weight"], 7.29)
+
+        health_assets = {asset["ticker"]: asset for asset in by_sector["health"]["assets"]}
+        self.assertTrue(health_assets["XLV"]["is_etf"])
+        self.assertEqual(health_assets["XLV"]["subsector"], "Salud & Farma")
+        self.assertFalse(health_assets["ISRG"]["is_etf"])
+        self.assertEqual(health_assets["ISRG"]["industry"], "Equipos médicos y cirugía robótica")
+
+        industrial_assets = {asset["ticker"]: asset for asset in by_sector["industrials"]["assets"]}
+        self.assertEqual(industrial_assets["RTX"]["industry"], "Aeroespacial y Defensa")
+
+    def test_sector_update_script_keeps_curated_and_etf_exposures(self):
+        from scripts.update_cedears_sectors import map_tv_sector
+
+        for ticker, sector_id in (("ISRG", "health"), ("GEV", "industrials"), ("XLV", "health")):
+            with self.subTest(ticker=ticker):
+                mapped = map_tv_sector(ticker, "", "", "etf" if ticker == "XLV" else "stock")
+                self.assertEqual(mapped["id"], sector_id)
+        self.assertTrue(map_tv_sector("XLV", "", "", "etf")["is_etf"])
+        self.assertTrue(map_tv_sector("SPY", "", "", "etf")["is_etf"])
+
     def test_calculate_sector_breakdown(self):
         mock_result = [
             {"ticker": "GOOGL", "weight": 20.0, "value": 200000.0, "qty": 10, "price": 20000.0},

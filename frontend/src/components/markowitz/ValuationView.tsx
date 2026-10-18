@@ -102,6 +102,214 @@ interface MetricInputFieldProps {
   onChange: (val: number) => void;
 }
 
+const technicalFieldLabels: Record<string, string> = {
+  price: 'Current Market Price',
+  fcf_per_share: 'Normalized Free Cash Flow per Share (FCF/share)',
+  roic: 'Return on Invested Capital (ROIC)',
+  wacc: 'Weighted Average Cost of Capital (WACC)',
+  net_debt_ebitda: 'Net Debt/EBITDA',
+  shares_cagr: 'Shares Outstanding CAGR',
+  sbc_ocf: 'Stock-Based Compensation as % of Operating Cash Flow (SBC/OCF)',
+  industrial_net_debt_ebitda: 'Industrial Net Debt/EBITDA',
+  operating_earnings_per_share: 'Operating Earnings per Share',
+  excess_cash_per_share: 'Excess Cash per Share',
+  float_cost: 'Insurance Float Cost',
+  eps: 'Normalized / Projected Earnings per Share (EPS)',
+  tbv_per_share: 'Tangible Book Value per Share (TBV/share)',
+  rotce: 'Return on Tangible Common Equity (RoTCE)',
+  cet1_ratio: 'CET1 Capital Ratio',
+  nco_ratio: 'NCO Ratio',
+  net_debt_ebitda_usd: 'USD Net Debt/EBITDA',
+  dollarized_revenue_pct: 'USD-Linked Revenue %',
+  lifting_cost: 'Lifting Cost',
+  breakeven_price: 'Breakeven Price',
+  automotive_gross_margin: 'Automotive Gross Margin',
+};
+
+const technicalFieldHelp: Record<string, string> = {
+  price: 'Current market quotation used to compare against valuation outputs; not calculated by the model.',
+  fcf_per_share: '(Operating Cash Flow − Maintenance CapEx − SBC) ÷ shares.',
+  roic: 'Net Operating Profit After Tax divided by invested capital.',
+  wacc: '(Equity ÷ Total Capital) × cost of equity + (Debt ÷ Total Capital) × after-tax debt cost.',
+  net_debt: '(Total Debt − Cash).',
+  net_debt_ebitda: '(Total Debt − Cash) ÷ EBITDA.',
+  shares_cagr: '(Ending Shares ÷ Beginning Shares)^(1/years) − 1.',
+  sbc_ocf: 'Stock-Based Compensation divided by Operating Cash Flow × 100.',
+  industrial_net_debt_ebitda: 'Industrial net debt divided by EBITDA.',
+  operating_earnings_per_share: 'Operating earnings divided by shares; supplied by the profile.',
+  excess_cash_per_share: 'Excess cash divided by shares; supplied by the profile.',
+  float_cost: 'Cost of funding the insurance float; supplied by the profile.',
+  eps: 'Normalized or projected earnings per share.',
+  tbv_per_share: 'Tangible book value divided by shares.',
+  rotce: 'Net income divided by average tangible equity.',
+  cet1_ratio: 'CET1 capital divided by risk-weighted assets.',
+  nco_ratio: 'Net charge-offs divided by average loans; for NU this field is Cost to Serve per Customer.',
+  net_debt_ebitda_usd: 'USD-linked net debt divided by EBITDA.',
+  dollarized_revenue_pct: 'USD-linked revenue divided by total revenue × 100.',
+  lifting_cost: 'Extraction operating cost per barrel of oil equivalent.',
+  breakeven_price: 'Profile-provided breakeven price threshold; not derived here.',
+  automotive_gross_margin: 'Revenue minus COGS, divided by revenue × 100.',
+};
+
+const technicalLabel = (key: string, label: string) => {
+  const original = label.toLowerCase();
+  if (key === 'nco_ratio' && /cost to serve|costo de servicio|servicio\s*\/\s*cliente/i.test(label)) return 'Cost to Serve per Customer';
+  if (key === 'rotce' && original.includes('roe')) return 'Return on Equity (ROE)';
+  if (key === 'cet1_ratio' && original.includes('solvency')) return 'Solvency Capital Ratio';
+  if (key === 'dollarized_revenue_pct') {
+    if (original.includes('ppa')) return 'Fixed-Price PPA Revenue';
+    if (original.includes('export')) return 'USD-Denominated Exports';
+    if (original.includes('usd')) return 'USD-Linked Revenue';
+  }
+  return technicalFieldLabels[key] || label;
+};
+const technicalHelp = (field: ValuationField) => {
+  if (field.key === 'nco_ratio' && /cost to serve|costo de servicio|servicio\s*\/\s*cliente/i.test(field.label)) return 'Cost to Serve per Customer; supplied by the profile.';
+  if (field.key === 'rotce' && /roe/i.test(field.label)) return 'Net income divided by average equity.';
+  if (field.key === 'cet1_ratio' && /solvency/i.test(field.label)) return 'Solvency Capital Ratio; supplied by the profile.';
+  if (/ppa|export revenue/i.test(field.label)) return 'PPA/export revenue metric; supplied by the profile.';
+  return technicalFieldHelp[field.key] || 'Profile-supplied technical metric; definition provided by the selected profile.';
+};
+const metricHelp = (name: string | undefined, modelType?: string) => {
+  const text = (name || '').toLowerCase();
+  if (text.includes('roic de ciclo') || text === 'roic vs wacc') return 'ROIC − WACC.';
+  if (text.includes('valor contable tangible') || text.includes('p/tbv')) return 'Tangible book value per share; P/TBV compares market price with tangible book value.';
+  if (text.includes('rentabilidad tangible')) return 'Profile-supplied tangible profitability metric (RoTCE/ROE).';
+  if (text.includes('ratio de capital cet1')) return 'CET1 capital divided by risk-weighted assets; supplied by the profile.';
+  if (text.includes('beneficio operativo real')) return 'Profile-supplied normalized operating earnings per share.';
+  if (text.includes('exceso de caja')) return 'Excess cash per share; supplied by the profile.';
+  if (text.includes('costo del float')) return 'Insurance float cost; supplied by the profile.';
+  if (text.includes('fcf de ciclo medio')) return 'Mid-cycle Free Cash Flow; supplied by the profile.';
+  if (text.includes('deuda industrial neta')) return 'Industrial net debt; supplied by the profile.';
+  if (text.includes('fcf por adr')) return 'Free Cash Flow per ADR/share; supplied by the profile.';
+  if (text.includes('lifting cost')) return 'Extraction operating cost per barrel of oil equivalent; supplied by the profile.';
+  if (text.includes('deuda en usd')) return 'USD-linked net debt divided by EBITDA; supplied by the profile.';
+  if (text.includes('estado fundamental')) return 'Profile-defined fundamental status and model criteria.';
+  if (text.includes('fcf operativo real')) return 'Profile-supplied normalized operating Free Cash Flow.';
+  if (text.includes('alerta principal')) return 'Primary alert based on the model/profile threshold criteria.';
+  if (text.includes('precio límite de compra')) return 'Fair Value × (1 − Margin of Safety).';
+  if (text.includes('fcf') && text.includes('share')) return 'Free Cash Flow divided by diluted shares outstanding.';
+  if (text.includes('roic')) return 'Net Operating Profit After Tax divided by invested capital.';
+  if (text.includes('wacc')) return 'Weighted average of the cost of equity and after-tax cost of debt.';
+  if (text.includes('net debt') && text.includes('ebitda')) return 'Net Debt divided by EBITDA.';
+  if (text.includes('shares') && text.includes('cagr')) return 'Compound annual growth rate of diluted shares outstanding.';
+  if (text.includes('sbc') || text.includes('stock-based compensation')) return 'Stock-Based Compensation divided by Operating Cash Flow × 100.';
+  if (text.includes('eps')) return 'Normalized or projected earnings per share.';
+  if (text.includes('tbv')) return 'Tangible book value divided by shares.';
+  if (text.includes('rotce')) return 'Net income divided by average tangible equity.';
+  if (text.includes('cet1')) return 'CET1 capital divided by risk-weighted assets.';
+  if (text.includes('nco')) return 'Net charge-offs divided by average loans.';
+  if (text.includes('fair value')) {
+    const formulas: Record<string, string> = {
+      banking: 'EPS × base multiple.', financial_holding: 'Operating Earnings/share × base multiple + Excess Cash/share.',
+      industrial_dual_debt: 'Mid-Cycle FCF/share × base multiple.', energy_upstream: 'FCF/ADR × base multiple.',
+      standard_fcf: 'FCF/share × base multiple.', discarded: 'No Fair Value is calculated.'
+    };
+    return formulas[modelType || ''] || 'Calculated by the selected valuation model.';
+  }
+  if (text.includes('buy-below')) return 'Fair Value multiplied by (1 − Required Margin of Safety).';
+  return undefined;
+};
+const metricLabel = (name: string | undefined) => {
+  const text = (name || '').toLowerCase();
+  if (text.includes('fair value') || text.includes('valor justo')) return 'Fair Value';
+  if (text.includes('buy-below') || text.includes('compra por debajo')) return 'Buy-Below Price';
+  if (text.includes('required margin') || text.includes('margen requerido')) return 'Required Margin of Safety';
+  const exact: Record<string, string> = {
+    'valor contable tangible': 'Tangible Book Value (TBV)', 'rentabilidad tangible': 'Return on Tangible Common Equity (RoTCE)',
+    'ratio de capital cet1': 'CET1 Capital Ratio', 'beneficio operativo real': 'Normalized Operating Earnings',
+    'exceso de caja / acción': 'Excess Cash per Share', 'costo del float': 'Float Cost', 'fcf de ciclo medio': 'Mid-Cycle FCF',
+    'deuda industrial neta': 'Industrial Net Debt', 'roic industrial': 'Industrial ROIC', 'fcf por adr / acción': 'FCF per ADR / Share',
+    'lifting cost / ventaja': 'Lifting Cost / Advantage', 'deuda en usd / ebitda': 'USD Net Debt/EBITDA',
+    'estado fundamental': 'Fundamental Status', 'fcf operativo real': 'Normalized Operating FCF', 'alerta principal': 'Primary Alert',
+    'precio límite de compra': 'Buy-Below Price'
+  };
+  if (exact[text]) return exact[text];
+  if (text.includes('fcf') && text.includes('share')) return 'Normalized FCF per Share';
+  if (text.includes('roic')) return 'Return on Invested Capital (ROIC)';
+  if (text.includes('wacc')) return 'WACC';
+  if (text.includes('net debt') && text.includes('ebitda')) return 'Net Debt/EBITDA';
+  if (text.includes('shares') && text.includes('cagr')) return 'Shares Outstanding CAGR';
+  if (text.includes('sbc') || text.includes('stock-based compensation')) return 'Stock-Based Compensation as % of Operating Cash Flow (SBC/OCF)';
+  if (text.includes('eps')) return 'EPS';
+  if (text.includes('tbv')) return 'TBV per Share';
+  if (text.includes('rotce')) return 'RoTCE';
+  if (text.includes('cet1')) return 'CET1 Ratio';
+  if (text.includes('nco')) return 'NCO Ratio';
+  return name;
+};
+const flagLabel = (name: string) => {
+  const text = name.toLowerCase();
+  const exact: Record<string, string> = {
+    'solvencia de capital (cet1 ratio)': 'Capital Solvency (CET1 Ratio)', 'rentabilidad tangible (rotce / roe)': 'Tangible Profitability (RoTCE / ROE)',
+    'costo por cliente activo': 'Cost per Active Customer', 'calidad crediticia (net charge-offs)': 'Credit Quality (Net Charge-Offs)',
+    'evolución accionaria': 'Share Count Evolution', 'costo del float asegurador': 'Insurance Float Cost', 'recompras oportunistas': 'Opportunistic Buybacks',
+    'deuda industrial limpia': 'Clean Industrial Debt', 'roic de ciclo vs wacc': 'Cycle ROIC vs WACC', 'eficiencia de extracción (lifting cost)': 'Extraction Efficiency (Lifting Cost)',
+    'deuda neta en dólares': 'USD Net Debt', 'blindaje de ingresos en usd': 'USD Revenue Hedge', 'diagnóstico de vía negativa': 'Negative Path Diagnosis',
+    'dilución accionaria destructiva': 'Destructive Share Dilution', 'sueldos excesivos en acciones': 'Excessive Stock-Based Compensation',
+    'pérdida de poder de precios': 'Loss of Pricing Power', 'solvencia & deuda neta': 'Solvency & Net Debt', 'sueldos en acciones (sbc)': 'Stock-Based Compensation (SBC)',
+    'roic vs wacc': 'ROIC vs WACC'
+  };
+  if (exact[text]) return exact[text];
+  if (text.includes('roic') && text.includes('wacc')) return 'ROIC–WACC Spread';
+  if (text.includes('nco')) return 'NCO Ratio';
+  if (text.includes('sbc')) return 'SBC/OCF';
+  if (text.includes('debt') && text.includes('ebitda')) return 'Net Debt/EBITDA';
+  if (text.includes('margin')) return 'Gross Margin';
+  if (text.includes('fair value')) return 'Fair Value';
+  return name;
+};
+const flagHelp = (name: string) => {
+  const text = name.toLowerCase();
+  if (text.includes('recompras oportunistas')) return 'Shares Outstanding CAGR ≤ 0.';
+  if (text.includes('pérdida de poder de precios')) return 'Gross Margin = (Revenue − COGS) ÷ Revenue × 100; flag when <18%.';
+  if (text.includes('sueldos excesivos')) return 'SBC ÷ OCF × 100; flag when >15%.';
+  if (text.includes('vía negativa')) return 'Profile discard reason forces RED.';
+  if (text.includes('deuda industrial limpia')) return 'Industrial net debt/EBITDA compared with the model-defined threshold.';
+  if (text.includes('deuda neta en dólares')) return 'USD-linked net debt/EBITDA compared with the model-defined threshold.';
+  if (text.includes('solvencia') && text.includes('deuda neta')) return 'CET1/solvency and net debt criteria compared with profile thresholds.';
+  if (text.includes('sueldos excesivos')) return 'SBC/OCF compared with the model-defined threshold.';
+  if (text.includes('vía negativa')) return 'Negative-path diagnostic based on the profile-defined risk criteria.';
+  if (text.includes('cet1')) return 'CET1 capital ÷ risk-weighted assets, compared with the profile threshold.';
+  if (text.includes('rotce') || text.includes('roe')) return 'Supplied profitability metric compared with the profile threshold.';
+  if (text.includes('charge-off')) return 'Net charge-offs ÷ average loans, compared with the profile threshold.';
+  if (text.includes('cliente')) return 'Supplied Cost to Serve per Customer, compared with the profile threshold.';
+  if (text.includes('float')) return 'Supplied insurance float cost, compared with the profile threshold.';
+  if (text.includes('recompras')) return 'Based on the profile-defined opportunistic buyback criterion.';
+  if (text.includes('lifting')) return 'Supplied extraction operating cost per boe, compared with the profile threshold.';
+  if (text.includes('ingresos') || text.includes('usd')) return 'USD-linked revenue ÷ total revenue × 100, compared with the profile threshold.';
+  if (text.includes('dilución') || text.includes('accionaria')) return 'Shares Outstanding CAGR, compared with the profile-defined threshold.';
+  if (text.includes('poder de precios')) return 'Based on the profile-defined pricing-power criterion.';
+  if (text.includes('roic') && text.includes('wacc')) return 'ROIC − WACC; positive spread indicates returns above the cost of capital.';
+  if (text.includes('nco')) return 'Compared with the profile-defined NCO threshold.';
+  if (text.includes('sbc')) return 'Compared with the profile-defined SBC/OCF threshold.';
+  if (text.includes('debt') && text.includes('ebitda')) return 'Compared with the profile-defined Net Debt/EBITDA threshold.';
+  return undefined;
+};
+const technicalSubtitle = (subtitle: string | undefined) => {
+  if (!subtitle) return subtitle;
+  const text = subtitle.toLowerCase();
+  const exact: Record<string, string> = {
+    'p/tbv actual': 'Current P/TBV', 'look-through earnings': 'Look-Through Earnings', 'máxima solvencia': 'Maximum Solvency',
+    'treasury bills líquidas': 'Liquid Treasury Bills', 'financiamiento asegurador': 'Insurance Financing',
+    'fcf normalizado': 'Normalized FCF', 'múltiplo adr': 'ADR Multiple', 'net leverage': 'Net Leverage'
+  };
+  if (exact[text]) return exact[text];
+  return subtitle
+    .replace(/fcf normalizado/gi, 'Normalized FCF')
+    .replace(/flujo normalizado/gi, 'Normalized FCF')
+    .replace(/múltiplo adr/gi, 'ADR Multiple')
+    .replace(/costo de extracción/gi, 'Extraction Cost')
+    .replace(/ingresos en dólares/gi, 'USD Revenue')
+    .replace(/excluye financiera de clientes/gi, 'Excludes customer financing')
+    .replace(/flujo de caja libre/gi, 'Free Cash Flow')
+    .replace(/sin margen de seguridad/gi, 'No Margin of Safety')
+    .replace(/margen de seguridad/gi, 'Margin of Safety')
+    .replace(/por acción/gi, 'per share')
+    .replace(/margen/gi, 'margin')
+    .replace(/descuento/gi, 'discount');
+};
+
 const MetricInputField: React.FC<MetricInputFieldProps> = ({ field, value, onChange }) => {
   const [localVal, setLocalVal] = useState<string>(() =>
     value !== undefined && !isNaN(value) ? String(value) : String(field.default)
@@ -393,7 +601,7 @@ export const ValuationView: React.FC = () => {
                     </div>
 
                     <span className="text-xs text-slate-600 dark:text-muted-foreground font-mono">
-                      Margen Requerido: <strong>{Math.round((profile.required_margin_of_safety || 0.25) * 100)}%</strong>
+                       <span title="Required Margin of Safety: discount applied to Fair Value to set the Buy-Below Price.">Required Margin of Safety:</span> <strong>{Math.round((profile.required_margin_of_safety || 0.25) * 100)}%</strong>
                     </span>
                   </div>
 
@@ -420,7 +628,7 @@ export const ValuationView: React.FC = () => {
                     {profile.fields.map(field => (
                       <div key={field.key} className="flex flex-col gap-1.5">
                         <label className="text-[11px] font-bold text-slate-700 dark:text-muted-foreground flex items-center justify-between">
-                          <span>{field.label}</span>
+                           <span title={technicalHelp(field)}>{technicalLabel(field.key, field.label)}</span>
                           {field.key === 'price' && profile.live_market_price && (
                             <button
                               type="button"
@@ -439,7 +647,6 @@ export const ValuationView: React.FC = () => {
                             onChange={val => handleMetricChange(field.key, val)}
                           />
                         </div>
-                        <span className="text-[10px] text-slate-500 dark:text-muted-foreground leading-tight">{field.help}</span>
                       </div>
                     ))}
                   </div>
@@ -507,21 +714,21 @@ export const ValuationView: React.FC = () => {
                       {result.key_metrics_display && (
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100 dark:border-border">
                           <div className="p-3 bg-slate-50 dark:bg-black/30 rounded-xl flex flex-col justify-between border border-slate-200/60 dark:border-border">
-                            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-bold uppercase">{result.key_metrics_display.metric_1_name}</span>
+                            <span title={metricHelp(result.key_metrics_display.metric_1_name, result.model_type)} className="text-[10px] text-slate-500 dark:text-muted-foreground font-bold uppercase">{metricLabel(result.key_metrics_display.metric_1_name)}</span>
                             <span className="text-lg font-black text-slate-900 dark:text-foreground tabular-nums mt-0.5">{result.key_metrics_display.metric_1_val}</span>
-                            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">{result.key_metrics_display.metric_1_sub}</span>
+                            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">{technicalSubtitle(result.key_metrics_display.metric_1_sub)}</span>
                           </div>
 
                           <div className="p-3 bg-slate-50 dark:bg-black/30 rounded-xl flex flex-col justify-between border border-slate-200/60 dark:border-border">
-                            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-bold uppercase">{result.key_metrics_display.metric_2_name}</span>
+                            <span title={metricHelp(result.key_metrics_display.metric_2_name, result.model_type)} className="text-[10px] text-slate-500 dark:text-muted-foreground font-bold uppercase">{metricLabel(result.key_metrics_display.metric_2_name)}</span>
                             <span className="text-lg font-black text-slate-900 dark:text-foreground tabular-nums mt-0.5">{result.key_metrics_display.metric_2_val}</span>
-                            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">{result.key_metrics_display.metric_2_sub}</span>
+                            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">{technicalSubtitle(result.key_metrics_display.metric_2_sub)}</span>
                           </div>
 
                           <div className="p-3 bg-slate-50 dark:bg-black/30 rounded-xl flex flex-col justify-between border border-slate-200/60 dark:border-border">
-                            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-bold uppercase">{result.key_metrics_display.metric_3_name}</span>
+                            <span title={metricHelp(result.key_metrics_display.metric_3_name, result.model_type)} className="text-[10px] text-slate-500 dark:text-muted-foreground font-bold uppercase">{metricLabel(result.key_metrics_display.metric_3_name)}</span>
                             <span className="text-lg font-black text-slate-900 dark:text-foreground tabular-nums mt-0.5">{result.key_metrics_display.metric_3_val}</span>
-                            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">{result.key_metrics_display.metric_3_sub}</span>
+                            <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-mono">{technicalSubtitle(result.key_metrics_display.metric_3_sub)}</span>
                           </div>
                         </div>
                       )}
@@ -551,7 +758,7 @@ export const ValuationView: React.FC = () => {
                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded border uppercase ${badgeBg}`}>
                                   {flag.flag}
                                 </span>
-                                <span className="text-xs font-bold text-slate-800 dark:text-foreground">{flag.name}</span>
+                                 <span title={flagHelp(flag.name)} className="text-xs font-bold text-slate-800 dark:text-foreground">{flagLabel(flag.name)}</span>
                               </div>
                               <span className="text-xs text-slate-600 dark:text-muted-foreground font-medium sm:text-right flex-1 sm:max-w-md">
                                 {flag.desc}

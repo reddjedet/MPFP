@@ -421,7 +421,7 @@ def restore_custom_portfolio(pf_type: str):
         return JSONResponse({"success": False, "error": "Nombre de portfolio no válido."}, status_code=400)
     res = restore_portfolio_from_trash(pf_clean)
     if not res.get("success"):
-        return JSONResponse(res, status_code=404)
+        return JSONResponse(res, status_code=409 if res.get("conflict") else 404)
     return DeletePortfolioResponse(**res)
 
 

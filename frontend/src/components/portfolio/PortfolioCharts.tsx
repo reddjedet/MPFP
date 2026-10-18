@@ -60,6 +60,22 @@ export const SECTOR_COLOR_MAP: Record<string, { base: string; shades: string[] }
     base: '#ec4899', // pink-500
     shades: ['#f472b6', '#db2777', '#f9a8d4', '#be185d', '#fbcfe8']
   },
+  consumer_discretionary: {
+    base: '#f43f5e', // rose-500
+    shades: ['#fb7185', '#e11d48', '#fda4af', '#be123c', '#fecdd3']
+  },
+  communications: {
+    base: '#8b5cf6', // violet-500
+    shades: ['#a78bfa', '#7c3aed', '#c4b5fd', '#6d28d9', '#ddd6fe']
+  },
+  real_estate: {
+    base: '#0ea5e9', // sky-500
+    shades: ['#38bdf8', '#0284c7', '#7dd3fc', '#0369a1', '#bae6fd']
+  },
+  utilities: {
+    base: '#84cc16', // lime-500
+    shades: ['#a3e635', '#65a30d', '#bef264', '#4d7c0f', '#d9f99d']
+  },
   etfs: {
     base: '#6366f1', // indigo-500
     shades: ['#818cf8', '#4f46e5', '#a5b4fc', '#4338ca', '#c7d2fe']
@@ -120,7 +136,10 @@ export const PortfolioCharts: React.FC<PortfolioChartsProps> = ({ data }) => {
       groups[secId].assets.push({
         ticker: item.ticker,
         target_weight: targetW,
-        value: val
+        value: val,
+        industry: item.industry,
+        subsector: item.subsector,
+        is_etf: item.is_etf
       });
     });
 
@@ -173,6 +192,8 @@ export const PortfolioCharts: React.FC<PortfolioChartsProps> = ({ data }) => {
             sectorName: sec.sector_name,
             sectorId: sec.sector_id,
             industry: asset.industry,
+            subsector: asset.subsector,
+            is_etf: asset.is_etf,
             targetWeight: asset.target_weight,
             relativeWeight: asset.relative_weight_in_sector,
             itemStyle: {
@@ -204,7 +225,9 @@ export const PortfolioCharts: React.FC<PortfolioChartsProps> = ({ data }) => {
                 <div style="font-family: monospace; padding: 2px;">
                   <div style="font-weight: bold; color: #fff; font-size: 12px; margin-bottom: 4px;">📈 ${params.name}</div>
                   <div style="color: #93c5fd; margin-bottom: 2px;">Sector: <b>${params.data?.sectorName || ''}</b></div>
+                  ${params.data?.is_etf ? '<div style="color: #a5b4fc; font-size: 10px; margin-bottom: 2px;">Tipo: ETF</div>' : ''}
                   ${params.data?.industry ? `<div style="color: #cbd5e1; font-size: 10px; margin-bottom: 2px;">Industria: <i>${params.data.industry}</i></div>` : ''}
+                  ${params.data?.subsector ? `<div style="color: #cbd5e1; font-size: 10px; margin-bottom: 2px;">Exposición: <i>${params.data.subsector}</i></div>` : ''}
                   <div>Peso en Cartera: <b>${params.percent.toFixed(1)}%</b> (Obj: ${params.data?.targetWeight || 0}%)</div>
                   <div>Peso dentro del Sector: <b>${params.data?.relativeWeight || 0}%</b></div>
                   <div>Capital: <b>$${Number(params.value).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ARS</b></div>
@@ -481,4 +504,3 @@ export const PortfolioCharts: React.FC<PortfolioChartsProps> = ({ data }) => {
     </div>
   );
 };
-

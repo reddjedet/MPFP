@@ -37,6 +37,35 @@ class TestCedearService(unittest.TestCase):
         self.assertIn("NEE", CEDEAR_RATIOS)
         self.assertEqual(CEDEAR_RATIOS["NEE"], 19.0)
         self.assertGreater(CEDEAR_RATIOS["AAPL"], 0)
+        self.assertEqual(CEDEAR_RATIOS["GEV"], 1.0)
+        self.assertEqual(CEDEAR_RATIOS["ISRG"], 90.0)
+
+    def test_new_cedears_are_accepted_by_portfolio_validation(self):
+        from services.portfolio_service import find_non_cedear_tickers
+
+        self.assertEqual(find_non_cedear_tickers(["GEV", "ISRG"]), [])
+
+    def test_backfill_adds_missing_ratios_without_overwriting_existing_values(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        from services.atomic_persistence import AtomicJsonDatabase
+        from services.cedear_service import _backfill_missing_cedear_ratios
+
+        scratch_dir = Path(__file__).resolve().parents[1] / "scratch"
+        with TemporaryDirectory(dir=scratch_dir) as temp_dir:
+            ratios_db = AtomicJsonDatabase(Path(temp_dir) / "cedear_ratios.json")
+            ratios_db.save({"AAPL": 20.0, "GEV": 2.0})
+
+            _backfill_missing_cedear_ratios(
+                ratios_db,
+                {"GEV": 1.0, "ISRG": 90.0},
+            )
+
+            stored = ratios_db.load()
+            self.assertEqual(stored["AAPL"], 20.0)
+            self.assertEqual(stored["GEV"], 2.0)
+            self.assertEqual(stored["ISRG"], 90.0)
 
     def test_get_all_portfolio_tickers(self):
         from services.portfolio_service import get_all_portfolio_tickers
@@ -58,6 +87,12 @@ class TestCedearService(unittest.TestCase):
         self.assertIn("AAPL", data["tickers"])
         self.assertIn("MELI", data["tickers"])
         self.assertIn("NVDA", data["tickers"])
+        self.assertIn("GEV", data["tickers"])
+        self.assertIn("ISRG", data["tickers"])
+
+        catalog = {item["ticker"]: item for item in data["catalog"]}
+        self.assertEqual(catalog["GEV"]["ratio"], 1.0)
+        self.assertEqual(catalog["ISRG"]["ratio"], 90.0)
 
     def test_cedear_alert_inclusive_thresholds(self):
         """Verifica que la alerta RSI sea inclusiva a 35.0 y 65.0."""

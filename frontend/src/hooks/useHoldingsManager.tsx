@@ -379,24 +379,43 @@ export function useHoldingsManager() {
   }, [holdings, mcmMultiplier, cashArs, fixedIncomeHoldings]);
 
   const [draftHoldings, setDraftHoldings] = useState<Record<string, any>>({});
+  const [removedAssetTickers, setRemovedAssetTickers] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
   const isEditingRef = useRef(false);
+  const draftPortfolioRef = useRef(selectedPf);
 
   useEffect(() => {
+    const portfolioChanged = draftPortfolioRef.current !== selectedPf;
+    if (portfolioChanged) {
+      draftPortfolioRef.current = selectedPf;
+      isEditingRef.current = false;
+    }
     // Skip server sync while user is actively editing to preserve their changes
-    if (isEditingRef.current) return;
+    if (!portfolioChanged && isEditingRef.current) return;
     const newDraft: Record<string, any> = {};
     holdings.forEach((h: any) => {
       newDraft[h.ticker] = { ...h };
     });
     setDraftHoldings(newDraft);
-  }, [holdings]);
+    setRemovedAssetTickers({});
+  }, [selectedPf, holdings]);
+
+  const switchPortfolio = (nextPortfolio: string) => {
+    if (nextPortfolio === selectedPf) return;
+    draftPortfolioRef.current = nextPortfolio;
+    isEditingRef.current = false;
+    setDraftHoldings({});
+    setRemovedAssetTickers({});
+    setSelectedPf(nextPortfolio);
+  };
 
   const handleFieldChange = (ticker: string, field: string, value: string) => {
     isEditingRef.current = true;
+    const currentHolding = holdings.find((holding: any) => holding.ticker === ticker);
     setDraftHoldings(prev => ({
       ...prev,
       [ticker]: {
+        ...(currentHolding || { ticker }),
         ...prev[ticker],
         [field]: Number(value)
       }
@@ -404,6 +423,8 @@ export function useHoldingsManager() {
   };
 
   const handleRemoveAsset = (tickerToRemove: string) => {
+    isEditingRef.current = true;
+    setRemovedAssetTickers(prev => ({ ...prev, [tickerToRemove]: true }));
     setDraftHoldings(prev => {
       const updated = { ...prev };
       delete updated[tickerToRemove];
@@ -617,10 +638,34 @@ export function useHoldingsManager() {
 
   const handleSaveHoldings = async () => {
     if (!selectedPf) return;
+
+    if (draftPortfolioRef.current !== selectedPf) {
+      setFeedback({
+        kind: 'error',
+        msg: 'La cartera seleccionada todavía se está cargando. No se guardaron cambios; esperá un momento e intentá de nuevo.'
+      });
+      return;
+    }
+
+    const missingTickers = holdings
+      .filter((holding: any) =>
+        draftHoldings[holding.ticker] === undefined && !removedAssetTickers[holding.ticker]
+      )
+      .map((holding: any) => holding.ticker);
+    if (missingTickers.length > 0) {
+      setFeedback({
+        kind: 'error',
+        msg: `No se guardó la cartera porque el borrador está incompleto (${missingTickers.join(', ')}). Recargá la vista antes de guardar.`
+      });
+      return;
+    }
+
     setIsSaving(true);
     setFeedback(null);
     try {
-      const remainingHoldings = Object.values(draftHoldings);
+      const remainingHoldings = Object.entries(draftHoldings)
+        .filter(([ticker]) => !removedAssetTickers[ticker])
+        .map(([, holding]) => holding);
       const weightsStr = remainingHoldings
         .filter(h => h.relWeight > 0)
         .map(h => `${h.ticker}:${h.relWeight}`)
@@ -686,7 +731,8 @@ export function useHoldingsManager() {
       queryClient.invalidateQueries({ queryKey: [`rotation-holdings:${selectedPf}`] });
       queryClient.invalidateQueries({ queryKey: [`portfolio-mcm:${selectedPf}`] });
       isEditingRef.current = false;
-      setDraftHoldings({});
+      setDraftHoldings(Object.fromEntries(remainingHoldings.map((holding: any) => [holding.ticker, { ...holding }])));
+      setRemovedAssetTickers({});
       setFeedback({
         kind: 'success',
         msg: savedFiTarget
@@ -727,7 +773,7 @@ export function useHoldingsManager() {
     fiTargetWeights, handleFiTargetFieldChange, handleAddFiTarget, handleRemoveFiTarget,
     handleSaveFixedIncomeTarget, isSavingFiTarget, fiTargetDirty,
     cashArs, setCashArs,
-    selectedPf, setSelectedPf,
+    selectedPf, setSelectedPf, switchPortfolio,
     loading, setLoading,
     loadError, setLoadError,
     retryTick, setRetryTick,
@@ -739,7 +785,7 @@ export function useHoldingsManager() {
     showCreateModal, setShowCreateModal,
     chartMode, setChartMode,
     holdings, composition, kpis,
-    draftHoldings, setDraftHoldings,
+    draftHoldings, setDraftHoldings, removedAssetTickers,
     isSaving, setIsSaving,
     isEditingRef,
     handleFieldChange, handleRemoveAsset, handleSaveHoldings, handleExportJSON,

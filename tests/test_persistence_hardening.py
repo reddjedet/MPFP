@@ -100,7 +100,12 @@ def test_load_portfolios_siembra_bmb_solo_si_el_catalogo_esta_vacio(tmp_path):
     a propósito no debe resucitar en la siguiente lectura.
     """
     orig_db = ps._db
+    orig_trash_db = ps._trash_db
     try:
+        empty_trash = ap.AtomicJsonDatabase(tmp_path / "trash_vacia.json")
+        empty_trash.save([])
+        ps._trash_db = empty_trash
+
         db = ap.AtomicJsonDatabase(tmp_path / "portfolios_no_bmb.json")
 
         # Catálogo vacío -> se siembra la cartera por defecto.
@@ -117,3 +122,31 @@ def test_load_portfolios_siembra_bmb_solo_si_el_catalogo_esta_vacio(tmp_path):
         assert "otra_cartera" in loaded
     finally:
         ps._db = orig_db
+        ps._trash_db = orig_trash_db
+
+
+def test_no_resucita_bmb_borrada_si_el_catalogo_quedo_vacio(tmp_path):
+    orig_db = ps._db
+    orig_trash_db = ps._trash_db
+    try:
+        empty_portfolios = ap.AtomicJsonDatabase(tmp_path / "portfolios_bmb_borrada.json")
+        empty_portfolios.save({})
+        trashed_portfolios = ap.AtomicJsonDatabase(tmp_path / "trash_bmb_borrada.json")
+        trashed_portfolios.save([{
+            "id": "bmb",
+            "name": "bmb",
+            "data": {"mode": "weights", "assets": {"AAPL": 100.0}},
+        }])
+        ps._db = empty_portfolios
+        ps._trash_db = trashed_portfolios
+
+        assert "bmb" not in ps.load_portfolios()
+        assert not ps.is_portfolio_name_taken("bmb")
+        normalized_trash = ps.load_portfolios_trash()
+        assert normalized_trash[0]["id"] == "bmb_borrada"
+        assert trashed_portfolios.load()[0]["id"] == "bmb"
+        ps.save_portfolios_trash(normalized_trash)
+        assert trashed_portfolios.load()[0]["id"] == "bmb_borrada"
+    finally:
+        ps._db = orig_db
+        ps._trash_db = orig_trash_db

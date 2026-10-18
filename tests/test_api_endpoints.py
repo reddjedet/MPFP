@@ -546,7 +546,8 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(resp_del.status_code, 200)
         del_data = resp_del.json()
         self.assertTrue(del_data.get("success"))
-        self.assertEqual(del_data.get("moved_to_trash"), "cartera_test_trash")
+        self.assertEqual(del_data.get("moved_to_trash"), "cartera_test_trash_borrada")
+        self.assertEqual(del_data.get("released_name"), "cartera_test_trash")
 
         # Verificar que ya no está en activas
         self.assertNotIn("cartera_test_trash", load_portfolios())
@@ -558,7 +559,7 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertTrue(trash_data.get("success"))
         self.assertEqual(trash_data.get("max_capacity"), 7)
         trashed_names = [x["name"] for x in trash_data.get("trash", [])]
-        self.assertIn("cartera_test_trash", trashed_names)
+        self.assertIn("cartera_test_trash_borrada", trashed_names)
 
         # 5. Probar política FIFO con límite de 7:
         # Enviar 8 carteras adicionales numeradas del 0 al 7
@@ -578,29 +579,29 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(len(items), 7)
         item_names = [x["name"] for x in items]
         # test_fifo_0 debió haber sido purgado (el 1ro de los 8)
-        self.assertNotIn("test_fifo_0", item_names)
+        self.assertNotIn("test_fifo_0_borrada", item_names)
         # test_fifo_1 a test_fifo_7 deben permanecer
         for i in range(1, 8):
-            self.assertIn(f"test_fifo_{i}", item_names)
+            self.assertIn(f"test_fifo_{i}_borrada", item_names)
 
         # 6. Restaurar cartera (test_fifo_7)
-        resp_restore = self.client.post("/api/portfolios/restore_json/test_fifo_7")
+        resp_restore = self.client.post("/api/portfolios/restore_json/test_fifo_7_borrada")
         self.assertEqual(resp_restore.status_code, 200)
         self.assertTrue(resp_restore.json().get("success"))
         # Ahora test_fifo_7 debe estar activa y removida de la papelera
         self.assertIn("test_fifo_7", load_portfolios())
         resp_trash_after = self.client.get("/api/portfolios/trash_json")
         names_after = [x["name"] for x in resp_trash_after.json().get("trash", [])]
-        self.assertNotIn("test_fifo_7", names_after)
+        self.assertNotIn("test_fifo_7_borrada", names_after)
         self.assertEqual(len(names_after), 6)
 
         # 7. Eliminar definitivamente de la papelera (test_fifo_6)
-        resp_purge = self.client.delete("/api/portfolios/trash_json/test_fifo_6")
+        resp_purge = self.client.delete("/api/portfolios/trash_json/test_fifo_6_borrada")
         self.assertEqual(resp_purge.status_code, 200)
         self.assertTrue(resp_purge.json().get("success"))
         resp_trash_purged = self.client.get("/api/portfolios/trash_json")
         names_purged = [x["name"] for x in resp_trash_purged.json().get("trash", [])]
-        self.assertNotIn("test_fifo_6", names_purged)
+        self.assertNotIn("test_fifo_6_borrada", names_purged)
         self.assertEqual(len(names_purged), 5)
 
     @patch("routers.cedears.get_ticker_data")
