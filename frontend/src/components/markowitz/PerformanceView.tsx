@@ -207,6 +207,7 @@ export const PerformanceView: React.FC = () => {
     const option = {
       backgroundColor: 'transparent',
       tooltip: {
+        confine: true,
         position: 'top',
         backgroundColor: chartTheme.tooltipBg,
         borderColor: chartTheme.tooltipBorder,

@@ -101,6 +101,7 @@ export const AnnualReturnsBarChart: React.FC<AnnualReturnsBarChartProps> = ({
     return {
       backgroundColor: 'transparent',
       tooltip: {
+        confine: true,
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
         backgroundColor: chartTheme.tooltipBg,

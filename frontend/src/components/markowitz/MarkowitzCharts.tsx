@@ -187,6 +187,7 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
     return {
       backgroundColor: 'transparent',
       tooltip: {
+        confine: true,
         trigger: 'item',
         backgroundColor: chartTheme.tooltipBg,
         borderColor: chartTheme.tooltipBorder,
@@ -317,6 +318,7 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
     return {
       backgroundColor: 'transparent',
       tooltip: {
+        confine: true,
         trigger: 'axis',
         backgroundColor: chartTheme.tooltipBg,
         borderColor: chartTheme.tooltipBorder,
@@ -385,6 +387,7 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
     return {
       backgroundColor: 'transparent',
       tooltip: {
+        confine: true,
         trigger: 'axis',
         backgroundColor: chartTheme.tooltipBg,
         borderColor: chartTheme.tooltipBorder,
@@ -436,6 +439,7 @@ export const MarkowitzCharts: React.FC<MarkowitzChartsProps> = ({ data, onSelect
     return {
       backgroundColor: 'transparent',
       tooltip: {
+        confine: true,
         position: 'top',
         backgroundColor: chartTheme.tooltipBg,
         borderColor: chartTheme.tooltipBorder,

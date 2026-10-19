@@ -73,6 +73,7 @@ export const MarkowitzWeightsChart: React.FC<MarkowitzWeightsChartProps> = ({ da
     return {
       backgroundColor: 'transparent',
       tooltip: {
+        confine: true,
         trigger: 'axis',
         axisPointer: {
           type: 'shadow',

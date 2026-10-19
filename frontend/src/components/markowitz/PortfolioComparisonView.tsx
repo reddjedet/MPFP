@@ -195,6 +195,7 @@ export const PortfolioComparisonView: React.FC = () => {
     animation: false,
     color: ['#60a5fa', '#fbbf24', '#a1a1aa'],
     tooltip: {
+      confine: true,
       trigger: 'axis',
       valueFormatter: (value: number) => fmtMoney(value),
       backgroundColor: '#111827',
@@ -215,7 +216,7 @@ export const PortfolioComparisonView: React.FC = () => {
   const drawdownOption = useMemo(() => ({
     animation: false,
     color: ['#60a5fa', '#fbbf24', '#a1a1aa'],
-    tooltip: { trigger: 'axis', valueFormatter: (value: number) => `${value.toFixed(2)}%`, backgroundColor: '#111827', borderColor: '#374151', textStyle: { color: '#e5e7eb' } },
+    tooltip: { confine: true, trigger: 'axis', valueFormatter: (value: number) => `${value.toFixed(2)}%`, backgroundColor: '#111827', borderColor: '#374151', textStyle: { color: '#e5e7eb' } },
     legend: { top: 4, textStyle: { color: '#a1a1aa' }, data: [labels.a, labels.b, 'SPY'] },
     grid: { left: 68, right: 24, top: 42, bottom: 32 },
     xAxis: { type: 'category', boundaryGap: false, data: result?.time_series.map((point) => point.date) ?? [], axisLabel: { color: '#9ca3af', hideOverlap: true }, axisLine: { lineStyle: { color: '#374151' } } },
@@ -260,7 +261,7 @@ export const PortfolioComparisonView: React.FC = () => {
     return {
       animation: false,
       color: ['#60a5fa', '#fbbf24'],
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: number) => `${value.toFixed(2)}%`, backgroundColor: '#111827', borderColor: '#374151', textStyle: { color: '#e5e7eb' } },
+      tooltip: { confine: true, trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: number) => `${value.toFixed(2)}%`, backgroundColor: '#111827', borderColor: '#374151', textStyle: { color: '#e5e7eb' } },
       legend: { top: 2, textStyle: { color: '#a1a1aa' }, data: [labels.a, labels.b] },
       grid: { left: 150, right: 20, top: 38, bottom: 20 },
       xAxis: { type: 'value', max: 100, axisLabel: { color: '#9ca3af', formatter: (value: number) => `${value}%` }, splitLine: { lineStyle: { color: '#1f2937' } } },
