@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import { LineChart, ScatterChart } from 'echarts/charts';
@@ -25,11 +25,34 @@ echarts.use([
 
 const ReactECharts = (ReactEChartsCore as any)?.default || ReactEChartsCore;
 
-const QUADRANT_META: Record<RrgQuadrant, { label: string; color: string; bg: string }> = {
-  IMPROVING: { label: 'Improving', color: '#7fbbb3', bg: 'rgba(127, 187, 179, 0.07)' },
-  LEADING: { label: 'Leading', color: '#a7c080', bg: 'rgba(167, 192, 128, 0.07)' },
-  WEAKENING: { label: 'Weakening', color: '#dbbc7f', bg: 'rgba(219, 188, 127, 0.07)' },
-  LAGGING: { label: 'Lagging', color: '#e67e80', bg: 'rgba(230, 126, 128, 0.07)' },
+const QUADRANT_META: Record<
+  RrgQuadrant,
+  { label: string; hint: string; color: string; bg: string }
+> = {
+  IMPROVING: {
+    label: 'Rotación Entrante',
+    hint: 'débil vs su promedio, pero acelerando',
+    color: '#7fbbb3',
+    bg: 'rgba(127, 187, 179, 0.07)',
+  },
+  LEADING: {
+    label: 'Líder Sostenido',
+    hint: 'fuerte y acelerando',
+    color: '#a7c080',
+    bg: 'rgba(167, 192, 128, 0.07)',
+  },
+  WEAKENING: {
+    label: 'Enfriándose',
+    hint: 'fuerte, pero desacelerando',
+    color: '#dbbc7f',
+    bg: 'rgba(219, 188, 127, 0.07)',
+  },
+  LAGGING: {
+    label: 'Rezagado',
+    hint: 'débil y desacelerando',
+    color: '#e67e80',
+    bg: 'rgba(230, 126, 128, 0.07)',
+  },
 };
 
 const TICKER_COLORS = [
@@ -42,6 +65,8 @@ const TICKER_COLORS = [
 interface EtfRotationGraphProps {
   data: EtfRrgData | null;
   points: RrgPoint[];
+  /** Puntos del universo activo sin filtro de búsqueda: fijan el dominio estable de los ejes. */
+  domainPoints?: RrgPoint[];
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
@@ -50,14 +75,42 @@ interface EtfRotationGraphProps {
 export const EtfRotationGraph: React.FC<EtfRotationGraphProps> = ({
   data,
   points,
+  domainPoints,
   loading,
   error,
   onRetry,
 }) => {
   const chartTheme = useChartTheme();
+  const chartContainerRef = useRef<HTMLDivElement | null>(null);
+  const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const element = chartContainerRef.current;
+    if (!element) {
+      return;
+    }
+
+    const updateSize = () => {
+      setChartSize({
+        width: element.clientWidth,
+        height: element.clientHeight,
+      });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [points.length]);
 
   const option = useMemo(() => {
-    if (!data || points.length === 0) {
+    if (
+      !data ||
+      points.length === 0 ||
+      chartSize.width <= 0 ||
+      chartSize.height <= 0
+    ) {
       return {};
     }
 
@@ -69,18 +122,48 @@ export const EtfRotationGraph: React.FC<EtfRotationGraphProps> = ({
       ])
     );
 
-    const xs = points.flatMap(point => point.trail.map(item => item.x));
-    const ys = points.flatMap(point => point.trail.map(item => item.y));
-    const maxDeviation = Math.max(2, ...[...xs, ...ys].map(value => Math.abs(value - 100)));
-    const halfSpan = Math.ceil(maxDeviation * 1.15 * 2) / 2;
+    // Dominio estable: universo activo sin el filtro de búsqueda.
+    // Así buscar un ticker no reescala el gráfico ni mueve los puntos.
+    const domainSource =
+      domainPoints && domainPoints.length > 0
+        ? domainPoints
+        : data.points && data.points.length > 0
+          ? data.points
+          : points;
+    const domainValues = domainSource.flatMap(point =>
+      point.trail.flatMap(item => [item.x, item.y])
+    );
+    const maxDeviation = Math.max(
+      2,
+      ...domainValues.map(value => Math.abs(value - 100))
+    );
+    const halfSpan = Math.max(2, Math.ceil(maxDeviation * 1.15));
     const axisMin = 100 - halfSpan;
     const axisMax = 100 + halfSpan;
+
+    // Área de trazado cuadrada: misma escala en píxeles para ambos ejes.
+    const GRID_MARGIN = { left: 76, right: 24, top: 18, bottom: 60 };
+    const availableWidth = Math.max(
+      0,
+      chartSize.width - GRID_MARGIN.left - GRID_MARGIN.right
+    );
+    const availableHeight = Math.max(
+      0,
+      chartSize.height - GRID_MARGIN.top - GRID_MARGIN.bottom
+    );
+    const plotSide = Math.max(0, Math.floor(Math.min(availableWidth, availableHeight)));
+    const gridLeft = GRID_MARGIN.left + Math.max(0, (availableWidth - plotSide) / 2);
+    const gridTop = GRID_MARGIN.top + Math.max(0, (availableHeight - plotSide) / 2);
+
+    if (plotSide <= 0) {
+      return {};
+    }
 
     const quadrantAreas: any[] = [
       [
         {
           coord: [axisMin, 100],
-          name: 'Improving',
+          name: 'Rotación Entrante',
           label: {
             show: true,
             position: 'insideTopLeft',
@@ -97,7 +180,7 @@ export const EtfRotationGraph: React.FC<EtfRotationGraphProps> = ({
       [
         {
           coord: [100, 100],
-          name: 'Leading',
+          name: 'Líder Sostenido',
           label: {
             show: true,
             position: 'insideTopRight',
@@ -114,7 +197,7 @@ export const EtfRotationGraph: React.FC<EtfRotationGraphProps> = ({
       [
         {
           coord: [100, axisMin],
-          name: 'Weakening',
+          name: 'Enfriándose',
           label: {
             show: true,
             position: 'insideBottomRight',
@@ -131,7 +214,7 @@ export const EtfRotationGraph: React.FC<EtfRotationGraphProps> = ({
       [
         {
           coord: [axisMin, axisMin],
-          name: 'Lagging',
+          name: 'Rezagado',
           label: {
             show: true,
             position: 'insideBottomLeft',
@@ -147,22 +230,57 @@ export const EtfRotationGraph: React.FC<EtfRotationGraphProps> = ({
       ],
     ];
 
-    const trailSeries = points.map(point => {
+    const trailSeries = points.flatMap(point => {
       const color = colorByTicker.get(point.ticker);
-      return {
-        name: point.ticker,
-        type: 'line' as const,
-        data: point.trail.map(item => [item.x, item.y]),
-        showSymbol: false,
-        silent: true,
-        lineStyle: {
-          color,
-          width: 2,
-          opacity: 0.8,
-          cap: 'round' as const,
-        },
-        z: 3,
-      };
+      const coordinates = point.trail.map(item => [item.x, item.y]);
+      const recentStart = Math.max(0, coordinates.length - 3);
+      const olderCoordinates = coordinates.slice(0, recentStart + 1);
+      const recentCoordinates = coordinates.slice(recentStart);
+      const series: any[] = [];
+
+      // Tramo histórico: opacidad baja, pero con un punto por semana.
+      if (olderCoordinates.length > 1) {
+        series.push({
+          name: `${point.ticker}-hist`,
+          type: 'line' as const,
+          data: olderCoordinates,
+          showSymbol: true,
+          symbol: 'circle' as const,
+          symbolSize: 2.5,
+          silent: true,
+          lineStyle: {
+            color,
+            width: 1.5,
+            opacity: 0.3,
+            cap: 'round' as const,
+          },
+          itemStyle: { color, opacity: 0.35 },
+          z: 3,
+        });
+      }
+
+      // Últimas dos semanas: trazo principal y puntos más visibles.
+      if (recentCoordinates.length > 1) {
+        series.push({
+          name: `${point.ticker}-recent`,
+          type: 'line' as const,
+          data: recentCoordinates,
+          showSymbol: true,
+          symbol: 'circle' as const,
+          symbolSize: 3,
+          silent: true,
+          lineStyle: {
+            color,
+            width: 2.25,
+            opacity: 0.9,
+            cap: 'round' as const,
+          },
+          itemStyle: { color, opacity: 0.9 },
+          z: 4,
+        });
+      }
+
+      return series;
     });
 
     const headSeries = {
@@ -219,10 +337,10 @@ export const EtfRotationGraph: React.FC<EtfRotationGraphProps> = ({
     return {
       backgroundColor: 'transparent',
       grid: {
-        top: 16,
-        right: 24,
-        bottom: 52,
-        left: 62,
+        left: gridLeft,
+        top: gridTop,
+        width: plotSide,
+        height: plotSide,
       },
       tooltip: {
         trigger: 'item',
@@ -252,18 +370,18 @@ export const EtfRotationGraph: React.FC<EtfRotationGraphProps> = ({
                 ${point.name} <span style="color: #a1a1aa;">(${point.ticker})</span>
               </div>
               <div style="color: ${meta.color}; font-weight: bold; font-size: 11px; margin-bottom: 6px;">
-                ${meta.label} · ${point.quadrant_label}
+                ${meta.label} <span style="color: #94a3b8; font-weight: normal;">· ${meta.hint}</span>
               </div>
               <div style="display: flex; justify-content: space-between; gap: 16px; padding: 2px 0;">
-                <span style="color: #94a3b8;">RS-Ratio:</span>
+                <span style="color: #94a3b8;">RS-Ratio (z 52s):</span>
                 <strong style="color: #e2e8f0;">${point.x.toFixed(2)}</strong>
               </div>
               <div style="display: flex; justify-content: space-between; gap: 16px; padding: 2px 0;">
-                <span style="color: #94a3b8;">RS-Momentum:</span>
+                <span style="color: #94a3b8;">RS-Momentum (z 52s):</span>
                 <strong style="color: #e2e8f0;">${point.y.toFixed(2)}</strong>
               </div>
               <div style="display: flex; justify-content: space-between; gap: 16px; padding: 2px 0;">
-                <span style="color: #94a3b8;">Semanas en cuadrante:</span>
+                <span style="color: #94a3b8;">Semanas en cuadrante (cola):</span>
                 <span style="color: #e2e8f0;">${point.weeks_in_quadrant}</span>
               </div>
               <div style="display: flex; justify-content: space-between; gap: 16px; padding: 2px 0;">
@@ -278,6 +396,9 @@ export const EtfRotationGraph: React.FC<EtfRotationGraphProps> = ({
                 <span style="color: #94a3b8;">Semana:</span>
                 <span style="color: #a1a1aa;">${week}</span>
               </div>
+              <div style="color: #94a3b8; font-size: 10px; line-height: 1.4; margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.08);">
+                Centro 100 = promedio propio de 52s · z-score, no JdK.
+              </div>
             </div>
           `;
         },
@@ -286,7 +407,7 @@ export const EtfRotationGraph: React.FC<EtfRotationGraphProps> = ({
         type: 'value' as const,
         min: axisMin,
         max: axisMax,
-        name: 'RS-Ratio (fuerza relativa vs SPY)',
+        name: 'RS-Ratio (z-score 52s vs SPY)',
         nameLocation: 'middle' as const,
         nameGap: 30,
         nameTextStyle: {
@@ -307,7 +428,7 @@ export const EtfRotationGraph: React.FC<EtfRotationGraphProps> = ({
         type: 'value' as const,
         min: axisMin,
         max: axisMax,
-        name: 'RS-Momentum',
+        name: 'RS-Momentum (z-score 52s)',
         nameLocation: 'middle' as const,
         nameGap: 42,
         nameRotate: 90,
@@ -327,7 +448,7 @@ export const EtfRotationGraph: React.FC<EtfRotationGraphProps> = ({
       },
       series: [...trailSeries, headSeries],
     };
-  }, [data, points, chartTheme]);
+  }, [data, points, domainPoints, chartTheme, chartSize]);
 
   if (points.length === 0) {
     const hasAnyData = (data?.points?.length ?? 0) > 0;
@@ -400,7 +521,7 @@ export const EtfRotationGraph: React.FC<EtfRotationGraphProps> = ({
           {data?.as_of ? `Semana ${data.as_of} · ${data.weeks}s / cola ${data.tail}s` : ''}
         </div>
       </div>
-      <div className="flex-1 min-h-0">
+      <div ref={chartContainerRef} className="flex-1 min-h-0">
         <ReactECharts
           echarts={echarts}
           option={option}

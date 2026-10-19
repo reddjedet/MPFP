@@ -1556,7 +1556,7 @@ def get_portfolio_rebalance_data(
     tolerance_pct: float = 1.5
 ) -> dict:
     from services.cedear_service import get_multiple_tickers_data
-    from services.ppc_service import load_ppc_values, evaluate_ppc_return
+    from services.ppc_service import evaluate_ppc_return
     from services.fair_value_service import load_fair_values, evaluate_fair_value_signal
     from services.pfcf_service import load_pfcf_values, evaluate_fcf_rsi_state
     from services.earnings_service import load_earnings_calendar, get_ticker_earnings_badge
@@ -1610,7 +1610,6 @@ def get_portfolio_rebalance_data(
             qty_clean = 1
         
     result = calculate_portfolio_data(pf_data, data, anchor_clean, qty_clean)
-    ppc_map = load_ppc_values()
     fair_values_map = load_fair_values()
     pfcf_map = load_pfcf_values()
     earnings_cal = load_earnings_calendar()
@@ -1626,16 +1625,17 @@ def get_portfolio_rebalance_data(
             item["gf_signal"] = evaluate_fair_value_signal(tk, adr_p, gf_val_map=fair_values_map)
             item["gf_value"] = fair_values_map.get(tk)
             
-            # Use portfolio-specific PPC if available, fallback to global PPC
+            # El PPC es un dato de la tenencia de ESTA cartera: sin nominales o sin PPC no hay señal.
             tk_holdings = user_holdings.get(tk, {})
-            item["actual_qty"] = tk_holdings.get("nominals", 0)
-            
-            pf_ppc = tk_holdings.get("ppc")
-            if pf_ppc and pf_ppc > 0:
-                item["ppc"] = pf_ppc
-            else:
-                item["ppc"] = ppc_map.get(tk)
-                
+            actual_qty = tk_holdings.get("nominals", 0) or 0
+            raw_ppc = tk_holdings.get("ppc")
+            try:
+                ppc_value = float(raw_ppc) if raw_ppc is not None else 0.0
+            except (TypeError, ValueError):
+                ppc_value = 0.0
+            item["actual_qty"] = actual_qty
+            item["ppc"] = ppc_value if (actual_qty > 0 and ppc_value > 0) else None
+
             item["ppc_return"] = evaluate_ppc_return(tk, local_p, item["ppc"])
             item["pfcf"] = pfcf_map.get(tk)
             item["pfcf_signal"] = evaluate_fcf_rsi_state(tk, item["pfcf"], rsi_val)

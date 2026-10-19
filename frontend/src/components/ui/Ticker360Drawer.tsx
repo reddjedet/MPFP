@@ -39,6 +39,7 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = () => {
   const [editGf, setEditGf] = useState<string>('');
   const [savingEdit, setSavingEdit] = useState<boolean>(false);
   const [editSaved, setEditSaved] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string>('');
 
   // Escuchar tecla Escape
   useEffect(() => {
@@ -59,6 +60,7 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = () => {
     setShowCalculator(false);
     setShowEdit(false);
     setEditSaved(false);
+    setSaveError('');
     setCalcAmount('');
 
     // Pre-cargar datos iniciales de la fila (0 ms lag)
@@ -80,7 +82,7 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = () => {
         ppc_return: initialData.ppc_return,
         pfcf: initialData.pfcf,
         pfcf_signal: initialData.pfcf_signal,
-        nominals: initialData.nominals ?? initialData.real_nominals ?? initialData.qty ?? 0,
+        nominals: initialData.nominals ?? initialData.real_nominals ?? initialData.actual_qty ?? 0,
         position_value_ars: initialData.position_value_ars ?? initialData.value ?? 0,
         ...initialData
       });
@@ -136,31 +138,74 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = () => {
     return { nominals, totalCost, leftover };
   }, [calcAmount, data]);
 
-  // Guardar métricas editadas (PPC / Fair Value)
+  // Cantidad real en la cartera activa. Si la ficha falló o devolvió 0, usamos la fila
+  // que abrió el drawer (actual_qty / real_nominals) para no bloquear el PPC.
+  const nominalsInPf = Number(
+    data?.nominals || data?.real_nominals || data?.actual_qty ||
+    initialData?.actual_qty || initialData?.real_nominals || initialData?.nominals || 0
+  );
+
+  // Guardar métricas editadas (PPC en la tenencia de la cartera activa / Fair Value global)
   const handleSaveMetrics = async () => {
     if (!ticker) return;
     setSavingEdit(true);
+    setSaveError('');
+    const errors: string[] = [];
+    let savedSomething = false;
     try {
-      const payload: Record<string, any> = { ticker };
-      if (editPpc !== '') payload.ppc = parseFloat(editPpc);
-      if (editGf !== '') payload.gf_value = parseFloat(editGf);
+      const pfForHoldings = activePortfolio || localStorage.getItem('finapp_active_portfolio') || 'min_drawdown_15';
+      const holdingQty = nominalsInPf;
+      const initialPpc = data?.ppc !== undefined && data?.ppc !== null ? String(data.ppc) : '';
+      let nextPpc = data?.ppc;
+      let nextGf = data?.gf_value;
 
-      const res = await fetch('/api/portfolios/quick_update_json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
+      // El PPC pertenece a la tenencia de la cartera activa: solo con nominales reales.
+      if (editPpc !== initialPpc && holdingQty > 0) {
+        try {
+          const ppcRes = await fetch('/api/rotation/holdings/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              portfolio: pfForHoldings,
+              ticker,
+              nominals: holdingQty,
+              ppc: editPpc === '' ? 0 : parseFloat(editPpc)
+            })
+          });
+          if (!ppcRes.ok) throw new Error('Error al actualizar la tenencia (PPC)');
+          savedSomething = true;
+          nextPpc = editPpc !== '' ? parseFloat(editPpc) : 0;
+        } catch (e) {
+          console.error(e);
+          errors.push('No se pudo guardar el PPC');
+        }
+      }
+
+      if (editGf !== '') {
+        try {
+          const res = await fetch('/api/portfolios/quick_update_json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticker, gf_value: parseFloat(editGf) })
+          });
+          if (!res.ok) throw new Error('Error al actualizar Fair Value');
+          savedSomething = true;
+          nextGf = parseFloat(editGf);
+        } catch (e) {
+          console.error(e);
+          errors.push('No se pudo guardar el Fair Value');
+        }
+      }
+
+      // Actualizar la ficha con lo que sí se guardó, aunque el otro pedido haya fallado.
+      setData((prev: any) => ({ ...prev, ppc: nextPpc, gf_value: nextGf }));
+
+      if (errors.length > 0) {
+        setSaveError(errors.join(' · '));
+      } else if (savedSomething) {
         setEditSaved(true);
-        setData((prev: any) => ({
-          ...prev,
-          ppc: editPpc !== '' ? parseFloat(editPpc) : prev?.ppc,
-          gf_value: editGf !== '' ? parseFloat(editGf) : prev?.gf_value
-        }));
         setTimeout(() => setEditSaved(false), 2500);
       }
-    } catch (e) {
-      console.error(e);
     } finally {
       setSavingEdit(false);
     }
@@ -194,7 +239,7 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = () => {
   const gfVal = data?.gf_value || null;
   const discountPct = data?.discount_pct;
 
-  const nominalsInPf = data?.nominals ?? data?.real_nominals ?? 0;
+  const hasHolding = nominalsInPf > 0;
   const posValArs = data?.position_value_ars ?? (nominalsInPf * (currentPrice || 0));
   const ppcVal = data?.ppc || null;
   const ppcReturn = data?.ppc_return;
@@ -567,9 +612,13 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = () => {
                     step="any"
                     placeholder="Ej: 14200"
                     value={editPpc}
+                    disabled={!hasHolding}
                     onChange={e => setEditPpc(e.target.value)}
-                    className="w-full h-8 px-2 bg-secondary border border-border rounded text-xs font-mono text-foreground outline-none focus:border-blue-500"
+                    className="w-full h-8 px-2 bg-secondary border border-border rounded text-xs font-mono text-foreground outline-none focus:border-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
                   />
+                  {!hasHolding && (
+                    <span className="text-[10px] text-amber-500/90 block">Cargá nominales en esta cartera para informar PPC</span>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-muted-foreground uppercase">Fair Value (U$)</label>
@@ -589,6 +638,9 @@ export const Ticker360Drawer: React.FC<Ticker360DrawerProps> = () => {
                   <span className="text-xs text-positive flex items-center gap-1 font-bold">
                     <Check className="w-3.5 h-3.5" /> Guardado
                   </span>
+                )}
+                {saveError && (
+                  <span className="text-[10px] text-rose-400 font-bold max-w-[220px] leading-tight">{saveError}</span>
                 )}
                 <button
                   onClick={handleSaveMetrics}

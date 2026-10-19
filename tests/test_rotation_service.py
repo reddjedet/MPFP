@@ -8,10 +8,11 @@ from services.rotation_service import (
     load_all_user_holdings,
     save_user_holdings,
     update_holding,
+    update_fixed_income_holding,
     analyze_rotation,
     _db
 )
-from services.ppc_service import _db as _ppc_db, load_ppc_values
+from services.portfolio_service import get_portfolio_rebalance_data
 from fastapi.testclient import TestClient
 from main import app
 
@@ -21,20 +22,13 @@ class TestRotationService(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         initial_data = dict(load_all_user_holdings())
-        initial_ppc = dict(load_ppc_values())
         cls._tmp_dir = tempfile.TemporaryDirectory()
         cls._orig_path = _db.file_path
-        cls._orig_ppc_path = _ppc_db.file_path
-        
+
         _db.file_path = Path(cls._tmp_dir.name) / "user_holdings.json"
         _db._cache = None
         _db._cache_valid = False
         _db.save(initial_data)
-
-        _ppc_db.file_path = Path(cls._tmp_dir.name) / "ppc_values.json"
-        _ppc_db._cache = None
-        _ppc_db._cache_valid = False
-        _ppc_db.save(initial_ppc)
         from tests.portfolio_fixtures import seed_required_portfolios
         seed_required_portfolios()
         
@@ -45,10 +39,6 @@ class TestRotationService(unittest.TestCase):
         _db.file_path = cls._orig_path
         _db._cache = None
         _db._cache_valid = False
-        
-        _ppc_db.file_path = cls._orig_ppc_path
-        _ppc_db._cache = None
-        _ppc_db._cache_valid = False
         cls._tmp_dir.cleanup()
 
     def test_load_and_save_holdings(self):
@@ -75,6 +65,105 @@ class TestRotationService(unittest.TestCase):
         update_holding("VIST", 0, None)
         loaded_after = load_user_holdings()
         self.assertNotIn("VIST", loaded_after["holdings"])
+
+    def test_update_holding_cero_elimina_aunque_haya_ppc(self):
+        """Sin tenencia no hay PPC: nominals=0 elimina la fila aunque venga un PPC."""
+        update_holding("AAPL", 5, 1500.0, portfolio_key="min_drawdown_15")
+        self.assertIn("AAPL", load_user_holdings("min_drawdown_15")["holdings"])
+
+        update_holding("AAPL", 0, 9999.0, portfolio_key="min_drawdown_15")
+        self.assertNotIn("AAPL", load_user_holdings("min_drawdown_15")["holdings"])
+
+    def test_save_user_holdings_descarta_filas_sin_nominales(self):
+        save_user_holdings(
+            {"holdings": {"AMAT": {"nominals": 0, "ppc": 96563.4}}, "cash_ars": 0.0},
+            portfolio_key="min_drawdown_15",
+        )
+        self.assertNotIn("AMAT", load_user_holdings("min_drawdown_15")["holdings"])
+
+    def test_update_holding_ppc_cero_borra_ppc_y_desaparece_de_la_vista(self):
+        """PPC enviado vacío/0 borra el precio; PPC omitido conserva el anterior."""
+        pf = "min_drawdown_15"
+        update_holding("V", 6, 4321.0, portfolio_key=pf)
+        self.assertEqual(load_user_holdings(pf)["holdings"]["V"]["ppc"], 4321.0)
+
+        # Solo se tocan los nominales (ppc=None): el PPC debe conservarse.
+        update_holding("V", 8, None, portfolio_key=pf)
+        self.assertEqual(load_user_holdings(pf)["holdings"]["V"]["ppc"], 4321.0)
+
+        # Borrar el PPC en pantalla envía 0: debe persistirse el borrado.
+        update_holding("V", 8, 0, portfolio_key=pf)
+        self.assertEqual(load_user_holdings(pf)["holdings"]["V"]["ppc"], 0.0)
+
+        market = lambda tickers: {
+            t.upper(): {"local": 1000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}
+            for t in tickers
+        }
+        with patch("services.cedear_service.get_multiple_tickers_data", side_effect=market):
+            data = get_portfolio_rebalance_data(pf)
+
+        v_item = next(i for i in data["result"] if i["ticker"] == "V")
+        self.assertEqual(v_item["actual_qty"], 8)
+        self.assertIsNone(v_item["ppc"])
+        self.assertIsNone(v_item["ppc_return"])
+
+        update_holding("V", 0, None, portfolio_key=pf)
+
+    def test_update_fixed_income_ppc_cero_borra_ppc(self):
+        """La renta fija sigue la misma regla: PPC 0 borra, PPC omitido conserva."""
+        pf = "bmb"
+        update_fixed_income_holding("AL30", 100, 55.5, portfolio_key=pf)
+        self.assertEqual(
+            load_user_holdings(pf)["fixed_income_holdings"]["AL30"]["ppc"], 55.5
+        )
+
+        update_fixed_income_holding("AL30", 120, None, portfolio_key=pf)
+        self.assertEqual(
+            load_user_holdings(pf)["fixed_income_holdings"]["AL30"]["ppc"], 55.5
+        )
+
+        update_fixed_income_holding("AL30", 120, 0, portfolio_key=pf)
+        self.assertEqual(
+            load_user_holdings(pf)["fixed_income_holdings"]["AL30"]["ppc"], 0.0
+        )
+
+        update_fixed_income_holding("AL30", 0, None, portfolio_key=pf)
+
+    def test_ppc_aislado_por_cartera_no_se_hereda(self):
+        """El PPC informado en una cartera no puede aparecer en otra sin tenencia."""
+        update_holding("GOOGL", 7, 12345.0, portfolio_key="bdi_agresiva")
+        all_data = load_all_user_holdings()
+        self.assertEqual(all_data["bdi_agresiva"]["holdings"]["GOOGL"]["ppc"], 12345.0)
+        self.assertNotIn("GOOGL", all_data["min_drawdown_15"]["holdings"])
+
+        market = lambda tickers: {
+            t.upper(): {"local": 1000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}
+            for t in tickers
+        }
+        with patch("services.cedear_service.get_multiple_tickers_data", side_effect=market):
+            data = get_portfolio_rebalance_data("min_drawdown_15")
+
+        googl = next(i for i in data["result"] if i["ticker"] == "GOOGL")
+        self.assertEqual(googl["actual_qty"], 0)
+        self.assertIsNone(googl["ppc"])
+        self.assertIsNone(googl["ppc_return"])
+
+        # La ficha 360° (quote_json) también respeta el scope por cartera.
+        quote_data = {"local": 1000.0, "adr": 100.0, "ratio": 1.0, "rsi": 50.0}
+        with patch("routers.cedears.get_ticker_data", return_value=quote_data):
+            own = self.client.get(
+                "/api/cedears/quote_json/GOOGL", params={"portfolio": "bdi_agresiva"}
+            )
+            other = self.client.get(
+                "/api/cedears/quote_json/GOOGL", params={"portfolio": "min_drawdown_15"}
+            )
+
+        self.assertEqual(own.status_code, 200)
+        self.assertEqual(other.status_code, 200)
+        self.assertEqual(own.json()["ppc"], 12345.0)
+        self.assertEqual(own.json()["nominals"], 7)
+        self.assertIsNone(other.json()["ppc"])
+        self.assertEqual(other.json()["nominals"], 0)
 
     @patch("services.rotation_service.get_multiple_tickers_data")
     def test_analyze_rotation_math_and_gaps(self, mock_multiple_data):
@@ -604,7 +693,7 @@ class TestRotationService(unittest.TestCase):
         guardada = load_user_holdings("bmb")
         self.assertIn("GOOGL", guardada["holdings"])
         self.assertEqual(guardada["holdings"]["GOOGL"]["nominals"], 50)
-        # Nunca None: al leer puede caer al PPC global, pero siempre debe ser numérico
+        # Nunca None: el PPC ausente se normaliza a 0.0 (columna NOT NULL)
         self.assertIsNotNone(guardada["holdings"]["GOOGL"]["ppc"])
         self.assertIsInstance(guardada["holdings"]["GOOGL"]["ppc"], (int, float))
 

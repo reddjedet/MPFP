@@ -62,13 +62,6 @@ from services.fair_value_service import (
     save_bulk_fair_values,
     evaluate_fair_value_signal
 )
-from services.ppc_service import (
-    load_ppc_values,
-    get_ppc_value,
-    save_ppc_value,
-    save_bulk_ppc_values,
-    evaluate_ppc_return
-)
 from services.pfcf_service import (
     load_pfcf_values,
     get_pfcf_value,
@@ -132,17 +125,24 @@ def quick_update_asset_json(body: QuickUpdateAssetRequest):
         raise InvalidTickerError("Ticker no válido")
     
     if body.ppc is not None:
-        save_ppc_value(clean_tk, body.ppc)
+        return JSONResponse(
+            {"success": False, "error": "El PPC se edita desde la tenencia de cada cartera."},
+            status_code=400,
+        )
     if body.gf_value is not None:
         save_fair_value(clean_tk, body.gf_value)
     if body.pfcf is not None:
         save_pfcf_value(clean_tk, body.pfcf)
         
-    return QuickUpdateAssetResponse(success=True, ticker=clean_tk, ppc=get_ppc_value(clean_tk), gf_value=get_fair_value(clean_tk), pfcf=get_pfcf_value(clean_tk))
+    return QuickUpdateAssetResponse(success=True, ticker=clean_tk, ppc=None, gf_value=get_fair_value(clean_tk), pfcf=get_pfcf_value(clean_tk))
 
 @router.post("/bulk_quick_update_json", response_model=SuccessEnvelope)
 def bulk_quick_update_asset_json(body: BulkQuickUpdateAssetRequest):
-    ppc_updates: Dict[str, Any] = {}
+    """Actualiza métricas globales (Fair Value / P/FCF) en lote.
+
+    El PPC se ignora deliberadamente: pertenece a la tenencia de cada cartera y
+    se edita vía /api/rotation/holdings/update.
+    """
     fv_updates: Dict[str, Any] = {}
     pfcf_updates: Dict[str, Any] = {}
     
@@ -150,15 +150,11 @@ def bulk_quick_update_asset_json(body: BulkQuickUpdateAssetRequest):
         clean_tk = sanitize_ticker(item.ticker)
         if not clean_tk:
             continue
-        if item.ppc is not None:
-            ppc_updates[clean_tk] = item.ppc
         if item.gf_value is not None:
             fv_updates[clean_tk] = item.gf_value
         if item.pfcf is not None:
             pfcf_updates[clean_tk] = item.pfcf
             
-    if ppc_updates:
-        save_bulk_ppc_values(ppc_updates)
     if fv_updates:
         save_bulk_fair_values(fv_updates)
     if pfcf_updates:

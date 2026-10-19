@@ -25,6 +25,7 @@ export interface Ticker360InitialData {
   pfcf_signal?: string | number | boolean | Record<string, unknown> | null;
   nominals?: number;
   qty?: number;
+  actual_qty?: number;
   real_nominals?: number;
   value?: number;
   position_value_ars?: number;

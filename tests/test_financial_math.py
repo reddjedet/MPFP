@@ -6,7 +6,6 @@ from services.fixed_income_service import calculate_irr_and_duration
 import tempfile
 from pathlib import Path
 from services.rotation_service import analyze_rotation, save_user_holdings, _db, load_all_user_holdings
-from services.ppc_service import _db as _ppc_db, load_ppc_values
 
 
 class TestFinancialMath(unittest.TestCase):
@@ -19,20 +18,13 @@ class TestFinancialMath(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         initial_data = dict(load_all_user_holdings())
-        initial_ppc = dict(load_ppc_values())
         cls._tmp_dir = tempfile.TemporaryDirectory()
         cls._orig_path = _db.file_path
-        cls._orig_ppc_path = _ppc_db.file_path
-        
+
         _db.file_path = Path(cls._tmp_dir.name) / "user_holdings.json"
         _db._cache = None
         _db._cache_valid = False
         _db.save(initial_data)
-
-        _ppc_db.file_path = Path(cls._tmp_dir.name) / "ppc_values.json"
-        _ppc_db._cache = None
-        _ppc_db._cache_valid = False
-        _ppc_db.save(initial_ppc)
         from tests.portfolio_fixtures import seed_required_portfolios
         seed_required_portfolios()
 
@@ -41,10 +33,6 @@ class TestFinancialMath(unittest.TestCase):
         _db.file_path = cls._orig_path
         _db._cache = None
         _db._cache_valid = False
-        
-        _ppc_db.file_path = cls._orig_ppc_path
-        _ppc_db._cache = None
-        _ppc_db._cache_valid = False
         cls._tmp_dir.cleanup()
 
     def test_normalize_fixed_income_price_base_100(self):

@@ -95,17 +95,16 @@ Plataforma financiera integral para la gestión de carteras de inversión, arbit
 
 ---
 
-## Repositorios de Datos (`data/*.json`)
+## Repositorios de Datos (`data/`)
 
-La aplicación persiste de forma atómica y aislada sus datos en **10 archivos JSON**:
+La aplicación persiste de forma atómica y aislada sus datos en **9 archivos de datos** (JSON y SQLite):
 
 | Archivo                           | Descripción                                                  | Servicio Responsable         |
 |:--------------------------------- |:------------------------------------------------------------ |:---------------------------- |
 | `data/portfolios.json`            | Carteras modelo teóricas (pesos, activos y nominales demo)   | `portfolio_service.py`       |
-| `data/user_holdings.json`         | Tenencias multi-cuenta por broker (nominales, PPC, caja ARS) | `rotation_service.py`        |
+| `data/user_holdings.db`           | Tenencias por cartera (nominales, PPC y caja ARS). El PPC vive en la tenencia de cada cartera; no existe un store global. | `rotation_service.py`        |
 | `data/earnings_calendar.json`     | Fechas confirmadas y estimadas de balances                   | `earnings_service.py`        |
 | `data/fair_values.json`           | Estimaciones de GuruFocus Fair Value                         | `fair_value_service.py`      |
-| `data/ppc_values.json`            | Precios Promedio de Compra globales                          | `ppc_service.py`             |
 | `data/pfcf_values.json`           | Múltiplos P/Normalized FCF                                   | `pfcf_service.py`            |
 | `data/valuation_profiles.json`    | Perfiles y modelos sectoriales de valuación                  | `valuation_service.py`       |
 | `data/user_valuation_inputs.json` | Inputs de valuación personalizados por el usuario            | `valuation_service.py`       |
@@ -206,6 +205,6 @@ El pipeline unificado de verificación ejecuta secuencialmente 4 fases:
 > **Fines Exclusivamente Educativos y de Investigación:**
 > 
 > * Esta plataforma es una **herramienta de software cuantitativo y de simulación académica**.
-> * Todos los datos precargados en los repositorios (`portfolios.json`, `user_holdings.json`, `ppc_values.json`, etc.) son **estrictamente ficticios, teóricos y educativos**. No representan tenencias patrimoniales reales ni carteras administradas por terceros.
+> * Todos los datos precargados en los repositorios (`portfolios.json`, `user_holdings.db`, etc.) son **estrictamente ficticios, teóricos y educativos**. No representan tenencias patrimoniales reales ni carteras administradas por terceros. El PPC es un dato de la tenencia de cada cartera (no existe un store global).
 > * El contenido, algoritmos, cálculos de valor intrínseco, indicadores técnicos (RSI) y optimizaciones de cartera (Markowitz) **no constituyen bajo ninguna circunstancia asesoramiento financiero, recomendación de inversión, oferta de compra/venta de activos ni intermediación bursátil**.
 > * Las rentabilidades pasadas no garantizan rendimientos futuros. Cada inversor o usuario es el único y exclusivo responsable de sus decisiones de asignación de capital.

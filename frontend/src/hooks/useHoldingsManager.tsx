@@ -685,7 +685,7 @@ export function useHoldingsManager() {
       // 2. Tenencias reales (nominales + PPC). Omitir ppc cuando no se informó.
       const realHoldingsPayload: Record<string, any> = {};
       remainingHoldings.forEach(h => {
-        if (h.baseNominals > 0 || h.ppc > 0) {
+        if (h.baseNominals > 0) {
           realHoldingsPayload[h.ticker] = { nominals: h.baseNominals, ...(h.ppc > 0 ? { ppc: h.ppc } : {}) };
         }
       });

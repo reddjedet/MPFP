@@ -36,14 +36,21 @@ QUADRANT_LABELS = {
 
 
 def classify_rrg_quadrant(x: float, y: float) -> str:
-    """Clasifica un punto (RS-Ratio, RS-Momentum) en su cuadrante RRG."""
+    """Clasifica un punto (RS-Ratio, RS-Momentum) en su cuadrante RRG.
+
+    Convención estándar (ejes centrados en 100):
+    - Leading:    x >= 100, y >= 100 (arriba-derecha)
+    - Weakening:  x >= 100, y <  100 (abajo-derecha)
+    - Improving:  x <  100, y >= 100 (arriba-izquierda)
+    - Lagging:    x <  100, y <  100 (abajo-izquierda)
+    """
     if x >= 100.0 and y >= 100.0:
         return "LEADING"
-    if x < 100.0 and y >= 100.0:
+    if x >= 100.0 and y < 100.0:
         return "WEAKENING"
-    if x < 100.0 and y < 100.0:
-        return "LAGGING"
-    return "IMPROVING"
+    if x < 100.0 and y >= 100.0:
+        return "IMPROVING"
+    return "LAGGING"
 
 
 def _resolve_universe(universe: str) -> dict[str, dict[str, Any]]:

@@ -7,7 +7,7 @@ from services.cedear_service import get_ticker_data, get_multiple_tickers_data, 
 from services.security_service import sanitize_ticker
 from services.earnings_service import get_ticker_earnings_badge, load_earnings_calendar, calculate_earnings_status
 from services.fair_value_service import load_fair_values, evaluate_fair_value_signal
-from services.ppc_service import load_ppc_values, evaluate_ppc_return
+from services.ppc_service import evaluate_ppc_return
 from services.pfcf_service import evaluate_fcf_rsi_state, load_pfcf_values
 from services.rotation_service import load_user_holdings
 
@@ -165,13 +165,11 @@ def get_single_cedear_json(ticker: str, portfolio: Optional[str] = Query(None)):
         
     earnings_cal = load_earnings_calendar()
     fair_values_map = load_fair_values()
-    ppc_map = load_ppc_values()
     pfcf_map = load_pfcf_values()
 
     adr_p = data.get("adr")
     loc_p = data.get("local")
     rsi_val = data.get("rsi")
-    ppc_val = ppc_map.get(ticker_clean)
 
     # Sector, Compañía y metadatos de activo
     sec_info = get_ticker_sector(ticker_clean)
@@ -199,10 +197,12 @@ def get_single_cedear_json(ticker: str, portfolio: Optional[str] = Query(None)):
         "is_urgent": delta_d is not None and 0 <= delta_d < 14
     }
 
-    # Tenencia en cartera activa
+    # Tenencia en cartera activa (el PPC solo existe si hay nominales en ESA cartera)
     user_holdings = load_user_holdings(portfolio)
     holding_data = user_holdings.get("holdings", {}).get(ticker_clean, 0)
     nominals = holding_data.get("nominals", 0) if isinstance(holding_data, dict) else (holding_data or 0)
+    holding_ppc = holding_data.get("ppc") if isinstance(holding_data, dict) else None
+    ppc_val = holding_ppc if (nominals > 0 and holding_ppc and holding_ppc > 0) else None
     pos_val_ars = round(nominals * loc_p, 2) if (loc_p and nominals) else 0.0
 
     # Margen de seguridad vs GuruFocus Fair Value

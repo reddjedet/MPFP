@@ -89,16 +89,43 @@ const ActionDrawer: React.FC<ActionDrawerProps> = ({ row, pfType, onRefresh, onC
   const [gfValue, setGfValue] = useState(row.gf_value?.toString() || '');
   const [pfcfValue, setPfcfValue] = useState(row.pfcf?.toString() || '');
   const [loading, setLoading] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const showPfcf = PFCF_TICKERS.has(row.ticker) || (row.pfcf !== undefined && row.pfcf !== null);
+  const actualQty = Number(row.actual_qty || 0);
+  const hasHolding = actualQty > 0;
 
   const handleSave = async () => {
     setLoading(true);
+    setSaveError('');
+    const errors: string[] = [];
+    let savedSomething = false;
     try {
-      const payload: Record<string, any> = { ticker: row.ticker };
-      if (ppc !== (row.ppc?.toString() || '')) {
-        payload.ppc = ppc === '' ? null : parseFloat(ppc);
+      const initialPpc = row.ppc !== undefined && row.ppc !== null ? String(row.ppc) : '';
+      const ppcChanged = ppc !== initialPpc;
+
+      // El PPC es un dato de la tenencia de ESTA cartera: se guarda con los nominales reales.
+      if (ppcChanged && hasHolding) {
+        try {
+          const ppcRes = await fetch('/api/rotation/holdings/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              portfolio: pfType,
+              ticker: row.ticker,
+              nominals: actualQty,
+              ppc: ppc === '' ? 0 : parseFloat(ppc)
+            })
+          });
+          if (!ppcRes.ok) throw new Error('Error al actualizar la tenencia (PPC)');
+          savedSomething = true;
+        } catch (e) {
+          console.error(e);
+          errors.push('No se pudo guardar el PPC');
+        }
       }
+
+      const payload: Record<string, any> = { ticker: row.ticker };
       if (gfValue !== (row.gf_value?.toString() || '')) {
         payload.gf_value = gfValue === '' ? null : parseFloat(gfValue);
       }
@@ -107,18 +134,27 @@ const ActionDrawer: React.FC<ActionDrawerProps> = ({ row, pfType, onRefresh, onC
       }
 
       if (Object.keys(payload).length > 1) {
-        const res = await fetch('/api/portfolios/quick_update_json', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error('Error al actualizar métricas');
+        try {
+          const res = await fetch('/api/portfolios/quick_update_json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('Error al actualizar métricas');
+          savedSomething = true;
+        } catch (e) {
+          console.error(e);
+          errors.push('No se pudieron guardar las métricas (Fair Value / P-FCF)');
+        }
       }
-      
-      onRefresh();
-      onClose();
-    } catch (e) {
-      console.error(e);
+
+      // Refrescar siempre lo que sí se guardó, aunque el otro pedido haya fallado.
+      if (savedSomething) onRefresh();
+      if (errors.length > 0) {
+        setSaveError(errors.join(' · '));
+      } else {
+        onClose();
+      }
     } finally {
       setLoading(false);
     }
@@ -134,10 +170,14 @@ const ActionDrawer: React.FC<ActionDrawerProps> = ({ row, pfType, onRefresh, onC
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs font-mono">$</span>
           <input 
             type="number" step="any" min="0"
-            className="w-full h-9 pl-7 pr-3 bg-black/40 border border-white/10 rounded-xl text-xs font-mono font-bold text-white outline-none focus:border-blue-500" 
+            disabled={!hasHolding}
+            className="w-full h-9 pl-7 pr-3 bg-black/40 border border-white/10 rounded-xl text-xs font-mono font-bold text-white outline-none focus:border-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
             value={ppc} onChange={e => setPpc(e.target.value)} placeholder="Ej: 25000.50"
           />
         </div>
+        {!hasHolding && (
+          <span className="text-[10px] text-amber-400/90">Cargá nominales en esta cartera para informar PPC</span>
+        )}
       </div>
       
       <div className="flex flex-col gap-1.5 flex-1">
@@ -167,6 +207,9 @@ const ActionDrawer: React.FC<ActionDrawerProps> = ({ row, pfType, onRefresh, onC
       )}
       
       <div className="flex items-center gap-2">
+        {saveError && (
+          <span className="text-[10px] text-rose-400 font-bold max-w-[220px] leading-tight">{saveError}</span>
+        )}
         <button 
           onClick={(e) => { e.stopPropagation(); onClose(); }} 
           className="h-9 px-4 rounded-xl text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2"

@@ -10,7 +10,6 @@ from services.fair_value_service import load_fair_values, _db as _gf_db
 from services.valuation_service import load_user_valuation_inputs, _user_inputs_db as _val_db
 from services.portfolio_service import load_portfolios, get_all_portfolio_tickers, _db as _pf_db, load_portfolios_trash, _trash_db
 from services.cedear_service import load_cedear_ratios
-from services.ppc_service import load_ppc_values, _db as _ppc_db
 from services.pfcf_service import load_pfcf_values, _db as _pfcf_db
 from services.rotation_service import load_user_holdings, _db as _holdings_db
 
@@ -53,7 +52,6 @@ class TestAPIEndpoints(unittest.TestCase):
         initial_pf = dict(load_portfolios())
         # Definitions are test fixtures, not an implicit dependency on developer-local data.
         initial_pf.update({"min_drawdown_15": {"mode": "weights", "assets": {"COST": 25.0, "LLY": 25.0, "DE": 25.0, "GOOGL": 25.0}}})
-        initial_ppc = dict(load_ppc_values())
         initial_pfcf = dict(load_pfcf_values())
         initial_holdings = dict(load_user_holdings())
         initial_trash = list(load_portfolios_trash())
@@ -65,7 +63,6 @@ class TestAPIEndpoints(unittest.TestCase):
         cls._orig_gf_path = _gf_db.file_path
         cls._orig_val_path = _val_db.file_path
         cls._orig_pf_path = _pf_db.file_path
-        cls._orig_ppc_path = _ppc_db.file_path
         cls._orig_pfcf_path = _pfcf_db.file_path
         cls._orig_holdings_path = _holdings_db.file_path
         cls._orig_trash_path = _trash_db.file_path
@@ -89,11 +86,6 @@ class TestAPIEndpoints(unittest.TestCase):
         _pf_db._cache = None
         _pf_db._cache_valid = False
         _pf_db.save(initial_pf)
-
-        _ppc_db.file_path = tmp_path / "ppc_values.json"
-        _ppc_db._cache = None
-        _ppc_db._cache_valid = False
-        _ppc_db.save(initial_ppc)
 
         _pfcf_db.file_path = tmp_path / "pfcf_values.json"
         _pfcf_db._cache = None
@@ -128,9 +120,6 @@ class TestAPIEndpoints(unittest.TestCase):
         _pf_db.file_path = cls._orig_pf_path
         _pf_db._cache = None
         _pf_db._cache_valid = False
-        _ppc_db.file_path = cls._orig_ppc_path
-        _ppc_db._cache = None
-        _ppc_db._cache_valid = False
         _pfcf_db.file_path = cls._orig_pfcf_path
         _pfcf_db._cache = None
         _pfcf_db._cache_valid = False
@@ -312,18 +301,19 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertNotIn("target_month_name", detail)
         self.assertIsNone(response.json()["earnings_badge"])
 
-    def test_portfolio_ppc_update(self):
+    def test_portfolio_ppc_update_rechazado(self):
+        """El PPC ya no se edita por la vía global: es dato de la tenencia de cada cartera."""
         resp = self.client.post("/api/portfolios/quick_update_json", json={
             "ticker": "COST",
             "ppc": 29959.90
         })
-        self.assertEqual(resp.status_code, 200)
-        self.assertTrue(resp.json().get("success"))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("tenencia", resp.json().get("error", ""))
 
-    def test_portfolio_ppc_bulk_update(self):
-        resp = self.client.post("/api/portfolios/quick_update_json", json={
-            "ticker": "COST",
-            "ppc": 29959.90
+    def test_portfolio_bulk_quick_update_ignora_ppc(self):
+        """El bulk global ignora el PPC y sigue actualizando Fair Value / P/FCF."""
+        resp = self.client.post("/api/portfolios/bulk_quick_update_json", json={
+            "items": [{"ticker": "COST", "ppc": 29959.90, "gf_value": 111.0}]
         })
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(resp.json().get("success"))
@@ -348,7 +338,6 @@ class TestAPIEndpoints(unittest.TestCase):
         """Verifica la actualización atómica y liviana de métricas para el ActionDrawer."""
         resp = self.client.post("/api/portfolios/quick_update_json", json={
             "ticker": "AAPL",
-            "ppc": 12500.50,
             "gf_value": 220.0,
             "pfcf": 28.5
         })
@@ -356,7 +345,7 @@ class TestAPIEndpoints(unittest.TestCase):
         data = resp.json()
         self.assertTrue(data.get("success"))
         self.assertEqual(data.get("ticker"), "AAPL")
-        self.assertEqual(data.get("ppc"), 12500.50)
+        self.assertIsNone(data.get("ppc"))
         self.assertEqual(data.get("gf_value"), 220.0)
         self.assertEqual(data.get("pfcf"), 28.5)
 

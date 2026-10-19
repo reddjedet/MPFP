@@ -224,24 +224,28 @@ export const useEtfRotation = () => {
     return list;
   }, [data?.items, universeFilter, searchFilter]);
 
-  // 6. Puntos RRG filtrados por universo y búsqueda (en Sectores, solo los 11 SPDR)
-  const displayedRrgPoints = useMemo(() => {
+  // 6. Puntos RRG del universo activo, sin filtro de búsqueda.
+  // Se usan para fijar el dominio de los ejes y evitar que el gráfico se reescale al buscar.
+  const rrgUniversePoints = useMemo(() => {
     const points = rrgData?.points ?? [];
-    let list = universeFilter === 'sectors'
+    return universeFilter === 'sectors'
       ? points.filter(point => SECTOR_ETF_TICKERS.has(point.ticker))
       : points;
+  }, [rrgData?.points, universeFilter]);
 
-    if (searchFilter.trim()) {
-      const q = searchFilter.toLowerCase().trim();
-      list = list.filter(point =>
-        point.ticker.toLowerCase().includes(q) ||
-        point.name.toLowerCase().includes(q) ||
-        point.sector.toLowerCase().includes(q)
-      );
+  // 7. Puntos RRG visibles: universo + búsqueda.
+  const displayedRrgPoints = useMemo(() => {
+    if (!searchFilter.trim()) {
+      return rrgUniversePoints;
     }
 
-    return list;
-  }, [rrgData?.points, universeFilter, searchFilter]);
+    const q = searchFilter.toLowerCase().trim();
+    return rrgUniversePoints.filter(point =>
+      point.ticker.toLowerCase().includes(q) ||
+      point.name.toLowerCase().includes(q) ||
+      point.sector.toLowerCase().includes(q)
+    );
+  }, [rrgUniversePoints, searchFilter]);
 
   return {
     data,
@@ -263,6 +267,7 @@ export const useEtfRotation = () => {
     rrgLoading,
     rrgError,
     loadRrg,
+    rrgUniversePoints,
     displayedRrgPoints
   };
 };

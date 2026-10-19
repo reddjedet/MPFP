@@ -13,7 +13,8 @@ export const EtfRotationView: React.FC = () => {
     universeFilter, setUniverseFilter,
     fetchData, spyItem, majorIndices, filteredMajorIndices,
     filteredSectorItems, displayedItems, topLeader, topLaggard,
-    rrgData, rrgLoading, rrgError, loadRrg, displayedRrgPoints
+    rrgData, rrgLoading, rrgError, loadRrg,
+    rrgUniversePoints, displayedRrgPoints
   } = useEtfRotation();
 
   useEffect(() => {
@@ -180,7 +181,7 @@ export const EtfRotationView: React.FC = () => {
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 {chartMode === 'differential'
                   ? 'Sobre-rendimiento (+) o rezago (-) respecto a SPY durante una semana'
-                  : 'Fuerza relativa (RS-Ratio) vs momentum (RS-Momentum) vs SPY. Cola de 8 semanas; centro = 100'}
+                  : 'RS-Ratio vs RS-Momentum vs SPY · z-score de 52 semanas (no JdK). Centro 100 = promedio del propio ETF, no empate con SPY. No comparable con el diferencial 1W.'}
               </p>
             </div>
 
@@ -214,13 +215,14 @@ export const EtfRotationView: React.FC = () => {
             </div>
           </div>
 
-          <div className="w-full h-[460px]">
+          <div className="w-full h-[460px] sm:h-[540px]">
             {chartMode === 'differential' ? (
               <EtfRotationBarChart data={data} displayedItems={displayedItems} />
             ) : (
               <EtfRotationGraph
                 data={rrgData}
                 points={displayedRrgPoints}
+                domainPoints={rrgUniversePoints}
                 loading={rrgLoading}
                 error={rrgError}
                 onRetry={() => { void loadRrg(true); }}

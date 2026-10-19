@@ -8,6 +8,7 @@ import pandas as pd
 from fastapi.testclient import TestClient
 
 from services.etf_rrg_service import (
+    QUADRANT_LABELS,
     classify_rrg_quadrant,
     fetch_etf_rrg,
 )
@@ -43,14 +44,26 @@ def _raw_fetch():
 class TestClassifyRrgQuadrant(unittest.TestCase):
 
     def test_quadrants(self):
+        # Arriba-derecha: fuerte y acelerando.
         self.assertEqual(classify_rrg_quadrant(101.0, 101.0), "LEADING")
-        self.assertEqual(classify_rrg_quadrant(99.0, 101.0), "WEAKENING")
+        # Arriba-izquierda: débil pero acelerando (rotación entrante).
+        self.assertEqual(classify_rrg_quadrant(99.0, 101.0), "IMPROVING")
+        # Abajo-izquierda: débil y desacelerando.
         self.assertEqual(classify_rrg_quadrant(99.0, 99.0), "LAGGING")
-        self.assertEqual(classify_rrg_quadrant(101.0, 99.0), "IMPROVING")
+        # Abajo-derecha: fuerte pero desacelerando (se enfría).
+        self.assertEqual(classify_rrg_quadrant(101.0, 99.0), "WEAKENING")
 
     def test_center_boundary_uses_upper_quadrants(self):
         self.assertEqual(classify_rrg_quadrant(100.0, 100.0), "LEADING")
-        self.assertEqual(classify_rrg_quadrant(100.0, 99.0), "IMPROVING")
+        self.assertEqual(classify_rrg_quadrant(100.0, 99.0), "WEAKENING")
+        self.assertEqual(classify_rrg_quadrant(99.0, 100.0), "IMPROVING")
+
+    def test_labels_match_quadrant_semantics(self):
+        # Un swap de Improving/Weakening debe romper este test, no solo la clasificación.
+        self.assertEqual(QUADRANT_LABELS["LEADING"], "Líder Sostenido")
+        self.assertEqual(QUADRANT_LABELS["WEAKENING"], "Enfriándose")
+        self.assertEqual(QUADRANT_LABELS["IMPROVING"], "Rotación Entrante")
+        self.assertEqual(QUADRANT_LABELS["LAGGING"], "Rezagado")
 
 
 class TestFetchEtfRrg(unittest.TestCase):

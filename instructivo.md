@@ -119,13 +119,12 @@ Auditoría por **Vía Negativa** con 6 modelos financieros según el perfil sect
 
 ## 3. Arquitectura de Datos (`data/`)
 
-| Archivo JSON | Descripción | Servicio Responsable |
+| Archivo | Descripción | Servicio Responsable |
 | :--- | :--- | :--- |
 | `data/portfolios.json` | Definición de carteras modelo, activos y pesos/nominales | `portfolio_service.py` |
-| `data/user_holdings.json` | Tenencias reales del usuario aisladas por broker (nominales, PPC, caja ARS) | `rotation_service.py` |
+| `data/user_holdings.db` | Tenencias reales aisladas por cartera (nominales, PPC, caja ARS). El PPC vive en la tenencia de cada cartera. | `rotation_service.py` |
 | `data/earnings_calendar.json` | Fechas confirmadas y estimadas de balances | `earnings_service.py` |
 | `data/fair_values.json` | Estimaciones de GuruFocus Fair Value | `fair_value_service.py` |
-| `data/ppc_values.json` | Historial global de Precios Promedio de Compra | `ppc_service.py` |
 | `data/pfcf_values.json` | Múltiplos P/FCF normalizados | `pfcf_service.py` |
 | `data/valuation_profiles.json` | Perfiles y modelos de valuación fundamental | `valuation_service.py` |
 | `data/user_valuation_inputs.json` | Inputs de valuación personalizados por el usuario | `valuation_service.py` |

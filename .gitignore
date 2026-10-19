@@ -100,6 +100,7 @@ data/.cache_market.tmp
 data/.cache_market.tmp_*
 data/user_holdings.json
 data/ppc_values.json
+data/ppc_values.json.legacy_*
 data/user_valuation_inputs.json
 data/portfolios.json
 data/portfolios_trash.json

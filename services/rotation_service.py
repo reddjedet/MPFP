@@ -5,7 +5,7 @@ import math
 from services.data_paths import data_file
 from services.sqlite_persistence import SQLiteTableStore
 from services.security_service import sanitize_ticker
-from services.ppc_service import load_ppc_values, save_ppc_value, evaluate_ppc_return
+from services.ppc_service import evaluate_ppc_return
 from services.cedear_service import get_ticker_data, get_multiple_tickers_data, CEDEAR_RATIOS
 from services.portfolio_service import load_portfolios
 from services.fair_value_service import load_fair_values, evaluate_fair_value_signal
@@ -21,36 +21,9 @@ logger = logging.getLogger("RotationService")
 
 DB_PATH = data_file("user_holdings.json")
 
-DEFAULT_HOLDINGS = {
-    "bmb": {
-        "holdings": {
-            "AMAT": {"nominals": 1, "ppc": 96563.40},
-            "GOOGL": {"nominals": 14, "ppc": 7619.66},
-            "PM": {"nominals": 3, "ppc": 14606.57}
-        },
-        "fixed_income_holdings": {
-            "S30S6": {"nominals": 335457, "ppc": 112.08}
-        },
-        "cash_ars": 0.0
-    },
-    DEFAULT_PORTFOLIO_MODE: {
-        "holdings": {
-            "COST": {"nominals": 8, "ppc": 29959.90},
-            "DE": {"nominals": 3, "ppc": 15971.31},
-            "LLY": {"nominals": 6, "ppc": 22275.63},
-            "NEM": {"nominals": 1, "ppc": 38946.68},
-            "NU": {"nominals": 7, "ppc": 11840.00},
-            "URA": {"nominals": 6, "ppc": 14176.67},
-            "V": {"nominals": 12, "ppc": 33560.00},
-            "VIST": {"nominals": 1, "ppc": 39940.00}
-        },
-        "fixed_income_holdings": {
-            "S30S6": {"nominals": 369614, "ppc": 1.11},
-            "T31Y7": {"nominals": 78030, "ppc": 1.15}
-        },
-        "cash_ars": 0.0
-    }
-}
+# El PPC pertenece a la tenencia de cada cartera: no se siembran posiciones ni
+# precios promedio globales por defecto.
+DEFAULT_HOLDINGS: Dict[str, Any] = {}
 
 _db = SQLiteTableStore("user_holdings", DB_PATH, default_data=DEFAULT_HOLDINGS)
 
@@ -92,7 +65,6 @@ def load_all_user_holdings() -> Dict[str, Any]:
         data = _migrate_legacy_data(data)
         _db.save(data)
         
-    ppc_map = load_ppc_values()
     result = {}
     
     known_portfolios = list(load_portfolios().keys())
@@ -110,16 +82,19 @@ def load_all_user_holdings() -> Dict[str, Any]:
             if isinstance(val, dict):
                 nom = int(val.get("nominals", 0))
                 p_ppc = val.get("ppc")
-                if p_ppc is None or p_ppc <= 0:
-                    p_ppc = ppc_map.get(clean_tk)
+                if nom <= 0:
+                    continue
                 clean_holdings[clean_tk] = {
-                    "nominals": max(0, nom),
+                    "nominals": nom,
                     "ppc": float(p_ppc) if p_ppc and float(p_ppc) > 0 else 0.0
                 }
             elif isinstance(val, (int, float)):
+                nom = int(val)
+                if nom <= 0:
+                    continue
                 clean_holdings[clean_tk] = {
-                    "nominals": max(0, int(val)),
-                    "ppc": ppc_map.get(clean_tk) or 0.0
+                    "nominals": nom,
+                    "ppc": 0.0
                 }
         clean_fi = {}
         for tk, val in pf_entry.get("fixed_income_holdings", {}).items():
@@ -129,16 +104,19 @@ def load_all_user_holdings() -> Dict[str, Any]:
             if isinstance(val, dict):
                 nom = int(val.get("nominals", 0))
                 p_ppc = val.get("ppc")
-                if p_ppc is None or p_ppc <= 0:
-                    p_ppc = ppc_map.get(clean_tk)
+                if nom <= 0:
+                    continue
                 clean_fi[clean_tk] = {
-                    "nominals": max(0, nom),
+                    "nominals": nom,
                     "ppc": float(p_ppc) if p_ppc and float(p_ppc) > 0 else 0.0
                 }
             elif isinstance(val, (int, float)):
+                nom = int(val)
+                if nom <= 0:
+                    continue
                 clean_fi[clean_tk] = {
-                    "nominals": max(0, int(val)),
-                    "ppc": ppc_map.get(clean_tk) or 0.0
+                    "nominals": nom,
+                    "ppc": 0.0
                 }
 
         cash = float(pf_entry.get("cash_ars", 0.0))
@@ -190,7 +168,7 @@ def save_user_holdings(data: Dict[str, Any], portfolio_key: Optional[str] = None
     - Si portfolio_key está provisto o data tiene 'portfolio', actualiza esa cartera específica.
     - Si data tiene formato {'holdings': ..., 'cash_ars': ...}, actualiza 'bmb' por defecto.
     - Si data es un diccionario multi-cartera ({'bmb': ..., DEFAULT_PORTFOLIO_MODE: ...}), actualiza todas las carteras.
-    Sincroniza siempre los PPCs con ppc_service.
+    El PPC se persiste únicamente dentro de la fila de tenencia de cada cartera.
     """
     if not isinstance(data, dict):
         return
@@ -209,14 +187,13 @@ def save_user_holdings(data: Dict[str, Any], portfolio_key: Optional[str] = None
             nom = max(0, _safe_int(val.get("nominals", 0)))
             ppc_val = val.get("ppc")
             ppc_f = _safe_float(ppc_val)
-            if nom > 0 or ppc_f is not None:
+            if nom > 0:
+                # El PPC vive únicamente en la tenencia: sin nominales no hay fila.
                 # Nunca persistir None: la columna ppc es NOT NULL y float(None) aborta la transacción
                 clean_holdings[clean_tk] = {
                     "nominals": nom,
                     "ppc": ppc_f if (ppc_f and ppc_f > 0) else 0.0
                 }
-                if ppc_f and ppc_f > 0:
-                    save_ppc_value(clean_tk, ppc_f)
 
         existing_fi = all_data.get(target_pf, {}).get("fixed_income_holdings", {})
         fi_dict = data.get("fixed_income_holdings", existing_fi)
@@ -228,14 +205,12 @@ def save_user_holdings(data: Dict[str, Any], portfolio_key: Optional[str] = None
             nom = max(0, _safe_int(val.get("nominals", 0)))
             ppc_val = val.get("ppc")
             ppc_f = _safe_float(ppc_val)
-            if nom > 0 or ppc_f is not None:
+            if nom > 0:
                 # Nunca persistir None: la columna ppc es NOT NULL
                 clean_fi[clean_tk] = {
                     "nominals": nom,
                     "ppc": ppc_f if (ppc_f and ppc_f > 0) else 0.0
                 }
-                if ppc_f and ppc_f > 0:
-                    save_ppc_value(clean_tk, ppc_f)
 
         if "cash_ars" in data and data["cash_ars"] is not None:
             cash = max(0.0, _safe_float(data["cash_ars"], default=0.0) or 0.0)
@@ -258,13 +233,11 @@ def save_user_holdings(data: Dict[str, Any], portfolio_key: Optional[str] = None
                 nom = max(0, _safe_int(val.get("nominals", 0)))
                 ppc_val = val.get("ppc")
                 ppc_f = _safe_float(ppc_val)
-                if nom > 0 or ppc_f is not None:
+                if nom > 0:
                     clean_holdings[clean_tk] = {
                         "nominals": nom,
                         "ppc": ppc_f if ppc_f and ppc_f > 0 else 0.0
                     }
-                    if ppc_f and ppc_f > 0:
-                        save_ppc_value(clean_tk, ppc_f)
 
             existing_fi = all_data.get(pf_k, {}).get("fixed_income_holdings", {})
             fi_dict = pf_v.get("fixed_income_holdings", existing_fi)
@@ -276,13 +249,11 @@ def save_user_holdings(data: Dict[str, Any], portfolio_key: Optional[str] = None
                 nom = max(0, _safe_int(val.get("nominals", 0)))
                 ppc_val = val.get("ppc")
                 ppc_f = _safe_float(ppc_val)
-                if nom > 0 or ppc_f is not None:
+                if nom > 0:
                     clean_fi[clean_tk] = {
                         "nominals": nom,
                         "ppc": ppc_f if ppc_f and ppc_f > 0 else 0.0
                     }
-                    if ppc_f and ppc_f > 0:
-                        save_ppc_value(clean_tk, ppc_f)
 
             if "cash_ars" in pf_v and pf_v["cash_ars"] is not None:
                 cash = max(0.0, _safe_float(pf_v["cash_ars"], default=0.0) or 0.0)
@@ -297,6 +268,26 @@ def save_user_holdings(data: Dict[str, Any], portfolio_key: Optional[str] = None
     _db.save(all_data)
 
 
+def _resolve_ppc(ppc: Optional[float], previous: Optional[float]) -> float:
+    """Resuelve el PPC a persistir.
+
+    Regla de negocio:
+    - ``ppc is None`` → el dato no fue enviado: conservar el PPC anterior.
+    - ``ppc`` vacío/0 (o inválido) → borrar el PPC dejándolo en 0.
+    """
+    if ppc is None:
+        try:
+            prev = float(previous) if previous is not None else 0.0
+        except (TypeError, ValueError):
+            return 0.0
+        return prev if prev > 0 else 0.0
+    try:
+        value = float(ppc)
+    except (TypeError, ValueError):
+        return 0.0
+    return value if value > 0 else 0.0
+
+
 def update_holding(ticker: str, nominals: int, ppc: Optional[float] = None, portfolio_key: str = "bmb") -> Dict[str, Any]:
     """Actualiza o agrega un activo individual a la tenencia real de una cartera específica."""
     clean_tk = sanitize_ticker(ticker)
@@ -304,12 +295,14 @@ def update_holding(ticker: str, nominals: int, ppc: Optional[float] = None, port
         return load_user_holdings(portfolio_key)
     
     current = load_user_holdings(portfolio_key)
-    if nominals <= 0 and (ppc is None or ppc <= 0):
+    if nominals <= 0:
+        # Sin tenencia no hay PPC: se elimina la fila completa.
         current["holdings"].pop(clean_tk, None)
     else:
+        previous = current["holdings"].get(clean_tk, {}).get("ppc")
         current["holdings"][clean_tk] = {
             "nominals": max(0, int(nominals)),
-            "ppc": float(ppc) if ppc and float(ppc) > 0 else (current["holdings"].get(clean_tk, {}).get("ppc") or 0.0)
+            "ppc": _resolve_ppc(ppc, previous),
         }
     save_user_holdings(current, portfolio_key=portfolio_key)
     return current
@@ -334,12 +327,14 @@ def update_fixed_income_holding(ticker: str, nominals: int, ppc: Optional[float]
     
     current = load_user_holdings(portfolio_key)
     fi = current.get("fixed_income_holdings", {})
-    if nominals <= 0 and (ppc is None or ppc <= 0):
+    if nominals <= 0:
+        # Sin tenencia no hay PPC: se elimina la fila completa.
         fi.pop(clean_tk, None)
     else:
+        previous = fi.get(clean_tk, {}).get("ppc")
         fi[clean_tk] = {
             "nominals": max(0, int(nominals)),
-            "ppc": float(ppc) if ppc and float(ppc) > 0 else (fi.get(clean_tk, {}).get("ppc") or 0.0)
+            "ppc": _resolve_ppc(ppc, previous),
         }
     current["fixed_income_holdings"] = fi
     save_user_holdings(current, portfolio_key=portfolio_key)
@@ -551,6 +546,12 @@ def analyze_rotation(
         h = fixed_income.get(tk, {}) if is_fi else holdings.get(tk, {})
         real_noms = h.get("nominals", 0)
         ppc = h.get("ppc")
+        try:
+            ppc = float(ppc) if ppc is not None else None
+        except (TypeError, ValueError):
+            ppc = None
+        if ppc is not None and ppc <= 0:
+            ppc = None
         
         real_value = real_noms * price
         real_weight = (real_value / total_consolidated_equity * 100.0) if total_consolidated_equity > 0 else 0.0

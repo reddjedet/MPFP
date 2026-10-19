@@ -1,42 +1,59 @@
 import unittest
-import tempfile
-from pathlib import Path
 
 from services.ppc_service import (
-    get_ppc_value,
-    save_ppc_value,
     evaluate_ppc_return,
     parse_price_input,
-    _db
 )
+
 
 class TestPpcService(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        initial_data = dict(_db.load() if isinstance(_db.load(), dict) else {})
-        cls._tmp_dir = tempfile.TemporaryDirectory()
-        cls._orig_path = _db.file_path
-        _db.file_path = Path(cls._tmp_dir.name) / "ppc_values.json"
-        _db._cache = None
-        _db._cache_valid = False
-        _db.save(initial_data)
-
-    @classmethod
-    def tearDownClass(cls):
-        _db.file_path = cls._orig_path
-        _db._cache = None
-        _db._cache_valid = False
-        cls._tmp_dir.cleanup()
-
     def test_parse_price_input(self):
-
         self.assertEqual(parse_price_input("29.959,90"), 29959.90)
         self.assertEqual(parse_price_input("15971.31"), 15971.31)
         self.assertEqual(parse_price_input(1000.5), 1000.50)
         self.assertIsNone(parse_price_input(""))
         self.assertIsNone(parse_price_input("-"))
         self.assertIsNone(parse_price_input("invalid"))
+
+    def test_no_global_store_api(self):
+        """El PPC dejó de ser global: ppc_service ya no expone un store."""
+        import services.ppc_service as ppc_service
+
+        for forbidden in ("_db", "load_ppc_values", "get_ppc_value", "save_ppc_value", "save_bulk_ppc_values"):
+            self.assertFalse(hasattr(ppc_service, forbidden), f"ppc_service no debe exponer {forbidden}")
+
+    def test_ppc_solo_vive_en_la_tenencia_por_cartera(self):
+        """No debe existir archivo/store global de PPC: el dato vive en user_holdings."""
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parent.parent
+        self.assertFalse(
+            (root / "data" / "ppc_values.json").exists(),
+            "data/ppc_values.json ya no debe existir; el PPC vive en la tenencia de cada cartera",
+        )
+
+        offenders = []
+        for base in (root / "services", root / "routers"):
+            for path in base.rglob("*.py"):
+                text = path.read_text(encoding="utf-8")
+                if 'SQLiteTableStore("ppc_values"' in text or "SQLiteTableStore('ppc_values'" in text:
+                    offenders.append(str(path.relative_to(root)))
+        self.assertEqual(offenders, [])
+
+    def test_ningun_modulo_importa_el_store_global(self):
+        """Ningún módulo de services/ ni routers/ referencia el store global de PPC."""
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parent.parent
+        forbidden = ("load_ppc_values", "get_ppc_value", "save_ppc_value", "save_bulk_ppc_values")
+        offenders = []
+        for base in (root / "services", root / "routers"):
+            for path in base.rglob("*.py"):
+                text = path.read_text(encoding="utf-8")
+                if any(name in text for name in forbidden):
+                    offenders.append(str(path.relative_to(root)))
+        self.assertEqual(offenders, [])
 
     def test_evaluate_ppc_return_surge_and_discount(self):
         # Suba de +70% -> Take Profit
@@ -68,14 +85,12 @@ class TestPpcService(unittest.TestCase):
         self.assertIsNotNone(neg)
         self.assertEqual(neg["return_pct"], -5.0)
 
-    def test_ppc_persistence(self):
-        save_ppc_value("TESTTK", "12.345,67")
-        val = get_ppc_value("TESTTK")
-        self.assertEqual(val, 12345.67)
-        
-        # Limpieza
-        save_ppc_value("TESTTK", "")
-        self.assertIsNone(get_ppc_value("TESTTK"))
+    def test_evaluate_ppc_return_sin_ppc_es_none(self):
+        """Función pura: sin PPC explícito no hay cálculo (nunca busca un valor global)."""
+        self.assertIsNone(evaluate_ppc_return("GOOGL", current_price_ars=13000.0))
+        self.assertIsNone(evaluate_ppc_return("GOOGL", current_price_ars=13000.0, ppc_val=0))
+        self.assertIsNone(evaluate_ppc_return("GOOGL", current_price_ars=None, ppc_val=7619.66))
+
 
 if __name__ == "__main__":
     unittest.main()

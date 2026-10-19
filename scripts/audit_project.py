@@ -34,9 +34,7 @@ def check_database():
             print(f"  ℹ️ Entorno limpio detectado ({len(seeds)} seeds .example). Ejecutando bootstrap de persistencia...")
             try:
                 from services.portfolio_service import load_portfolios
-                from services.ppc_service import load_ppc_values
                 load_portfolios()
-                load_ppc_values()
             except Exception as e:
                 print(f"  ⚠️ Bootstrap parcial: {e}")
     
@@ -146,14 +144,12 @@ def check_database():
         else:
             print("  ⚠️ Archivo user_valuation_inputs.json no encontrado.")
             
-        # Verificar base de datos de Precio Promedio de Compra (PPC)
-        ppc_path = ROOT_DIR / "data" / "ppc_values.json"
-        if ppc_path.exists():
-            with open(ppc_path, "r", encoding="utf-8") as f:
-                ppc_data = json.load(f)
-            print(f"  ✅ Precios Promedio de Compra (PPC): {len(ppc_data)} activos registrados con persistencia global.")
+        # Verificar Precio Promedio de Compra (PPC) por cartera
+        ppc_legacy_path = ROOT_DIR / "data" / "ppc_values.json"
+        if ppc_legacy_path.exists():
+            print("  ⚠️ ppc_values.json legado presente: el PPC global ya no se usa (debe renombrarse).")
         else:
-            print("  ⚠️ Archivo ppc_values.json no encontrado.")
+            print("  ✅ PPC por cartera: sin store global (la tenencia de cada cartera es la fuente de verdad).")
 
         # Verificar base de datos de P/Normalized FCF (P/FCF)
         pfcf_path = ROOT_DIR / "data" / "pfcf_values.json"
