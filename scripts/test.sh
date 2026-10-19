@@ -17,6 +17,12 @@ PYTHON_BIN="${PYTHON_BIN:-${DIR}/venv/bin/python}"
 if [ ! -x "${PYTHON_BIN}" ]; then PYTHON_BIN="python3"; fi
 SCRATCH_DIR="${DIR}/scratch"
 mkdir -p "${SCRATCH_DIR}"
+# Limpiar restos de ejecuciones interrumpidas (>24 h). Los tests usan
+# TemporaryDirectory, pero un SIGKILL puede dejar estos directorios huérfanos.
+find "${SCRATCH_DIR}" -maxdepth 1 -type d -name 'mpfp_test_data_*' -mmin +1440 \
+    -print -exec rm -rf -- {} + 2>/dev/null || true
+find "${SCRATCH_DIR}" -maxdepth 1 -type f -name '.data-snapshot.*' -mmin +1440 \
+    -print -delete 2>/dev/null || true
 DATA_SNAPSHOT=""
 CLEAN_DATA_DIR=""
 AUDIT_DATA_DIR=""
