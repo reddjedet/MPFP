@@ -30,6 +30,9 @@ export const EtfRotationBarChart = ({ data, displayedItems }: { data: EtfRotatio
       const isPositive = diff >= 0;
       return {
         value: diff,
+        label: {
+          position: isPositive ? 'right' : 'left'
+        },
         itemStyle: {
           color: isPositive ? 'rgba(167, 192, 128, 0.85)' : 'rgba(230, 126, 128, 0.85)',
           borderRadius: isPositive ? [0, 4, 4, 0] : [4, 0, 0, 4]
@@ -122,7 +125,6 @@ export const EtfRotationBarChart = ({ data, displayedItems }: { data: EtfRotatio
           barWidth: '62%',
           label: {
             show: true,
-            position: (params: any) => params.value >= 0 ? 'right' : 'left',
             distance: 6,
             fontSize: 9.5,
             fontFamily: 'monospace',

@@ -1,17 +1,26 @@
-import React from 'react';
-import { Compass, RefreshCw, Activity, Sparkles, ArrowUpRight, ArrowDownRight, Search } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Compass, RefreshCw, Activity, Sparkles, ArrowUpRight, ArrowDownRight, Search, BarChart3 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { useEtfRotation, EtfItem } from '@/hooks/useEtfRotation';
 import { EtfRotationBarChart } from './EtfRotationBarChart';
+import { EtfRotationGraph } from './EtfRotationGraph';
 
 export const EtfRotationView: React.FC = () => {
   const { openTickerDrawer: openTicker360 } = useAppStore();
+  const [chartMode, setChartMode] = useState<'differential' | 'rrg'>('differential');
   const {
     data, loading, refreshing, searchFilter, setSearchFilter,
     universeFilter, setUniverseFilter,
     fetchData, spyItem, majorIndices, filteredMajorIndices,
-    filteredSectorItems, displayedItems, topLeader, topLaggard
+    filteredSectorItems, displayedItems, topLeader, topLaggard,
+    rrgData, rrgLoading, rrgError, loadRrg, displayedRrgPoints
   } = useEtfRotation();
+
+  useEffect(() => {
+    if (chartMode === 'rrg' && !rrgData && !rrgLoading) {
+      void loadRrg();
+    }
+  }, [chartMode, rrgData, rrgLoading, loadRrg]);
 
   if (loading && !data) {
     return (
@@ -150,23 +159,73 @@ export const EtfRotationView: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Ranking de diferencial semanal vs SPY */}
+      {/* 3. Rotación vs SPY: diferencial semanal o Relative Rotation Graph */}
       <div className="grid grid-cols-1 gap-4">
         <div className="bg-secondary border border-border rounded-xl p-4 flex flex-col shadow-sm">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-2 mb-2 border-b border-border">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-                <Activity className="w-4 h-4 text-positive" />
-                Diferencial Semanal vs SPY (1W, p.p.)
+                {chartMode === 'differential' ? (
+                  <>
+                    <Activity className="w-4 h-4 text-positive" />
+                    Diferencial Semanal vs SPY (1W, p.p.)
+                  </>
+                ) : (
+                  <>
+                    <Compass className="w-4 h-4 text-positive" />
+                    Relative Rotation Graph (RRG) vs SPY
+                  </>
+                )}
               </h2>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Sobre-rendimiento (+) o rezago (-) respecto a SPY durante una semana
+                {chartMode === 'differential'
+                  ? 'Sobre-rendimiento (+) o rezago (-) respecto a SPY durante una semana'
+                  : 'Fuerza relativa (RS-Ratio) vs momentum (RS-Momentum) vs SPY. Cola de 8 semanas; centro = 100'}
               </p>
+            </div>
+
+            <div className="flex items-center bg-secondary border border-border p-0.5 rounded-lg text-xs font-medium self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setChartMode('differential')}
+                aria-pressed={chartMode === 'differential'}
+                className={`px-2.5 py-1 rounded transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
+                  chartMode === 'differential'
+                    ? 'bg-emerald-600 text-foreground font-bold'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <BarChart3 className="w-3 h-3" />
+                Diferencial 1W
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartMode('rrg')}
+                aria-pressed={chartMode === 'rrg'}
+                className={`px-2.5 py-1 rounded transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
+                  chartMode === 'rrg'
+                    ? 'bg-emerald-600 text-foreground font-bold'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Compass className="w-3 h-3" />
+                RRG
+              </button>
             </div>
           </div>
 
-          <div className="w-full h-[360px]">
-            <EtfRotationBarChart data={data} displayedItems={displayedItems} />
+          <div className="w-full h-[460px]">
+            {chartMode === 'differential' ? (
+              <EtfRotationBarChart data={data} displayedItems={displayedItems} />
+            ) : (
+              <EtfRotationGraph
+                data={rrgData}
+                points={displayedRrgPoints}
+                loading={rrgLoading}
+                error={rrgError}
+                onRetry={() => { void loadRrg(true); }}
+              />
+            )}
           </div>
         </div>
       </div>

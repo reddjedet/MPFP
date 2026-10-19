@@ -207,7 +207,6 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({ data, pfType, on
       cell: info => {
         const row = info.row.original;
         const earningsText = row.earnings_badge?.badge_text || row.earnings_badge?.text;
-        const gfText = row.gf_signal?.badge_text;
         const pfcfText = row.pfcf_signal?.badge_text;
         const isEtf = row.is_etf || KNOWN_ETFS.has(info.getValue());
 
@@ -237,16 +236,11 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({ data, pfType, on
             </div>
               
               {/* Badge Stack de Señales */}
-              {(earningsText || gfText || pfcfText) && (
+              {(earningsText || pfcfText) && (
                 <div className="flex flex-wrap items-center gap-1 mt-1">
                   {earningsText && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-400 font-bold border border-orange-500/30">
                       {earningsText}
-                    </span>
-                  )}
-                  {gfText && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 font-bold border border-blue-500/30">
-                      {gfText}
                     </span>
                   )}
                   {pfcfText && (
@@ -373,7 +367,10 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({ data, pfType, on
           const sig = info.getValue();
           if (!sig) return <span className="text-zinc-600 font-mono text-xs">—</span>;
           return (
-            <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/25">
+            <span
+              title={sig.tooltip}
+              className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/25"
+            >
               {sig.badge_text}
             </span>
           );

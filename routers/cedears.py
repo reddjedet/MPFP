@@ -239,6 +239,7 @@ def get_single_cedear_json(ticker: str, portfolio: Optional[str] = Query(None)):
 
 
 from services.etf_service import fetch_sector_etf_thermometer, fetch_etf_rotation_analysis
+from services.etf_rrg_service import fetch_etf_rrg
 
 @router.get("/etf_thermometer", response_class=JSONResponse)
 def get_etf_thermometer_endpoint():
@@ -248,4 +249,14 @@ def get_etf_thermometer_endpoint():
 @router.get("/etf_rotation_analysis", response_class=JSONResponse)
 def get_etf_rotation_analysis_endpoint(universe: str = "sectors"):
     data = fetch_etf_rotation_analysis(universe=universe)
+    return JSONResponse(data)
+
+@router.get("/etf_rrg", response_class=JSONResponse)
+def get_etf_rrg_endpoint(
+    universe: str = Query("sectors", pattern="^(sectors|thematic|all)$"),
+    weeks: int = Query(52, ge=26, le=104),
+    tail: int = Query(8, ge=3, le=12),
+):
+    """Relative Rotation Graph semanal de ETFs vs SPY (RS-Ratio / RS-Momentum)."""
+    data = fetch_etf_rrg(universe=universe, weeks=weeks, tail=tail)
     return JSONResponse(data)
