@@ -14,12 +14,66 @@ from services.data_paths import data_file
 RATIOS_FILE = data_file("cedear_ratios.json")
 _ratios_db = AtomicJsonDatabase(RATIOS_FILE)
 
-# Las bases SQLite ya inicializadas no vuelven a importar automáticamente el JSON seed.
-_CEDEAR_RATIO_BACKFILL_TICKERS = ("GEV", "ISRG")
+# La app no expone edición de ratios (save_cedear_ratio no tiene callers), así que el JSON
+# versionado es la única fuente de verdad: todo valor guardado que difiera del seed es drift
+# y se realinea en el arranque.
+_CEDEAR_TICKER_ALIASES = {
+    "BRK.B": "BRKB",  # forma de TradingView/GuruFocus
+    # Tickers que BYMA dejó de usar: el CEDEAR sigue existiendo pero cambió de
+    # símbolo. El alias evita romper las carteras que ya los tienen cargados.
+    "DIS": "DISN",    # Walt Disney
+    "FB": "META",     # Facebook -> Meta Platforms
+    "SQ": "XYZ",      # Square -> Block
+    "TX": "TXR",      # Ternium
+    "TSU": "TXR",     # Ternium Sucursal
+    "X": "TWTR",      # X Corp (BYMA conserva el símbolo viejo en su lista)
+    "GOLD": "B",      # Barrick Gold
+    "NU": "UN",       # Nu Holdings (BYMA lo publica como UN)
+}
 
 
-def _backfill_missing_cedear_ratios(ratios_db: AtomicJsonDatabase, seed_ratios: dict) -> None:
-    """Añade al SQLite ratios nuevos del catálogo seed sin pisar valores guardados."""
+def _resolve_ratio_ticker(ticker: str) -> str:
+    """Normaliza un ticker y resuelve sus alias contra el catálogo (ej. BRK.B -> BRKB)."""
+    clean = str(ticker).upper().strip()
+    return _CEDEAR_TICKER_ALIASES.get(clean, clean)
+
+
+def resolve_ticker_alias(ticker: str) -> str:
+    """Resuelve un ticker al símbolo vigente del catálogo.
+
+    BYMA retiró varios símbolos que la app conserva en carteras históricas
+    (DIS, FB, SQ, TX...). Este es el único punto de traducción y lo consumen
+    tanto los ratios como el mapa sectorial.
+    """
+    return _resolve_ratio_ticker(ticker)
+
+
+def _coerce_ratio(value) -> float | None:
+    """Devuelve un ratio positivo y finito, o None si el valor no es utilizable."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if not math.isfinite(value) or value <= 0:
+        return None
+    return float(value)
+
+
+def _apply_ratio_aliases(ratios: dict) -> dict:
+    """Proyecta los alias sobre el catálogo para que BRK.B resuelva igual que BRKB."""
+    resolved = dict(ratios)
+    for alias, canonical in _CEDEAR_TICKER_ALIASES.items():
+        if canonical in resolved and alias not in resolved:
+            resolved[alias] = resolved[canonical]
+    return resolved
+
+
+def _sync_cedear_ratios(ratios_db: AtomicJsonDatabase, seed_ratios: dict) -> None:
+    """Realinea el store con el seed: inserta ratios nuevos, corrige los
+    divergentes y da de baja los tickers que BYMA ya no publica.
+
+    El prune importa tanto como el upsert: sin él, un ticker retirado del
+    catálogo queda aceptando carteras para siempre y el store se va llenando
+    de símbolos que la bolsa ya no reconoce.
+    """
     if not isinstance(seed_ratios, dict):
         return
 
@@ -27,48 +81,51 @@ def _backfill_missing_cedear_ratios(ratios_db: AtomicJsonDatabase, seed_ratios: 
     if not isinstance(stored_ratios, dict):
         return
 
-    stored_tickers = {str(ticker).upper() for ticker in stored_ratios}
-    for ticker in _CEDEAR_RATIO_BACKFILL_TICKERS:
-        if ticker in stored_tickers:
+    vigente: set[str] = set()
+    for ticker, raw_ratio in seed_ratios.items():
+        ratio = _coerce_ratio(raw_ratio)
+        if ratio is None:
             continue
 
-        ratio = seed_ratios.get(ticker)
-        if isinstance(ratio, bool) or not isinstance(ratio, (int, float)):
+        clean = _resolve_ratio_ticker(ticker)
+        vigente.add(clean)
+        stored = _coerce_ratio(stored_ratios.get(clean))
+        if stored is not None and math.isclose(stored, ratio, rel_tol=1e-9, abs_tol=1e-9):
             continue
-        if not math.isfinite(ratio) or ratio <= 0:
-            continue
 
-        ratios_db.set_item(ticker, float(ratio))
-        stored_tickers.add(ticker)
+        ratios_db.set_item(clean, ratio)
+
+    for retirado in sorted(set(stored_ratios) - vigente):
+        ratios_db.delete_item(retirado)
 
 
-def _apply_cedear_ratio_backfill() -> None:
-    """Migra al SQLite existente los CEDEARs añadidos al catálogo versionado."""
+def _apply_cedear_ratio_sync() -> None:
+    """Migra al SQLite existente el catálogo versionado de ratios (altas y correcciones)."""
     try:
         with RATIOS_FILE.open("r", encoding="utf-8") as ratios_file:
             seed_ratios = json.load(ratios_file)
-        _backfill_missing_cedear_ratios(_ratios_db, seed_ratios)
+        _sync_cedear_ratios(_ratios_db, seed_ratios)
     except Exception as exc:
         logger.warning("No se pudo actualizar el catálogo SQLite de CEDEARs: %s", exc)
 
 
-_apply_cedear_ratio_backfill()
+_apply_cedear_ratio_sync()
 
 
 def load_cedear_ratios() -> dict[str, float]:
     """Carga los ratios de conversión de CEDEARs desde persistencia atómica."""
-    return _ratios_db.load()
+    return _apply_ratio_aliases(_ratios_db.load())
 
 def save_cedear_ratio(ticker: str, ratio: float) -> None:
     """Guarda o actualiza el ratio de conversión de un CEDEAR."""
     data = _ratios_db.load()
-    data[ticker.upper().strip()] = float(ratio)
+    data[_resolve_ratio_ticker(ticker)] = float(ratio)
     _ratios_db.save(data)
 
 def get_cedear_ratio(ticker: str) -> float | None:
-    """Obtiene el ratio de conversión de un CEDEAR por ticker."""
+    """Obtiene el ratio de conversión de un CEDEAR por ticker, resolviendo alias."""
     ratios = load_cedear_ratios()
-    return ratios.get(ticker.upper().strip())
+    return ratios.get(_resolve_ratio_ticker(ticker))
 
 class _RatiosProxy(dict):
     """Proxy dinámico para retrocompatibilidad total con accesos a CEDEAR_RATIOS."""

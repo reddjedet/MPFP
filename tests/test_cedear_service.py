@@ -37,35 +37,173 @@ class TestCedearService(unittest.TestCase):
         self.assertIn("NEE", CEDEAR_RATIOS)
         self.assertEqual(CEDEAR_RATIOS["NEE"], 19.0)
         self.assertGreater(CEDEAR_RATIOS["AAPL"], 0)
-        self.assertEqual(CEDEAR_RATIOS["GEV"], 1.0)
+        self.assertEqual(CEDEAR_RATIOS["GEV"], 180.0)
         self.assertEqual(CEDEAR_RATIOS["ISRG"], 90.0)
+
+    def test_catalog_matches_byma_official_ratios(self):
+        """Regresión del refresco contra la lista oficial de BYMA.
+
+        El catálogo venía de una tabla de Comafi con 182 CEDEARs menos, por lo
+        que el armador rechazaba 161 CEDEARs negociables (CRWD, PANW, CIBR,
+        MRVL...). Estos pines detectan tanto una vuelta al origen viejo como
+        un ratio placeholder (varioscekears tenían 1 sin informar).
+        """
+        from services.cedear_service import get_cedear_ratio
+
+        esperado = {
+            "PANW": 50.0,   # Palo Alto Networks
+            "CRWD": 79.0,   # CrowdStrike
+            "CIBR": 10.0,   # First Trust NASDAQ Cybersecurity
+            "MRVL": 14.0,   # Marvell
+            "NBIS": 27.0,   # Nebius
+            "GEV": 180.0,   # GE Vernova
+            "XLU": 15.0,    # Utilities Select Sector SPDR
+            "AAPL": 20.0,
+            "NVDA": 24.0,
+        }
+        for ticker, ratio in esperado.items():
+            with self.subTest(ticker=ticker):
+                self.assertEqual(get_cedear_ratio(ticker), ratio)
+
+    def test_no_placeholder_ratios_left_in_catalog(self):
+        """Un ratio de 1 con subyacente caro es un placeholder, no un dato.
+
+        Se comparan contra el precio relativo: si 1 CEDEAR vale lo mismo que
+        1 acción, el ratio 1 sólo puede ser real para subyacentes baratos.
+        """
+        from services.cedear_service import get_cedear_ratio
+
+        # Underlying en USD > 100 USD con ratio 1: el catálogo está mintiendo.
+        caros_en_1_a_1 = ["GEV", "CRWV", "MRVL", "NBIS", "GEV", "RGTI", "FCX"]
+        for ticker in caros_en_1_a_1:
+            with self.subTest(ticker=ticker):
+                ratio = get_cedear_ratio(ticker)
+                self.assertIsNotNone(ratio, f"{ticker} deberia estar catalogado")
+                self.assertGreater(ratio, 1.0, f"{ticker} quedo como ratio 1:1")
+
+    def test_retired_tickers_are_rejected_and_aliases_still_work(self):
+        """BYMA cambió de símbolo varios CEDEARs: el viejo se rechaza, el alias no."""
+        from services.cedear_service import get_cedear_ratio
+        from services.portfolio_service import find_non_cedear_tickers
+
+        # Tickers que BYMA ya no publica (incluye SI: emisor quebrado en 2023).
+        self.assertEqual(
+            find_non_cedear_tickers(["ACH", "CHA", "WBK", "TEFO", "SI"]),
+            ["ACH", "CHA", "SI", "TEFO", "WBK"],
+        )
+        # Alias de símbolos retirados por BYMA, con su ticker vigente.
+        self.assertEqual(
+            find_non_cedear_tickers(["DIS", "FB", "SQ", "TX", "TSU", "X", "GOLD", "NU"]),
+            [],
+        )
+        for alias, ratio in (("DIS", 12.0), ("FB", 24.0), ("SQ", 20.0),
+                             ("TX", 4.0), ("GOLD", 2.0), ("NU", 2.0)):
+            with self.subTest(alias=alias):
+                self.assertEqual(get_cedear_ratio(alias), ratio)
+
+    def test_sync_prunes_tickers_that_byma_retired(self):
+        """Sin prune, un ticker dado de baja queda aceptando carteras para siempre."""
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        from services.atomic_persistence import AtomicJsonDatabase
+        from services.cedear_service import _sync_cedear_ratios
+
+        scratch_dir = Path(__file__).resolve().parents[1] / "scratch"
+        with TemporaryDirectory(dir=scratch_dir) as temp_dir:
+            ratios_db = AtomicJsonDatabase(Path(temp_dir) / "cedear_ratios.json")
+            ratios_db.save({"AAPL": 20.0, "SI": 10.0, "WBK": 3.0})
+
+            _sync_cedear_ratios(ratios_db, {"AAPL": 20.0, "PANW": 50.0})
+
+            stored = ratios_db.load()
+            self.assertEqual(stored["AAPL"], 20.0)
+            self.assertEqual(stored["PANW"], 50.0)
+            self.assertNotIn("SI", stored)
+            self.assertNotIn("WBK", stored)
+
+    def test_backfill_inserts_missing_ratios_and_corrects_drift(self):
+        """El JSON versionado es la fuente de verdad: inserta altas y realinea divergencias."""
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        from services.atomic_persistence import AtomicJsonDatabase
+        from services.cedear_service import _sync_cedear_ratios
+
+        scratch_dir = Path(__file__).resolve().parents[1] / "scratch"
+        with TemporaryDirectory(dir=scratch_dir) as temp_dir:
+            ratios_db = AtomicJsonDatabase(Path(temp_dir) / "cedear_ratios.json")
+            # Store replicando el drift histórico: valores viejos de la tabla SQLite.
+            ratios_db.save({"SPY": 20.0, "SNDK": 1.0})
+
+            _sync_cedear_ratios(
+                ratios_db,
+                {"SPY": 60.0, "SNDK": 170.0, "MRNA": 19.0},
+            )
+
+            stored = ratios_db.load()
+            self.assertEqual(stored["SPY"], 60.0)
+            self.assertEqual(stored["SNDK"], 170.0)
+            self.assertEqual(stored["MRNA"], 19.0)
+
+    def test_ratio_sync_skips_unusable_seed_values(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        from services.atomic_persistence import AtomicJsonDatabase
+        from services.cedear_service import _sync_cedear_ratios
+
+        scratch_dir = Path(__file__).resolve().parents[1] / "scratch"
+        with TemporaryDirectory(dir=scratch_dir) as temp_dir:
+            ratios_db = AtomicJsonDatabase(Path(temp_dir) / "cedear_ratios.json")
+            ratios_db.save({"SPY": 60.0})
+
+            _sync_cedear_ratios(ratios_db, {
+                "SPY": 60.0, "ZERO": 0.0, "NEG": -4.0,
+                "NAN": float("nan"), "FLAG": True, "TXT": "veinte",
+            })
+
+            stored = ratios_db.load()
+            self.assertEqual(stored["SPY"], 60.0)
+            for ticker in ("ZERO", "NEG", "NAN", "FLAG", "TXT"):
+                self.assertNotIn(ticker, stored)
+
+    def test_ratio_alias_resolves_brk_dot_b_to_brkb(self):
+        """BRK.B es la forma de TradingView/GuruFocus y debe heredar el ratio de BRKB."""
+        from services.cedear_service import CEDEAR_RATIOS, get_cedear_ratio, load_cedear_ratios
+
+        ratios = load_cedear_ratios()
+        self.assertEqual(ratios["BRK.B"], 22.0)
+        self.assertEqual(CEDEAR_RATIOS["BRK.B"], 22.0)
+        self.assertEqual(get_cedear_ratio("BRK.B"), 22.0)
+        self.assertEqual(get_cedear_ratio("brk.b"), 22.0)
+
+    def test_mrna_ratio_is_catalogued(self):
+        from services.cedear_service import CEDEAR_RATIOS, get_cedear_ratio
+
+        self.assertIn("MRNA", CEDEAR_RATIOS)
+        self.assertEqual(get_cedear_ratio("MRNA"), 19.0)
+
+    def test_ratio_store_matches_versioned_seed(self):
+        """Guarda antirregresión: el store no puede divergir del catálogo versionado."""
+        import json
+
+        from services.cedear_service import RATIOS_FILE, load_cedear_ratios
+
+        seed = json.loads(RATIOS_FILE.read_text(encoding="utf-8"))
+        store = load_cedear_ratios()
+        drift = {
+            ticker: (expected, store.get(ticker))
+            for ticker, expected in seed.items()
+            if not isinstance(store.get(ticker), (int, float))
+            or abs(float(expected) - float(store.get(ticker))) > 1e-9
+        }
+        self.assertEqual(drift, {})
 
     def test_new_cedears_are_accepted_by_portfolio_validation(self):
         from services.portfolio_service import find_non_cedear_tickers
 
         self.assertEqual(find_non_cedear_tickers(["GEV", "ISRG"]), [])
-
-    def test_backfill_adds_missing_ratios_without_overwriting_existing_values(self):
-        from pathlib import Path
-        from tempfile import TemporaryDirectory
-
-        from services.atomic_persistence import AtomicJsonDatabase
-        from services.cedear_service import _backfill_missing_cedear_ratios
-
-        scratch_dir = Path(__file__).resolve().parents[1] / "scratch"
-        with TemporaryDirectory(dir=scratch_dir) as temp_dir:
-            ratios_db = AtomicJsonDatabase(Path(temp_dir) / "cedear_ratios.json")
-            ratios_db.save({"AAPL": 20.0, "GEV": 2.0})
-
-            _backfill_missing_cedear_ratios(
-                ratios_db,
-                {"GEV": 1.0, "ISRG": 90.0},
-            )
-
-            stored = ratios_db.load()
-            self.assertEqual(stored["AAPL"], 20.0)
-            self.assertEqual(stored["GEV"], 2.0)
-            self.assertEqual(stored["ISRG"], 90.0)
 
     def test_get_all_portfolio_tickers(self):
         from services.portfolio_service import get_all_portfolio_tickers
@@ -91,7 +229,7 @@ class TestCedearService(unittest.TestCase):
         self.assertIn("ISRG", data["tickers"])
 
         catalog = {item["ticker"]: item for item in data["catalog"]}
-        self.assertEqual(catalog["GEV"]["ratio"], 1.0)
+        self.assertEqual(catalog["GEV"]["ratio"], 180.0)
         self.assertEqual(catalog["ISRG"]["ratio"], 90.0)
 
     def test_cedear_alert_inclusive_thresholds(self):

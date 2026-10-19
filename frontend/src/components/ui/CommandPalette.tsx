@@ -57,7 +57,9 @@ const COMMON_BONDS = [
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Catálogo de CEDEARs — cacheado y compartido con CedearsView (misma key)
+  // Catálogo de CEDEARs — cacheado y compartido con CedearsView (misma key).
+  // 5 minutos: con 1 hora las altas nuevas del catálogo quedaban invisibles
+  // para el buscador hasta que venciera la caché.
   const { data: catalogData } = useQuery<{ catalog: any[] }>({
     queryKey: ['cedears-catalog'],
     queryFn: async () => {
@@ -65,7 +67,7 @@ const COMMON_BONDS = [
       if (!res.ok) throw new Error('API error');
       return res.json();
     },
-    staleTime: 3600 * 1000
+    staleTime: 5 * 60 * 1000
   });
   const catalog = catalogData?.catalog ?? [];
 

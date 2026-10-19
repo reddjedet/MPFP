@@ -629,6 +629,25 @@ class TestAPIEndpoints(unittest.TestCase):
         resp_invalid = self.client.get("/api/cedears/quote_json/!INVALID@")
         self.assertEqual(resp_invalid.status_code, 400)
 
+    @patch("routers.cedears.get_multiple_tickers_data")
+    def test_quotes_json_resuelve_ratio_para_brk_dot_b_y_mrna(self, mock_multi):
+        """Contrato: BRK.B hereda el ratio de BRKB y MRNA ya está catalogado."""
+        mock_multi.return_value = {
+            "BRK.B": {"symbol": "BRK.B", "adr": 532.02, "local": 39160.0, "rsi": 50.0,
+                      "ratio": "N/A", "alert": False},
+            "MRNA": {"symbol": "MRNA", "adr": 218.01, "local": 18330.0, "rsi": 50.0,
+                     "ratio": 19.0, "alert": False},
+        }
+        resp = self.client.get("/api/cedears/quotes_json", params={"tickers": "BRK.B,MRNA"})
+        self.assertEqual(resp.status_code, 200)
+        quotes = {q["symbol"]: q for q in resp.json()["quotes"]}
+
+        # El item del provider llega sin ratio ("N/A"): el router debe caer al catálogo.
+        self.assertEqual(quotes["BRK.B"]["ratio"], 22.0)
+        self.assertEqual(quotes["BRK.B"]["cedear_usd"], round(532.02 / 22.0, 2))
+        self.assertEqual(quotes["MRNA"]["ratio"], 19.0)
+        self.assertEqual(quotes["MRNA"]["cedear_usd"], round(218.01 / 19.0, 2))
+
     def test_summary_expone_valor_real_y_coherente(self):
         data = self.client.get("/api/portfolios/rebalance_json/min_drawdown_15").json()
         s = data["summary"]

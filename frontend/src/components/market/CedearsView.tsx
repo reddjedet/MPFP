@@ -105,7 +105,8 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const { openTickerDrawer, setArea, setSubTab } = useAppStore();
 
-  // Catálogo completo de CEDEARs — cacheado y compartido con CommandPalette (misma key)
+  // Catálogo completo de CEDEARs — cacheado y compartido con CommandPalette.
+  // 5 minutos: con 1 hora las altas nuevas quedaban invisibles hasta vencer.
   const { data: catalogData } = useQuery<{ catalog: CedearCatalogItem[] }>({
     queryKey: ['cedears-catalog'],
     queryFn: async () => {
@@ -113,7 +114,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
       if (!res.ok) throw new Error('API Error');
       return res.json();
     },
-    staleTime: 3600 * 1000
+    staleTime: 5 * 60 * 1000
   });
   const catalog = catalogData?.catalog ?? [];
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
