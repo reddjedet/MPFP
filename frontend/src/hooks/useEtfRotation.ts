@@ -34,6 +34,16 @@ export interface EtfRotationData {
 
 export type RrgQuadrant = 'LEADING' | 'WEAKENING' | 'IMPROVING' | 'LAGGING';
 
+export interface RrgMethod {
+  name: string;
+  scale: string;
+  clip: [number, number];
+  smoothing: string;
+  window_weeks: number;
+  momentum: string;
+  complete_weeks_only: boolean;
+}
+
 export interface RrgTrailPoint {
   week: string;
   x: number;
@@ -49,6 +59,7 @@ export interface RrgPoint {
   quadrant: RrgQuadrant;
   quadrant_label: string;
   weeks_in_quadrant: number;
+  quadrant_since: string;
   rsi: number | null;
   rsi_spy: number | null;
   trail: RrgTrailPoint[];
@@ -61,6 +72,8 @@ export interface EtfRrgData {
   tail: number;
   spy_rsi: number | null;
   points: RrgPoint[];
+  skipped?: Array<{ ticker: string; reason: string }>;
+  method?: RrgMethod;
   error?: string | null;
 }
 
@@ -72,56 +85,73 @@ export const useEtfRotation = () => {
   const [data, setData] = useState<EtfRotationData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [universeFilter, setUniverseFilter] = useState<'all' | 'sectors'>('sectors');
   const [rrgData, setRrgData] = useState<EtfRrgData | null>(null);
   const [rrgLoading, setRrgLoading] = useState<boolean>(false);
   const [rrgError, setRrgError] = useState<string | null>(null);
+  const [rrgTail, setRrgTailState] = useState<number>(8);
+  const rrgTailRef = useRef<number>(8);
   const rrgLoadedRef = useRef(false);
-  const rrgInFlightRef = useRef(false);
+  const rrgRequestIdRef = useRef(0);
 
-  const loadRrg = useCallback(async (force = false) => {
-    if (rrgInFlightRef.current) return;
+  const loadRrg = useCallback(async (force = false, tailOverride?: number) => {
     if (!force && rrgLoadedRef.current) return;
 
+    const requestId = ++rrgRequestIdRef.current;
+    const tail = tailOverride ?? rrgTail;
     rrgLoadedRef.current = true;
-    rrgInFlightRef.current = true;
     setRrgLoading(true);
     setRrgError(null);
 
     try {
-      const res = await fetch('/api/cedears/etf_rrg?universe=all&weeks=52&tail=8');
+      const res = await fetch(`/api/cedears/etf_rrg?universe=all&weeks=52&tail=${tail}`);
       if (!res.ok) throw new Error(`Error API: ${res.status}`);
       const json: EtfRrgData = await res.json();
+      // Si llegó una respuesta vieja (cambió la cola), no pisamos la actual.
+      if (requestId !== rrgRequestIdRef.current) return;
       setRrgData(json);
       if (json.error && (!json.points || json.points.length === 0)) {
         setRrgError(json.error);
       }
     } catch (err: any) {
+      if (requestId !== rrgRequestIdRef.current) return;
       setRrgError(err?.message || 'No se pudo cargar el Relative Rotation Graph.');
     } finally {
-      setRrgLoading(false);
-      rrgInFlightRef.current = false;
+      if (requestId === rrgRequestIdRef.current) {
+        setRrgLoading(false);
+      }
     }
-  }, []);
+  }, [rrgTail]);
+
+  const setRrgTail = useCallback((tail: number) => {
+    if (rrgTailRef.current === tail) return;
+    rrgTailRef.current = tail;
+    setRrgTailState(tail);
+    void loadRrg(true, tail);
+  }, [loadRrg]);
 
   const fetchData = async (isManual = false) => {
     if (isManual) setRefreshing(true);
     else setLoading(true);
+    setError(null);
 
     try {
       // Pedimos 'all' para tener todos los ETFs disponibles
       const res = await fetch('/api/cedears/etf_rotation_analysis?universe=all');
-      if (res.ok) {
-        const json = await res.json();
-        // Filtrar TLT y ARGT según directiva del usuario
-        const cleanItems = (json.items || []).filter(
-          (it: EtfItem) => it.ticker !== 'TLT' && it.ticker !== 'ARGT'
-        );
-        setData({ ...json, items: cleanItems });
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}: no se pudo actualizar la rotación de ETFs.`);
       }
+      const json = await res.json();
+      // Filtrar TLT y ARGT según directiva del usuario
+      const cleanItems = (json.items || []).filter(
+        (it: EtfItem) => it.ticker !== 'TLT' && it.ticker !== 'ARGT'
+      );
+      setData({ ...json, items: cleanItems });
     } catch (err) {
       console.error('Error fetching ETF rotation data:', err);
+      setError(err instanceof Error ? err.message : 'Error de conexión al actualizar la rotación de ETFs.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -251,6 +281,7 @@ export const useEtfRotation = () => {
     data,
     loading,
     refreshing,
+    error,
     searchFilter,
     setSearchFilter,
     universeFilter,
@@ -266,6 +297,8 @@ export const useEtfRotation = () => {
     rrgData,
     rrgLoading,
     rrgError,
+    rrgTail,
+    setRrgTail,
     loadRrg,
     rrgUniversePoints,
     displayedRrgPoints

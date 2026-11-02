@@ -550,7 +550,7 @@ export const CedearsView: React.FC<CedearsViewProps> = () => {
           </div>
 
           <button
-            onClick={() => fetchQuotes(watchlist)}
+            onClick={() => fetchQuotes(watchlist, true)}
             disabled={refreshing}
             className="h-9 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-secondary/50 dark:hover:bg-secondary/50 dark:text-muted-foreground dark:hover:text-foreground dark:border-border font-bold text-xs flex items-center gap-2 transition-all shadow-sm"
           >

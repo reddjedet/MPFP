@@ -9,11 +9,11 @@ export const EtfRotationView: React.FC = () => {
   const { openTickerDrawer: openTicker360 } = useAppStore();
   const [chartMode, setChartMode] = useState<'differential' | 'rrg'>('differential');
   const {
-    data, loading, refreshing, searchFilter, setSearchFilter,
+    data, loading, refreshing, error, searchFilter, setSearchFilter,
     universeFilter, setUniverseFilter,
     fetchData, spyItem, majorIndices, filteredMajorIndices,
     filteredSectorItems, displayedItems, topLeader, topLaggard,
-    rrgData, rrgLoading, rrgError, loadRrg,
+    rrgData, rrgLoading, rrgError, rrgTail, setRrgTail, loadRrg,
     rrgUniversePoints, displayedRrgPoints
   } = useEtfRotation();
 
@@ -84,6 +84,12 @@ export const EtfRotationView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+          {error}
+        </div>
+      )}
 
       {/* 2. Menú Superior: EXACTAMENTE las 2 tarjetas de la imagen del usuario */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -181,7 +187,7 @@ export const EtfRotationView: React.FC = () => {
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 {chartMode === 'differential'
                   ? 'Sobre-rendimiento (+) o rezago (-) respecto a SPY durante una semana'
-                  : 'RS-Ratio vs RS-Momentum vs SPY · z-score de 52 semanas (no JdK). Centro 100 = promedio del propio ETF, no empate con SPY. No comparable con el diferencial 1W.'}
+                  : 'Fuerza relativa vs el promedio propio de 52 semanas · escala 100 + 10·z · no JdK. El valor absoluto no compara sectores entre sí; la información está en la trayectoria.'}
               </p>
             </div>
 
@@ -223,6 +229,8 @@ export const EtfRotationView: React.FC = () => {
                 data={rrgData}
                 points={displayedRrgPoints}
                 domainPoints={rrgUniversePoints}
+                tail={rrgTail}
+                onTailChange={setRrgTail}
                 loading={rrgLoading}
                 error={rrgError}
                 onRetry={() => { void loadRrg(true); }}

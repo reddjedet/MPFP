@@ -26,7 +26,11 @@ THEMATIC_ETFS = {
     "ARKK": {"name": "Innovación ARK", "sector": "High Beta Tech", "tv": "AMEX:ARKK", "type": "growth"},
     "EWZ": {"name": "iShares Brasil", "sector": "Brasil Equity", "tv": "AMEX:EWZ", "type": "cyclical"},
     "GLD": {"name": "Oro", "sector": "Commodities", "tv": "AMEX:GLD", "type": "defensive"},
+    "CIBR": {"name": "Ciberseguridad", "sector": "Cybersecurity", "tv": "NASDAQ:CIBR", "type": "growth"},
 }
+
+# Al cambiar la composición del universo se sube esta versión para invalidar la caché.
+ETF_ROTATION_SCHEMA_VERSION = 2
 
 SCANNER_COLUMNS = [
     "name", "close", "change",
@@ -118,11 +122,18 @@ def fetch_sector_etf_thermometer() -> list[dict[str, Any]]:
 
 
 @smart_cache("market_data")
-def fetch_etf_rotation_analysis(universe: str = "sectors") -> dict[str, Any]:
+def fetch_etf_rotation_analysis(
+    universe: str = "sectors",
+    _schema_version: int = ETF_ROTATION_SCHEMA_VERSION,
+) -> dict[str, Any]:
     """
     Análisis cuantitativo institucional de Rotación Sectorial y ETFs frente al SPY.
     Calcula diferenciales multi-horizonte (1W, 1M, 3M, YTD), cuadrantes RRG,
     régimen de mercado (Risk-On vs Risk-Off) y amplitud sectorial.
+
+    Args:
+        universe: "sectors" (11 SPDR), "thematic" o "all".
+        _schema_version: versión interna del payload; invalida la caché.
     """
     selected_meta: dict[str, dict[str, Any]] = {}
     if universe == "thematic":

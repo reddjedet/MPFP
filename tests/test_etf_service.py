@@ -175,6 +175,44 @@ class TestEtfThermometerService(unittest.TestCase):
         self.assertEqual(result["items"][0]["diff_vs_spy_w"], 1.0)
 
     @patch("services.etf_service.scanner_scan")
+    def test_cibr_is_included_in_thematic_and_all_universes(self, mock_scan):
+        """CIBR debe entrar al universo temático y compararse contra SPY en 1W."""
+        from services.etf_service import THEMATIC_ETFS, fetch_etf_rotation_analysis
+
+        mock_scan.return_value = {
+            "data": [
+                {
+                    "symbol": "AMEX:SPY",
+                    "name": "SPY",
+                    "close": 500.0,
+                    "Perf.W": 1.0,
+                    "Perf.1M": 2.0,
+                },
+                {
+                    "symbol": "NASDAQ:CIBR",
+                    "name": "CIBR",
+                    "close": 100.0,
+                    "Perf.W": 2.5,
+                    "Perf.1M": 3.0,
+                },
+            ]
+        }
+
+        self.assertIn("CIBR", THEMATIC_ETFS)
+        self.assertEqual(THEMATIC_ETFS["CIBR"]["tv"], "NASDAQ:CIBR")
+
+        fn = getattr(fetch_etf_rotation_analysis, "__wrapped__", fetch_etf_rotation_analysis)
+        for universe in ("thematic", "all"):
+            result = fn(universe=universe)
+            cibr = next(item for item in result["items"] if item["ticker"] == "CIBR")
+            self.assertEqual(cibr["diff_vs_spy_w"], 1.5)
+            self.assertEqual(cibr["diff_vs_spy_1m"], 1.0)
+            self.assertEqual(cibr["quadrant"], "LEADERS")
+
+        requested_symbols = mock_scan.call_args.kwargs["symbols"]
+        self.assertIn("NASDAQ:CIBR", requested_symbols)
+
+    @patch("services.etf_service.scanner_scan")
     def test_weekly_differential_is_not_the_daily_change(self, mock_scan):
         """El diferencial semanal se calcula contra SPY, independientemente del cambio diario."""
         from services.etf_service import fetch_etf_rotation_analysis

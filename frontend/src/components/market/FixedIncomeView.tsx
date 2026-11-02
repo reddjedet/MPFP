@@ -98,6 +98,7 @@ export const FixedIncomeView: React.FC = () => {
 
   const fetchCurveData = async () => {
     setRefreshing(true);
+    setError(null);
     try {
       const params = new URLSearchParams({
         category,
@@ -109,7 +110,12 @@ export const FixedIncomeView: React.FC = () => {
         res = await fetch(`/api/fixed_income/curve_json?${params.toString()}`);
       }
       if (res.ok) {
-        const json: FixedIncomeResponse = await res.json();
+        const json: FixedIncomeResponse & { error?: string } = await res.json();
+        if (json.error) {
+          // El router responde 200 con {'error': ...} cuando el proveedor falla.
+          setError(`El proveedor de renta fija devolvió un error: ${json.error}`);
+          return;
+        }
         setData(json);
         setError(null);
       } else {
@@ -648,6 +654,12 @@ export const FixedIncomeView: React.FC = () => {
           Actualizar Curva
         </button>
       </div>
+
+      {error && data && (
+        <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+          {error}
+        </div>
+      )}
 
       {loading && !data ? (
         <div className="bg-secondary/80 border border-border h-80 rounded-2xl flex flex-col items-center justify-center gap-3 text-muted-foreground backdrop-blur-md">

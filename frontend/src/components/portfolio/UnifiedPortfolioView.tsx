@@ -86,6 +86,15 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
     }
   }, [selectedPf]);
 
+  // Refresco manual: invalida el caché antes de refetchear para que un POST
+  // previo (o un cambio de precios) no quede tapado por el staleTime de 90 s.
+  const refreshPortfolioData = useCallback(() => {
+    const isRefreshableKey = (key: unknown) =>
+      typeof key === 'string' && (key.startsWith('portfolio') || key.startsWith('cedear'));
+    queryClient.invalidateQueries({ predicate: (query) => isRefreshableKey(query.queryKey[0]) });
+    return fetchAllData(selectedPf);
+  }, [fetchAllData, selectedPf]);
+
   useEffect(() => {
     fetchMetadata();
   }, []);
@@ -205,11 +214,9 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
             
             <button 
               onClick={() => {
-                queryClient.invalidateQueries({ predicate: (query) => (query.queryKey[0] as string).startsWith('portfolio') });
-                queryClient.invalidateQueries({ predicate: (query) => (query.queryKey[0] as string).startsWith('cedear') });
                 setRefreshCounter(c => c + 1);
-                fetchMetadata();
-                fetchAllData();
+                void fetchMetadata();
+                void refreshPortfolioData();
               }}
               disabled={loading}
               className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-colors"
@@ -353,7 +360,7 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
               <PortfolioTable 
                 data={rebalanceData} 
                 pfType={selectedPf} 
-                onRefresh={() => fetchAllData(selectedPf)} 
+                onRefresh={refreshPortfolioData} 
               />
             </div>
 
@@ -366,13 +373,13 @@ export const UnifiedPortfolioView: React.FC<{ hideHeader?: boolean, compact?: bo
                     <FixedIncomePortfolioCard 
                        items={rebalanceData.fixed_income_summary.items} 
                        pfType={selectedPf} 
-                       onRefresh={() => fetchAllData(selectedPf)} 
+                       onRefresh={refreshPortfolioData} 
                     />
                  </div>
                  <PortfolioFixedIncomeTable 
                     summary={rebalanceData.fixed_income_summary} 
                     pfType={selectedPf} 
-                    onRefresh={() => fetchAllData(selectedPf)} 
+                    onRefresh={refreshPortfolioData} 
                  />
               </div>
             )}

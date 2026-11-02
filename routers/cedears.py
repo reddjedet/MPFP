@@ -257,6 +257,6 @@ def get_etf_rrg_endpoint(
     weeks: int = Query(52, ge=26, le=104),
     tail: int = Query(8, ge=3, le=12),
 ):
-    """Relative Rotation Graph semanal de ETFs vs SPY (RS-Ratio / RS-Momentum)."""
+    """Relative Rotation Graph semanal de ETFs vs SPY (fuerza y momentum relativos)."""
     data = fetch_etf_rrg(universe=universe, weeks=weeks, tail=tail)
     return JSONResponse(data)

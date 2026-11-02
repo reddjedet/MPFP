@@ -95,17 +95,21 @@ export const PerformanceView: React.FC = () => {
   const [portfolioFilter, setPortfolioFilter] = useState<string>('all');
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchPerformanceData = async () => {
     setRefreshing(true);
+    setError(null);
     try {
       const res = await fetch('/api/performance/data_json');
-      if (res.ok) {
-        const json: PerformanceResponse = await res.json();
-        setData(json);
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}: no se pudieron actualizar las métricas.`);
       }
+      const json: PerformanceResponse = await res.json();
+      setData(json);
     } catch (e) {
       console.error(e);
+      setError(e instanceof Error ? e.message : 'No se pudieron actualizar las métricas.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -580,6 +584,12 @@ export const PerformanceView: React.FC = () => {
           Actualizar Métricas
         </button>
       </div>
+
+      {error && (
+        <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+          {error}
+        </div>
+      )}
 
       {loading && !data ? (
         <div className="bg-card border border-border h-80 rounded-2xl flex flex-col items-center justify-center gap-3 text-slate-500 dark:text-muted-foreground">

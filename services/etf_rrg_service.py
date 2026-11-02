@@ -26,6 +26,10 @@ RSI_PERIOD = 14
 DEFAULT_WEEKS = 52
 DEFAULT_TAIL = 8
 VALID_UNIVERSES = {"sectors", "thematic", "all"}
+MAX_Z = 3.0
+# Al cambiar la forma del payload o la composición del universo se sube esta
+# versión para invalidar la caché.
+RRG_SCHEMA_VERSION = 3
 
 QUADRANT_LABELS = {
     "LEADING": "Líder Sostenido",
@@ -61,7 +65,25 @@ def _resolve_universe(universe: str) -> dict[str, dict[str, Any]]:
     return dict(SECTOR_ETFS)
 
 
-def _empty_response(weeks: int, tail: int, error: str | None = None) -> dict[str, Any]:
+def _method_meta(weeks: int) -> dict[str, Any]:
+    """Metadatos del cálculo para que la UI pueda explicarlo sin hardcodear."""
+    return {
+        "name": "rolling_zscore",
+        "scale": "100+10z",
+        "clip": [-MAX_Z, MAX_Z],
+        "smoothing": f"EMA{SMOOTH_SPAN}",
+        "window_weeks": weeks,
+        "momentum": "delta_rs_ratio",
+        "complete_weeks_only": True,
+    }
+
+
+def _empty_response(
+    weeks: int,
+    tail: int,
+    error: str | None = None,
+    skipped: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
     return {
         "benchmark": BENCHMARK,
         "as_of": None,
@@ -69,8 +91,25 @@ def _empty_response(weeks: int, tail: int, error: str | None = None) -> dict[str
         "tail": tail,
         "spy_rsi": None,
         "points": [],
+        "skipped": skipped or [],
+        "method": _method_meta(weeks),
         "error": error,
     }
+
+
+def _reference_date() -> pd.Timestamp:
+    """Fecha de hoy, aislada para poder testear el cierre semanal."""
+    return pd.Timestamp.now().normalize()
+
+
+def _last_complete_week_label(reference: pd.Timestamp) -> pd.Timestamp:
+    """Viernes de la última semana cerrada respecto de `reference`.
+
+    Una semana se considera cerrada cuando su viernes ya quedó atrás. Si hoy
+    es sábado o domingo, la semana que acaba de terminar ya está cerrada.
+    """
+    previous_day = reference.normalize() - pd.Timedelta(days=1)
+    return previous_day - pd.Timedelta(days=(previous_day.weekday() - 4) % 7)
 
 
 def _extract_close_frame(raw: Any) -> pd.DataFrame:
@@ -100,8 +139,56 @@ def _rolling_zscore(series: pd.Series, window: int) -> pd.Series:
     rolling = series.rolling(window=window, min_periods=window)
     mean = rolling.mean()
     std = rolling.std(ddof=0)
-    zscore = (series - mean) / std.replace(0.0, np.nan)
-    return zscore.replace([np.inf, -np.inf], np.nan).clip(-3.0, 3.0)
+    zscore = (series - mean) / std
+    zscore = zscore.replace([np.inf, -np.inf], np.nan)
+    # Ventana sin dispersión: no hay desvío que medir, el z-score es 0.
+    zscore = zscore.mask(std.eq(0.0) & mean.notna(), 0.0)
+    return zscore
+
+
+def _scale_and_clip(scaled: pd.Series) -> pd.Series:
+    """Recorta la escala final a 100 ± 10·MAX_Z (70–130)."""
+    return scaled.clip(100.0 - 10.0 * MAX_Z, 100.0 + 10.0 * MAX_Z)
+
+
+def _rrg_axes(relative_strength: pd.Series, weeks: int) -> pd.DataFrame:
+    """Calcula Fuerza relativa y Momentum relativo a partir del RS vs SPY.
+
+    - Fuerza: z-score de la fuerza relativa, escalado a 100 + 10z.
+    - Momentum: z-score del **cambio** semanal de esa fuerza (Δ), escalado
+      igual. Usar Δ en lugar del cambio porcentual evita que un sector débil
+      reaccione distinto a un sector fuerte ante el mismo movimiento.
+    - El suavizado EMA se aplica antes del recorte final para no perder
+      amplitud, y el recorte garantiza que la escala visible sea 70–130.
+    """
+    z_level = _rolling_zscore(relative_strength, weeks)
+    rs_ratio = _scale_and_clip(
+        (100.0 + 10.0 * z_level).ewm(span=SMOOTH_SPAN, adjust=False).mean()
+    )
+
+    z_momentum = _rolling_zscore(rs_ratio.diff(), weeks)
+    rs_momentum = _scale_and_clip(
+        (100.0 + 10.0 * z_momentum).ewm(span=SMOOTH_SPAN, adjust=False).mean()
+    )
+
+    frame = pd.DataFrame({"x": rs_ratio, "y": rs_momentum})
+    return frame.replace([np.inf, -np.inf], np.nan).dropna()
+
+
+def _quadrant_streak(
+    xs: pd.Series, ys: pd.Series
+) -> tuple[str, int, pd.Timestamp]:
+    """Cuadrante actual, semanas consecutivas en él y fecha de entrada."""
+    quadrants = [
+        classify_rrg_quadrant(float(x), float(y)) for x, y in zip(xs, ys)
+    ]
+    current = quadrants[-1]
+    streak = 0
+    for quadrant in reversed(quadrants):
+        if quadrant != current:
+            break
+        streak += 1
+    return current, streak, xs.index[-streak]
 
 
 def _compute_rrg_series(
@@ -121,15 +208,7 @@ def _compute_rrg_series(
         [np.inf, -np.inf], np.nan
     ).dropna()
 
-    rs_ratio = (
-        100.0 + 10.0 * _rolling_zscore(relative_strength, weeks)
-    ).ewm(span=SMOOTH_SPAN, adjust=False).mean()
-    rs_momentum = (
-        100.0 + 10.0 * _rolling_zscore(rs_ratio.pct_change(fill_method=None), weeks)
-    ).ewm(span=SMOOTH_SPAN, adjust=False).mean()
-
-    frame = pd.DataFrame({"x": rs_ratio, "y": rs_momentum})
-    frame = frame.replace([np.inf, -np.inf], np.nan).dropna()
+    frame = _rrg_axes(relative_strength, weeks)
     return frame if not frame.empty else None
 
 
@@ -161,6 +240,7 @@ def fetch_etf_rrg(
     universe: str = "sectors",
     weeks: int = DEFAULT_WEEKS,
     tail: int = DEFAULT_TAIL,
+    _schema_version: int = RRG_SCHEMA_VERSION,
 ) -> dict[str, Any]:
     """
     Construye el Relative Rotation Graph de los ETFs seguidos contra SPY.
@@ -169,6 +249,7 @@ def fetch_etf_rrg(
         universe: "sectors" (11 SPDR), "thematic" o "all".
         weeks: ventana de normalización en semanas.
         tail: cantidad de puntos semanales de la cola.
+        _schema_version: versión interna del payload; invalida la caché.
     """
     weeks = int(max(26, min(int(weeks), 104)))
     tail = int(max(3, min(int(tail), 12)))
@@ -203,22 +284,34 @@ def fetch_etf_rrg(
 
     close = close.sort_index()
     weekly = close.resample("W-FRI").last()
-    # Descartar la semana en curso: su etiqueta W-FRI sería una fecha futura.
-    weekly = weekly[weekly.index <= close.index.max()]
+    # Solo semanas cerradas: la etiqueta W-FRI puede ser la semana en curso.
+    # Se descarta hasta que su viernes haya quedado atrás (ver helper).
+    last_complete_week = _last_complete_week_label(_reference_date())
+    if weekly.index.tz is not None:
+        last_complete_week = last_complete_week.tz_localize(weekly.index.tz)
+    weekly = weekly[weekly.index <= last_complete_week]
+    if weekly.empty:
+        return _empty_response(
+            weeks, tail, "Sin semanas cerradas disponibles."
+        )
     spy_weekly = weekly[BENCHMARK]
     spy_rsi = _compute_rsi(close[BENCHMARK])
 
     points: list[dict[str, Any]] = []
+    skipped: list[dict[str, str]] = []
     for ticker, meta in selected_meta.items():
         if ticker not in weekly.columns:
+            skipped.append({"ticker": ticker, "reason": "sin datos semanales"})
             continue
 
         frame = _compute_rrg_series(weekly[ticker], spy_weekly, weeks)
         if frame is None:
+            skipped.append({"ticker": ticker, "reason": "historial insuficiente"})
             continue
 
         trail_frame = frame.tail(tail)
         if trail_frame.empty:
+            skipped.append({"ticker": ticker, "reason": "historial insuficiente"})
             continue
 
         trail = [
@@ -230,14 +323,11 @@ def fetch_etf_rrg(
             for index, row in trail_frame.iterrows()
         ]
         current = trail[-1]
-        quadrant = classify_rrg_quadrant(current["x"], current["y"])
 
-        weeks_in_quadrant = 0
-        for point in reversed(trail):
-            if classify_rrg_quadrant(point["x"], point["y"]) == quadrant:
-                weeks_in_quadrant += 1
-            else:
-                break
+        # La racha se cuenta sobre toda la serie, no sobre la cola visible.
+        quadrant, weeks_in_quadrant, since = _quadrant_streak(
+            frame["x"], frame["y"]
+        )
 
         points.append(
             {
@@ -249,6 +339,7 @@ def fetch_etf_rrg(
                 "quadrant": quadrant,
                 "quadrant_label": QUADRANT_LABELS[quadrant],
                 "weeks_in_quadrant": weeks_in_quadrant,
+                "quadrant_since": since.strftime("%Y-%m-%d"),
                 "rsi": _compute_rsi(close[ticker]) if ticker in close.columns else None,
                 "rsi_spy": spy_rsi,
                 "trail": trail,
@@ -257,7 +348,7 @@ def fetch_etf_rrg(
 
     if not points:
         return _empty_response(
-            weeks, tail, "Historial insuficiente para calcular el RRG."
+            weeks, tail, "Historial insuficiente para calcular el RRG.", skipped
         )
 
     as_of = max(point["trail"][-1]["week"] for point in points)
@@ -268,5 +359,7 @@ def fetch_etf_rrg(
         "tail": tail,
         "spy_rsi": spy_rsi,
         "points": points,
+        "skipped": skipped,
+        "method": _method_meta(weeks),
         "error": None,
     }
