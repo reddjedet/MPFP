@@ -49,15 +49,21 @@ class TestFixedIncomeService(unittest.TestCase):
     @patch("services.fixed_income_service.fetch_panel")
     def test_endpoint_lecap_curve_filters(self, mock_panel, mock_datos):
         """Verifica filtros por tipo de instrumento (LECAP, BONCAP) en /api/fixed_income/curve_json."""
+        # El ticker se elige por vencimiento más lejano: la tabla rota con el tiempo
+        # y un símbolo fijo convierte este test en una bomba de tiempo.
+        lecap = max(
+            (t for t, spec in LECAP_BONCAP_SPECS.items() if spec["tipo"] == "LECAP"),
+            key=lambda t: LECAP_BONCAP_SPECS[t]["vencimiento"],
+        )
         mock_panel.return_value = {
             "data": [
-                {"symbol": "S30O6", "trade": 112.08, "volumeAmount": 5000000},
+                {"symbol": lecap, "trade": 112.08, "volumeAmount": 5000000},
                 {"symbol": "T31Y7", "trade": 115.50, "volumeAmount": 3000000}
             ]
         }
         resp_all = self.client.get("/api/fixed_income/curve_json?category=lecap&tipo_inst=Todos")
         self.assertEqual(resp_all.status_code, 200)
-        self.assertIn("S30O6", resp_all.text)
+        self.assertIn(lecap, resp_all.text)
 
         resp_lecap = self.client.get("/api/fixed_income/curve_json?category=lecap&tipo_inst=LECAP")
         self.assertEqual(resp_lecap.status_code, 200)
