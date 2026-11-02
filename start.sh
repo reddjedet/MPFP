@@ -85,14 +85,22 @@ echo "💻 Plataforma React (SPA):       http://127.0.0.1:$BACKEND_PORT/"
 echo "⚡ Vite Dev Server (Hot-Reload): http://127.0.0.1:$FRONTEND_PORT"
 echo "======================================================="
 
-# 3. Lanzar Backend FastAPI (servidor unificado)
+# 3. Refrescar histórico de índices si está viejo (no bloquea el arranque)
+if [ -f "$DIR/scripts/refresh_historical_indices.py" ]; then
+    nohup "$DIR/venv/bin/python" "$DIR/scripts/refresh_historical_indices.py" --apply --if-stale 5 \
+        > "$DIR/data_refresh.log" 2>&1 &
+    disown $! 2>/dev/null || true
+    echo "📊 Histórico de índices: refresco en segundo plano (ver data_refresh.log)"
+fi
+
+# 4. Lanzar Backend FastAPI (servidor unificado)
 nohup "$DIR/venv/bin/python" -m uvicorn main:app --reload --reload-dir "$DIR/routers" --reload-dir "$DIR/services" --host 127.0.0.1 --port $BACKEND_PORT > "$DIR/app.log" 2>&1 &
 BACKEND_PID=$!
 echo $BACKEND_PID > "$DIR/app.pid"
 disown $BACKEND_PID 2>/dev/null || true
 echo "✓ Backend FastAPI corriendo (PID: $BACKEND_PID, logs: app.log)"
 
-# 4. Lanzar Vite Dev Server en segundo plano
+# 5. Lanzar Vite Dev Server en segundo plano
 if [ -d "$DIR/frontend" ]; then
     cd "$DIR/frontend"
     nohup ./node_modules/.bin/vite --host 127.0.0.1 --port $FRONTEND_PORT > "$DIR/frontend.log" 2>&1 &
@@ -103,7 +111,7 @@ if [ -d "$DIR/frontend" ]; then
     echo "✓ Vite Dev Server corriendo (PID: $FRONTEND_PID, logs: frontend.log)"
 fi
 
-# 5. Esperar a que FastAPI responda antes de abrir el navegador
+# 6. Esperar a que FastAPI responda antes de abrir el navegador
 echo "⏳ Verificando disponibilidad del servidor..."
 for i in {1..15}; do
     if curl -s http://127.0.0.1:$BACKEND_PORT/health >/dev/null 2>&1; then
@@ -113,7 +121,7 @@ for i in {1..15}; do
     sleep 0.4
 done
 
-# 6. Abrir navegador en la aplicación React
+# 7. Abrir navegador en la aplicación React
 echo "🌐 Abriendo navegador en http://127.0.0.1:$BACKEND_PORT/ ..."
 if command -v xdg-open >/dev/null 2>&1; then
     (xdg-open "http://127.0.0.1:$BACKEND_PORT/" >/dev/null 2>&1 &) || true

@@ -26,7 +26,9 @@ import {
   Scale,
   Percent,
   Activity,
-  Maximize2
+  Maximize2,
+  Clock,
+  AlertTriangle
 } from 'lucide-react';
 
 echarts.use([
@@ -108,7 +110,20 @@ interface HistoryResponse {
   currency: string;
   region: string;
   normalized: boolean;
+  data_as_of?: string | null;
+  last_updated?: string | null;
+  stale_days?: number | null;
 }
+
+const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/** Etiqueta corta para ejes de 1-3 años: "ene 26" en lugar de repetir "2026". */
+const formatShortDate = (isoDate: string): string => {
+  const [year, month] = isoDate.split('-');
+  const monthIndex = Number(month) - 1;
+  const monthLabel = MONTHS_ES[monthIndex] ?? month;
+  return `${monthLabel} ${year.slice(2)}`;
+};
 
 type RegionType = 'arg' | 'br' | 'usa' | 'global';
 type PeriodType = '1y' | '3y' | '5y' | '10y' | '20y' | 'max';
@@ -153,21 +168,25 @@ export const MarketIndicesView: React.FC = () => {
   const [cyclesData, setCyclesData] = useState<CyclesResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedMandateId, setSelectedMandateId] = useState<string>('all');
 
   // Fetch de series históricas
   const fetchHistory = async () => {
     try {
       setRefreshing(true);
+      setError(null);
       const res = await fetch(
         `/api/indices/history?region=${region}&period=${period}&currency=${currency}&normalized=${normalized || region === 'global'}`
       );
-      if (res.ok) {
-        const data = await res.json();
-        setHistoryData(data);
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}: no se pudo actualizar el histórico de índices.`);
       }
+      const data = await res.json();
+      setHistoryData(data);
     } catch (e) {
       console.error('Error fetching indices history:', e);
+      setError(e instanceof Error ? e.message : 'Error de conexión al actualizar los índices.');
     } finally {
       setRefreshing(false);
       setLoading(false);
@@ -329,7 +348,8 @@ export const MarketIndicesView: React.FC = () => {
         name,
         type: 'line',
         data: series[name],
-        smooth: 0.15,
+        smooth: false,
+        connectNulls: false,
         showSymbol: false,
         lineStyle: {
           width: isPrimary ? 2.5 : 1.5,
@@ -456,8 +476,8 @@ export const MarketIndicesView: React.FC = () => {
           color: chartTokens.textMuted,
           fontSize: 10,
           formatter: (value: string) => {
-            // Mostrar formato YYYY o MMM YY
-            return value.slice(0, 4);
+            // En ventanas cortas (1A/3A) la etiqueta por año repetiría el mismo texto.
+            return period === '1y' || period === '3y' ? formatShortDate(value) : value.slice(0, 4);
           }
         },
         splitLine: {
@@ -523,9 +543,13 @@ export const MarketIndicesView: React.FC = () => {
       ],
       series: echartsSeries
     };
-  }, [historyData, cyclesData, showElections, useLogScale, chartTokens, region, currency, normalized]);
+  }, [historyData, cyclesData, showElections, useLogScale, chartTokens, region, currency, normalized, period]);
 
   const metrics = historyData?.summary_metrics;
+  const dataAsOf = historyData?.data_as_of ?? null;
+  const staleDays = historyData?.stale_days ?? 0;
+  // La serie semanal tolera feriados y demoras del proveedor; 14 días ya es dato viejo.
+  const isStale = Boolean(dataAsOf) && staleDays > 14;
 
   return (
     <div className="space-y-5 select-none w-full max-w-full overflow-x-hidden">
@@ -669,6 +693,12 @@ export const MarketIndicesView: React.FC = () => {
         </div>
       </div>
 
+      {error && (
+        <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
       {/* 2. SCORECARD DE RENDIMIENTO CUANTITATIVO DEL PERÍODO VISIBLE */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* Retorno Acumulado */}
@@ -688,7 +718,7 @@ export const MarketIndicesView: React.FC = () => {
             </span>
           </div>
           <div className="text-[10px] text-muted-foreground font-mono mt-1">
-            Desde {metrics?.start_price !== undefined ? (normalized || region === 'global' ? `${metrics.start_price} pts` : currency === 'local' && region === 'arg' ? `ARS $${metrics.start_price.toLocaleString('es-AR')}` : currency === 'local' && region === 'br' ? `BRL R$${metrics.start_price.toLocaleString('pt-BR')}` : `USD $${metrics.start_price.toLocaleString('en-US')}`) : '—'} a {metrics?.end_price !== undefined ? (normalized || region === 'global' ? `${metrics.end_price} pts` : currency === 'local' && region === 'arg' ? `ARS $${metrics.end_price.toLocaleString('es-AR')}` : currency === 'local' && region === 'br' ? `BRL R$${metrics.end_price.toLocaleString('pt-BR')}` : `USD $${metrics.end_price.toLocaleString('en-US')}`) : '—'}
+            Sin dividendos · Desde {metrics?.start_price !== undefined ? (normalized || region === 'global' ? `${metrics.start_price} pts` : currency === 'local' && region === 'arg' ? `ARS $${metrics.start_price.toLocaleString('es-AR')}` : currency === 'local' && region === 'br' ? `BRL R$${metrics.start_price.toLocaleString('pt-BR')}` : `USD $${metrics.start_price.toLocaleString('en-US')}`) : '—'} a {metrics?.end_price !== undefined ? (normalized || region === 'global' ? `${metrics.end_price} pts` : currency === 'local' && region === 'arg' ? `ARS $${metrics.end_price.toLocaleString('es-AR')}` : currency === 'local' && region === 'br' ? `BRL R$${metrics.end_price.toLocaleString('pt-BR')}` : `USD $${metrics.end_price.toLocaleString('en-US')}`) : '—'}
           </div>
         </div>
 
@@ -765,6 +795,23 @@ export const MarketIndicesView: React.FC = () => {
             <span className="px-2 py-0.5 rounded-lg bg-secondary/50 border border-border text-[10px] text-muted-foreground font-mono">
               {historyData?.dates?.length ?? 0} registros
             </span>
+            {dataAsOf && (
+              <span
+                title={
+                  isStale
+                    ? `Última observación hace ${staleDays} días. Ejecutá scripts/refresh_historical_indices.py para actualizar.`
+                    : 'Última observación disponible en el histórico de mercado.'
+                }
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-semibold flex items-center gap-1 border ${
+                  isStale
+                    ? 'bg-amber-500/10 text-amber-300 border-amber-500/40'
+                    : 'bg-secondary/50 text-muted-foreground border-border'
+                }`}
+              >
+                {isStale ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                Datos al {dataAsOf}
+              </span>
+            )}
             <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-semibold flex items-center gap-1 bg-emerald-500/10 text-positive border border-emerald-500/30">
               {region === 'global'
                 ? 'Moneda: USD (Base 100)'

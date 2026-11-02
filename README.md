@@ -89,6 +89,8 @@ Plataforma financiera integral para la gestión de carteras de inversión, arbit
    
    - Series históricas de retorno multiactivo (S&P Merval en USD y ARS, ETF ARGT, EWZ Brasil, Bovespa BRL, S&P 500, Nasdaq, Dow Jones) con normalización interactiva en Base 100.
    
+   - Datos reales de Yahoo Finance (cierre sin dividendos) + CCL de Ámbito, muestreados semanalmente. Se refrescan con `./venv/bin/python scripts/refresh_historical_indices.py --apply` (y `./start.sh` lo hace solo si el archivo tiene más de 5 días).
+   
    - Métricas cuantitativas de largo plazo (CAGR %, Max Drawdown %, Volatilidad anualizada).
    
    - Superposición de mandatos presidenciales y eventos electorales para Argentina, Brasil y Estados Unidos.

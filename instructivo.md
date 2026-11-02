@@ -112,7 +112,8 @@ Auditoría por **Vía Negativa** con 6 modelos financieros según el perfil sect
 
 ### 10. Histórico de Índices & Ciclos Electorales (`services/market_indices_service.py` / `MarketIndicesView.tsx`)
 * **Series Multiactivo Normalizadas (Base 100):** Visualización comparativa de activos clave (S&P Merval en USD y ARS, ETF ARGT, EWZ Brasil, Bovespa BRL, S&P 500, Nasdaq, Dow Jones) indexados a 100 desde una fecha base común.
-* **Métricas Cuantitativas:** Cálculo de Tasa de Crecimiento Anual Compuesto (CAGR %), Máximo Drawdown histórico y Volatilidad anualizada.
+* **Métricas Cuantitativas:** Cálculo de Tasa de Crecimiento Anual Compuesto (CAGR %), Máximo Drawdown histórico y Volatilidad anualizada (factor derivado de la frecuencia real de muestreo).
+* **Fuente y refresco:** `scripts/refresh_historical_indices.py` reconstruye `data/historical_indices.json` con cierres reales de Yahoo Finance y CCL de Ámbito (semanal). Valida que no haya tramos interpolados ni datos viejos antes de escribir. Los metadatos curados (`mandates`, `elections`) se preservan intactos.
 * **Superposición de Mandatos y Ciclos Políticos:** Áreas de color interactivo que representan mandatos presidenciales (Argentina, Brasil, EE.UU.) e hitos electorales clave para estudiar el comportamiento de mercado a través de ciclos políticos.
 
 ---

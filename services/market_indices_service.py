@@ -9,7 +9,7 @@ import json
 from typing import Dict, Any
 import numpy as np
 import pandas as pd
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from services.cache_service import smart_cache
 from services.data_paths import data_file
@@ -75,6 +75,15 @@ def _load_historical_data() -> dict:
         return {}
 
 
+def _data_fingerprint() -> str:
+    """Huella del archivo de datos: cambia cuando el histórico se refresca."""
+    try:
+        stat = DATA_FILE.stat()
+        return f"{int(stat.st_mtime)}:{stat.st_size}"
+    except OSError:
+        return "missing"
+
+
 def calculate_series_metrics(prices: pd.Series) -> Dict[str, float]:
     """
     Calcula métricas financieras cuantitativas para una serie de precios:
@@ -124,9 +133,15 @@ def calculate_series_metrics(prices: pd.Series) -> Dict[str, float]:
 
     # Volatilidad anualizada
     pct_changes = clean.pct_change().dropna()
-    # Si la frecuencia media es quincenal (~26 observaciones al año) o diaria (252)
-    # Estimamos el factor de anualización según el número de observaciones por año
-    ann_factor = np.sqrt(26) if len(clean) / max(years, 0.1) < 40 else np.sqrt(252)
+    # El factor de anualización se deriva de la frecuencia real de muestreo
+    # (semanal, diaria, mensual) en lugar de asumir un valor fijo.
+    try:
+        gaps = pd.Series(pd.to_datetime(clean.index)).diff().dt.days.dropna()
+        median_gap = float(gaps.median()) if len(gaps) else 7.0
+    except Exception:
+        median_gap = 7.0
+    periods_per_year = 365.25 / max(median_gap, 1.0)
+    ann_factor = np.sqrt(periods_per_year)
     vol = float(pct_changes.std() * ann_factor * 100.0) if len(pct_changes) > 1 else 0.0
 
     return {
@@ -161,7 +176,8 @@ def get_available_indices_metadata() -> Dict[str, Any]:
 
 
 @smart_cache(category="historical")
-def get_indices_history(
+def _get_indices_history_cached(
+    fingerprint: str,
     region: str = "arg",
     period: str = "max",
     currency: str = "usd",
@@ -170,14 +186,33 @@ def get_indices_history(
     """
     Devuelve las series temporales de precios para la región especificada,
     filtradas por temporalidad y opcionalmente normalizadas Base 100.
+
+    `fingerprint` identifica la versión del archivo de datos para que el caché
+    se invalide solo cuando el histórico se refresca.
     """
     raw = _load_historical_data()
     if not raw or "data_series" not in raw:
-        return {"dates": [], "series": {}, "summary_metrics": {}, "primary_key": ""}
+        return {
+            "dates": [],
+            "series": {},
+            "summary_metrics": {},
+            "primary_key": "",
+            "data_as_of": None,
+            "last_updated": None,
+            "stale_days": None,
+        }
 
     dates_raw = raw["data_series"].get("dates", [])
     if not dates_raw:
-        return {"dates": [], "series": {}, "summary_metrics": {}, "primary_key": ""}
+        return {
+            "dates": [],
+            "series": {},
+            "summary_metrics": {},
+            "primary_key": "",
+            "data_as_of": None,
+            "last_updated": None,
+            "stale_days": None,
+        }
 
     dates_dt = pd.to_datetime(dates_raw)
     max_date = dates_dt[-1]
@@ -294,6 +329,21 @@ def get_indices_history(
     else:
         summary_metrics = {}
 
+    # Fecha efectiva de los datos para la región consultada (el último punto con
+    # valor real, que puede ser anterior al último del eje si la fuente demora).
+    last_index = None
+    for vals in series_dict.values():
+        for i in range(len(vals) - 1, -1, -1):
+            if vals[i] is not None:
+                if last_index is None or i > last_index:
+                    last_index = i
+                break
+    data_as_of = filtered_dates[last_index] if last_index is not None else dates_raw[-1]
+    try:
+        stale_days = (datetime.now(timezone.utc).date() - pd.to_datetime(data_as_of).date()).days
+    except Exception:
+        stale_days = None
+
     return {
         "dates": filtered_dates,
         "series": series_dict,
@@ -301,8 +351,21 @@ def get_indices_history(
         "primary_key": primary_key,
         "currency": currency,
         "region": region,
-        "normalized": normalized
+        "normalized": normalized,
+        "data_as_of": data_as_of,
+        "last_updated": raw.get("last_updated"),
+        "stale_days": stale_days,
     }
+
+
+def get_indices_history(
+    region: str = "arg",
+    period: str = "max",
+    currency: str = "usd",
+    normalized: bool = False
+) -> Dict[str, Any]:
+    """Punto de entrada público: inyecta la huella del archivo en el caché."""
+    return _get_indices_history_cached(_data_fingerprint(), region, period, currency, normalized)
 
 
 def get_presidential_cycles(region: str = "arg") -> Dict[str, Any]:
